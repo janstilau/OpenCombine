@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Publishes the first element of a stream, then finishes.
     ///
     /// Use `first()` to publish just the first element from an upstream publisher, then
@@ -29,7 +29,7 @@ extension Publisher {
     public func first() -> Publishers.First<Self> {
         return .init(upstream: self)
     }
-
+    
     /// Publishes the first element of a stream to satisfy a predicate closure, then
     /// finishes normally.
     ///
@@ -49,7 +49,7 @@ extension Publisher {
     ///
     ///     // Prints: "1"
     ///
-
+    
     /// - Parameter predicate: A closure that takes an element as a parameter and returns
     ///   a Boolean value that indicates whether to publish the element.
     /// - Returns: A publisher that only publishes the first element of a stream that
@@ -59,7 +59,7 @@ extension Publisher {
     ) -> Publishers.FirstWhere<Self> {
         return .init(upstream: self, predicate: predicate)
     }
-
+    
     /// Publishes the first element of a stream to satisfy a throwing predicate closure,
     /// then finishes normally.
     ///
@@ -87,7 +87,7 @@ extension Publisher {
     ///     // If instead the number range were ClosedRange<Int> = (100...200),
     ///     // the tryFirst operator would terminate publishing with a RangeError.
     ///
-
+    
     /// - Parameter predicate: A closure that takes an element as a parameter and returns
     ///   a Boolean value that indicates whether to publish the element.
     /// - Returns: A publisher that only publishes the first element of a stream that
@@ -100,75 +100,75 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     /// A publisher that publishes the first element of a stream, then finishes.
     public struct First<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         public init(upstream: Upstream) {
             self.upstream = upstream
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Failure == Downstream.Failure, Output == Downstream.Input
+        where Failure == Downstream.Failure, Output == Downstream.Input
         {
             upstream.subscribe(Inner(downstream: subscriber))
         }
     }
-
+    
     /// A publisher that only publishes the first element of a
     /// stream to satisfy a predicate closure.
     public struct FirstWhere<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// The closure that determines whether to publish an element.
         public let predicate: (Output) -> Bool
-
+        
         public init(upstream: Upstream, predicate: @escaping (Output) -> Bool) {
             self.upstream = upstream
             self.predicate = predicate
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Failure == Downstream.Failure, Output == Downstream.Input
+        where Failure == Downstream.Failure, Output == Downstream.Input
         {
             upstream.subscribe(Inner(downstream: subscriber, predicate: predicate))
         }
     }
-
+    
     /// A publisher that only publishes the first element of a stream
     /// to satisfy a throwing predicate closure.
     public struct TryFirstWhere<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Error
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// The error-throwing closure that determines whether to publish an element.
         public let predicate: (Output) throws -> Bool
-
+        
         public init(upstream: Upstream, predicate: @escaping (Output) throws -> Bool) {
             self.upstream = upstream
             self.predicate = predicate
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Failure == Downstream.Failure, Output == Downstream.Input
+        where Failure == Downstream.Failure, Output == Downstream.Input
         {
             upstream.subscribe(Inner(downstream: subscriber, predicate: predicate))
         }
@@ -179,39 +179,39 @@ extension Publishers.First: Equatable where Upstream: Equatable {}
 
 extension Publishers.First {
     private final class Inner<Downstream: Subscriber>
-        : ReduceProducer<Downstream,
-                         Upstream.Output,
-                         Upstream.Output,
-                         Upstream.Failure,
-                         Void>
-        where Upstream.Output == Downstream.Input,
-              Upstream.Failure == Downstream.Failure
+    : ReduceProducer<Downstream,
+      Upstream.Output,
+      Upstream.Output,
+      Upstream.Failure,
+      Void>
+    where Upstream.Output == Downstream.Input,
+          Upstream.Failure == Downstream.Failure
     {
         fileprivate init(downstream: Downstream) {
             super.init(downstream: downstream, initial: nil, reduce: ())
         }
-
+        
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {
             result = newValue
             return .finished
         }
-
+        
         override var description: String { return "First" }
     }
 }
 
 extension Publishers.FirstWhere {
     private final class Inner<Downstream: Subscriber>
-        : ReduceProducer<Downstream, Output, Output, Failure, (Output) -> Bool>
-        where Upstream.Output == Downstream.Input,
-              Upstream.Failure == Downstream.Failure
+    : ReduceProducer<Downstream, Output, Output, Failure, (Output) -> Bool>
+    where Upstream.Output == Downstream.Input,
+          Upstream.Failure == Downstream.Failure
     {
         fileprivate init(downstream: Downstream, predicate: @escaping (Output) -> Bool) {
             super.init(downstream: downstream, initial: nil, reduce: predicate)
         }
-
+        
         override func receive(
             newValue: Output
         ) -> PartialCompletion<Void, Downstream.Failure> {
@@ -222,25 +222,25 @@ extension Publishers.FirstWhere {
                 return .continue
             }
         }
-
+        
         override var description: String { return "TryFirst" }
     }
 }
 
 extension Publishers.TryFirstWhere {
     private final class Inner<Downstream: Subscriber>
-        : ReduceProducer<Downstream,
-                         Output,
-                         Output,
-                         Upstream.Failure,
-                         (Output) throws -> Bool>
-        where Upstream.Output == Downstream.Input, Downstream.Failure == Error
+    : ReduceProducer<Downstream,
+      Output,
+      Output,
+      Upstream.Failure,
+      (Output) throws -> Bool>
+    where Upstream.Output == Downstream.Input, Downstream.Failure == Error
     {
         fileprivate init(downstream: Downstream,
                          predicate: @escaping (Output) throws -> Bool) {
             super.init(downstream: downstream, initial: nil, reduce: predicate)
         }
-
+        
         override func receive(
             newValue: Output
         ) -> PartialCompletion<Void, Error> {
@@ -255,7 +255,7 @@ extension Publishers.TryFirstWhere {
                 return .failure(error)
             }
         }
-
+        
         override var description: String { return "TryFirstWhere" }
     }
 }

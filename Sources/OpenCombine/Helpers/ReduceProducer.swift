@@ -20,59 +20,59 @@ internal class ReduceProducer<Downstream: Subscriber,
                               Output,
                               UpstreamFailure: Error,
                               Reducer>
-    : CustomStringConvertible,
-      CustomReflectable
-    where Downstream.Input == Output
+: CustomStringConvertible,
+  CustomReflectable
+where Downstream.Input == Output
 {
     // NOTE: This class has been audited for thread safety
-
+    
     // MARK: - State
-
+    
     internal final var result: Output?
-
+    
     private let initial: Output?
-
+    
     internal final let reduce: Reducer
-
+    
     private var status = SubscriptionStatus.awaitingSubscription
-
+    
     private let downstream: Downstream
-
+    
     private let lock = UnfairLock.allocate()
-
+    
     private var downstreamRequested = false
-
+    
     private var cancelled = false
-
+    
     private var completed = false
-
+    
     private var upstreamCompleted = false
-
+    
     internal init(downstream: Downstream, initial: Output?, reduce: Reducer) {
         self.downstream = downstream
         self.initial = initial
         self.result = initial
         self.reduce = reduce
     }
-
+    
     deinit {
         lock.deallocate()
     }
-
+    
     // MARK: - Abstract methods
-
+    
     internal func receive(
         newValue: Input
     ) -> PartialCompletion<Void, Downstream.Failure> {
         abstractMethod()
     }
-
+    
     internal var description: String {
         abstractMethod()
     }
-
+    
     // MARK: - CustomReflectable
-
+    
     internal var customMirror: Mirror {
         lock.lock()
         defer { lock.unlock() }
@@ -84,9 +84,9 @@ internal class ReduceProducer<Downstream: Subscriber,
         ]
         return Mirror(self, children: children)
     }
-
+    
     // MARK: - Private
-
+    
     /// - Precondition: `lock` is held.
     private func receiveFinished() {
         guard !cancelled, !completed, !upstreamCompleted else {
@@ -104,12 +104,12 @@ internal class ReduceProducer<Downstream: Subscriber,
         let completed = self.completed
         let result = self.result
         lock.unlock()
-
+        
         if completed {
             sendResultAndFinish(result)
         }
     }
-
+    
     /// - Precondition: `lock` is held.
     private func receiveFailure(_ failure: UpstreamFailure) {
         guard !cancelled, !completed, !upstreamCompleted else {
@@ -125,7 +125,7 @@ internal class ReduceProducer<Downstream: Subscriber,
         lock.unlock()
         downstream.receive(completion: .failure(failure as! Downstream.Failure))
     }
-
+    
     private func sendResultAndFinish(_ result: Output?) {
         assert(completed && upstreamCompleted)
         if let result = result {
@@ -133,7 +133,7 @@ internal class ReduceProducer<Downstream: Subscriber,
         }
         downstream.receive(completion: .finished)
     }
-
+    
     // MARK: -
 }
 
@@ -150,7 +150,7 @@ extension ReduceProducer: Subscriber {
         downstream.receive(subscription: self)
         subscription.request(.unlimited)
     }
-
+    
     internal func receive(_ input: Input) -> Subscribers.Demand {
         lock.lock()
         guard case let .subscribed(subscription) = status else {
@@ -158,7 +158,7 @@ extension ReduceProducer: Subscriber {
             return .none
         }
         lock.unlock()
-
+        
         // Combine doesn't hold the lock when calling `receive(newValue:)`.
         //
         // This can lead to data races if the contract is violated
@@ -176,11 +176,11 @@ extension ReduceProducer: Subscriber {
             status = .terminal
             let result = self.result
             lock.unlock()
-
+            
             subscription.cancel()
-
+            
             guard downstreamRequested else { break }
-
+            
             sendResultAndFinish(result)
         case let .failure(error):
             lock.lock()
@@ -188,14 +188,14 @@ extension ReduceProducer: Subscriber {
             completed = true
             status = .terminal
             lock.unlock()
-
+            
             subscription.cancel()
             downstream.receive(completion: .failure(error))
         }
-
+        
         return .none
     }
-
+    
     internal func receive(completion: Subscribers.Completion<UpstreamFailure>) {
         lock.lock()
         guard case .subscribed = status else {
@@ -230,7 +230,7 @@ extension ReduceProducer: Subscription {
         lock.unlock()
         sendResultAndFinish(result)
     }
-
+    
     internal func cancel() {
         lock.lock()
         guard case let .subscribed(subscription) = status else {

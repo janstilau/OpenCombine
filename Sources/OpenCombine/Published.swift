@@ -8,7 +8,7 @@
 #if swift(>=5.1)
 
 extension Publisher where Failure == Never {
-
+    
     /// Republishes elements received from a publisher, by assigning them to a property
     /// marked as a publisher.
     ///
@@ -82,19 +82,19 @@ extension Publisher where Failure == Never {
  苹果文档.
  Publishing a property with the @Published attribute creates a publisher of this type. You access the publisher with the $ operator, as shown here:
  class Weather {
-     @Published var temperature: Double
-     init(temperature: Double) {
-         self.temperature = temperature
-     }
+ @Published var temperature: Double
+ init(temperature: Double) {
+ self.temperature = temperature
  }
-
+ }
+ 
  let weather = Weather(temperature: 20)
  cancellable = weather.$temperature
-     .sink() {
-         print ("Temperature now: \($0)")
+ .sink() {
+ print ("Temperature now: \($0)")
  }
  weather.temperature = 25
-
+ 
  // Prints:
  // Temperature now: 20.0
  // Temperature now: 25.0
@@ -105,28 +105,28 @@ extension Publisher where Failure == Never {
 @available(swift, introduced: 5.1)
 @propertyWrapper
 public struct Published<Value> {
-
+    
     // 专门建立了一个 Publisher 的类型. 可以看到, 真正的实现, 是里面藏了一个 Subject 实现的.
     public struct PublishedPublisher: OpenCombine.Publisher {
-
+        
         public typealias Output = Value
-
+        
         public typealias Failure = Never
-
+        
         // 实际上, 被 @Published 修饰的属性. 是需要 PublishedSubject 来进行真正实现的.
         fileprivate let subject: PublishedSubject<Value>
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Downstream.Input == Value, Downstream.Failure == Never
+        where Downstream.Input == Value, Downstream.Failure == Never
         {
             subject.subscribe(subscriber)
         }
-
+        
         fileprivate init(_ output: Output) {
             subject = .init(output)
         }
     }
-
+    
     private enum Storage {
         case value(Value)
         case publisher(PublishedPublisher)
@@ -135,14 +135,14 @@ public struct Published<Value> {
     @propertyWrapper
     private final class Box {
         var wrappedValue: Storage
-
+        
         init(wrappedValue: Storage) {
             self.wrappedValue = wrappedValue
         }
     }
-
+    
     @Box private var storage: Storage
-
+    
     internal var objectWillChange: ObservableObjectPublisher? {
         get {
             switch storage {
@@ -156,15 +156,15 @@ public struct Published<Value> {
             getPublisher().subject.objectWillChange = newValue
         }
     }
-
+    
     public init(initialValue: Value) {
         self.init(wrappedValue: initialValue)
     }
-
+    
     public init(wrappedValue: Value) {
         _storage = Box(wrappedValue: .value(wrappedValue))
     }
-
+    
     /// The property for which this instance exposes a publisher.
     ///
     /// The `projectedValue` is the property accessed with the `$` operator.
@@ -181,7 +181,7 @@ public struct Published<Value> {
             }
         }
     }
-
+    
     /// Note: This method can mutate `storage`
     internal func getPublisher() -> PublishedPublisher {
         switch storage {
@@ -202,7 +202,7 @@ public struct Published<Value> {
         set { fatalError() } // swiftlint:disable:this unused_setter_value
     }
     // swiftlint:enable let_var_whitespace
-
+    
     public static subscript<EnclosingSelf: AnyObject>(
         _enclosingInstance object: EnclosingSelf,
         wrapped wrappedKeyPath: ReferenceWritableKeyPath<EnclosingSelf, Value>,

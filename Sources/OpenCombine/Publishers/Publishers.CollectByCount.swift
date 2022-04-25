@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Collects up to the specified number of elements, and then emits a single array of
     /// the collection.
     ///
@@ -41,27 +41,27 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     /// A publisher that buffers a maximum number of items.
     public struct CollectByCount<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = [Upstream.Output]
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         ///  The maximum number of received elements to buffer before publishing.
         public let count: Int
-
+        
         public init(upstream: Upstream, count: Int) {
             self.upstream = upstream
             self.count = count
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Downstream.Failure == Failure, Downstream.Input == Output
+        where Downstream.Failure == Failure, Downstream.Input == Output
         {
             upstream.subscribe(Inner(downstream: subscriber, count: count))
         }
@@ -72,39 +72,39 @@ extension Publishers.CollectByCount: Equatable where Upstream: Equatable {}
 
 extension Publishers.CollectByCount {
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == [Upstream.Output],
-              Downstream.Failure == Upstream.Failure
+    : Subscriber,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == [Upstream.Output],
+          Downstream.Failure == Upstream.Failure
     {
         typealias Input = Upstream.Output
-
+        
         typealias Failure = Upstream.Failure
-
+        
         private let downstream: Downstream
-
+        
         private let count: Int
-
+        
         private var buffer: [Input] = []
-
+        
         private var subscription: Subscription?
-
+        
         private var finished = false
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         init(downstream: Downstream, count: Int) {
             self.downstream = downstream
             self.count = count
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             if finished || self.subscription != nil {
@@ -116,7 +116,7 @@ extension Publishers.CollectByCount {
             lock.unlock()
             downstream.receive(subscription: self)
         }
-
+        
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             lock.lock()
             if subscription == nil {
@@ -132,7 +132,7 @@ extension Publishers.CollectByCount {
             lock.unlock()
             return downstream.receive(output) * count
         }
-
+        
         func receive(completion: Subscribers.Completion<Upstream.Failure>) {
             lock.lock()
             subscription = nil
@@ -152,7 +152,7 @@ extension Publishers.CollectByCount {
             }
             downstream.receive(completion: completion)
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -163,7 +163,7 @@ extension Publishers.CollectByCount {
                 lock.unlock()
             }
         }
-
+        
         func cancel() {
             lock.lock()
             if let subscription = self.subscription.take() {
@@ -175,9 +175,9 @@ extension Publishers.CollectByCount {
                 lock.unlock()
             }
         }
-
+        
         var description: String { return "CollectByCount" }
-
+        
         var customMirror: Mirror {
             lock.lock()
             defer { lock.unlock() }
@@ -189,7 +189,7 @@ extension Publishers.CollectByCount {
             ]
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }

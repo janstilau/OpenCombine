@@ -6,7 +6,7 @@
 //
 
 /*
- conduit 管道. 
+ conduit 管道.
  */
 internal enum ConduitList<Output, Failure: Error> {
     case empty
@@ -34,7 +34,7 @@ extension ConduitList {
             self = .many(set)
         }
     }
-
+    
     internal func forEach(
         _ body: (ConduitBase<Output, Failure>) throws -> Void
     ) rethrows {
@@ -47,7 +47,7 @@ extension ConduitList {
             try set.forEach(body)
         }
     }
-
+    
     internal mutating func remove(_ conduit: ConduitBase<Output, Failure>) {
         switch self {
         case .single(conduit):

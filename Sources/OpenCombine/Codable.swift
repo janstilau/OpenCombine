@@ -7,10 +7,10 @@
 
 /// A type that defines methods for decoding.
 public protocol TopLevelDecoder {
-
+    
     /// The type this decoder accepts.
     associatedtype Input
-
+    
     /// Decodes an instance of the indicated type.
     func decode<DecodablyType: Decodable>(_ type: DecodablyType.Type,
                                           from: Input) throws -> DecodablyType
@@ -18,10 +18,10 @@ public protocol TopLevelDecoder {
 
 /// A type that defines methods for encoding.
 public protocol TopLevelEncoder {
-
+    
     /// The type this encoder produces.
     associatedtype Output
-
+    
     /// Encodes an instance of the indicated type.
     ///
     /// - Parameter value: The instance to encode.

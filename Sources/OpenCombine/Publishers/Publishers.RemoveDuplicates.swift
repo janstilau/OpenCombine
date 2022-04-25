@@ -6,7 +6,7 @@
 //
 
 extension Publisher where Output: Equatable {
-
+    
     /// Publishes only elements that don’t match the previous element.
     ///
     /// Use `removeDuplicates()` to remove repeating elements from an upstream publisher.
@@ -32,7 +32,7 @@ extension Publisher where Output: Equatable {
 }
 
 extension Publisher {
-
+    
     /// Publishes only elements that don’t match the previous element, as evaluated by
     /// a provided closure.
     ///
@@ -74,7 +74,7 @@ extension Publisher {
     ) -> Publishers.RemoveDuplicates<Self> {
         return .init(upstream: self, predicate: predicate)
     }
-
+    
     /// Publishes only elements that don’t match the previous element, as evaluated by
     /// a provided error-throwing closure.
     ///
@@ -117,20 +117,20 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     /// A publisher that publishes only elements that don’t match the previous element.
     public struct RemoveDuplicates<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// The predicate closure used to evaluate whether two elements are duplicates.
         public let predicate: (Output, Output) -> Bool
-
+        
         /// Creates a publisher that publishes only elements that don’t match the previous
         /// element, as evaluated by a provided closure.
         ///
@@ -143,30 +143,30 @@ extension Publishers {
             self.upstream = upstream
             self.predicate = predicate
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Upstream.Failure == Downstream.Failure,
-                  Upstream.Output == Downstream.Input
+        where Upstream.Failure == Downstream.Failure,
+              Upstream.Output == Downstream.Input
         {
             upstream.subscribe(Inner(downstream: subscriber, filter: predicate))
         }
     }
-
+    
     /// A publisher that publishes only elements that don’t match the previous element,
     /// as evaluated by a provided error-throwing closure.
     public struct TryRemoveDuplicates<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Error
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// An error-throwing closure to evaluate whether two elements are equivalent,
         /// for purposes of filtering.
         public let predicate: (Output, Output) throws -> Bool
-
+        
         /// Creates a publisher that publishes only elements that don’t match the previous
         /// element, as evaluated by a provided error-throwing closure.
         ///
@@ -182,9 +182,9 @@ extension Publishers {
             self.upstream = upstream
             self.predicate = predicate
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Upstream.Output == Downstream.Input, Downstream.Failure == Error
+        where Upstream.Output == Downstream.Input, Downstream.Failure == Error
         {
             upstream.subscribe(Inner(downstream: subscriber, filter: predicate))
         }
@@ -193,15 +193,15 @@ extension Publishers {
 
 extension Publishers.RemoveDuplicates {
     private final class Inner<Downstream: Subscriber>
-        : FilterProducer<Downstream,
-                         Upstream.Output,
-                         Upstream.Output,
-                         Upstream.Failure,
-                         (Output, Output) -> Bool>
-        where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
+    : FilterProducer<Downstream,
+      Upstream.Output,
+      Upstream.Output,
+      Upstream.Failure,
+      (Output, Output) -> Bool>
+    where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
     {
         private var last: Upstream.Output?
-
+        
         override func receive(
             newValue: Input
         ) -> PartialCompletion<Upstream.Output?, Downstream.Failure> {
@@ -211,9 +211,9 @@ extension Publishers.RemoveDuplicates {
                 filter($0, newValue) ? .continue(nil) : .continue(newValue)
             } ?? .continue(newValue)
         }
-
+        
         override var description: String { return "RemoveDuplicates" }
-
+        
         override var customMirror: Mirror {
             let children: [Mirror.Child] = [
                 ("downstream", downstream),
@@ -226,15 +226,15 @@ extension Publishers.RemoveDuplicates {
 
 extension Publishers.TryRemoveDuplicates {
     private final class Inner<Downstream: Subscriber>
-        : FilterProducer<Downstream,
-                         Upstream.Output,
-                         Upstream.Output,
-                         Upstream.Failure,
-                         (Output, Output) throws -> Bool>
-        where Downstream.Input == Upstream.Output, Downstream.Failure == Error
+    : FilterProducer<Downstream,
+      Upstream.Output,
+      Upstream.Output,
+      Upstream.Failure,
+      (Output, Output) throws -> Bool>
+    where Downstream.Input == Upstream.Output, Downstream.Failure == Error
     {
         private var last: Upstream.Output?
-
+        
         override func receive(
             newValue: Input
         ) -> PartialCompletion<Upstream.Output?, Downstream.Failure> {
@@ -243,16 +243,16 @@ extension Publishers.TryRemoveDuplicates {
             return last.map {
                 do {
                     return try filter($0, newValue)
-                        ? .continue(nil)
-                        : .continue(newValue)
+                    ? .continue(nil)
+                    : .continue(newValue)
                 } catch {
                     return .failure(error)
                 }
             } ?? .continue(newValue)
         }
-
+        
         override var description: String { return "TryRemoveDuplicates" }
-
+        
         override var customMirror: Mirror {
             let children: [Mirror.Child] = [
                 ("downstream", downstream),

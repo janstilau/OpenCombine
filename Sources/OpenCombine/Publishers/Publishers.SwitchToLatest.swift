@@ -6,7 +6,7 @@
 //
 
 extension Publisher where Output: Publisher, Output.Failure == Failure {
-
+    
     /// Republishes elements sent by the most recently received publisher.
     ///
     /// This operator works with an upstream publisher of publishers, flattening
@@ -70,7 +70,7 @@ extension Publisher where Output: Publisher, Output.Failure == Failure {
 }
 
 extension Publisher where Output: Publisher, Failure == Never {
-
+    
     /// Republishes elements sent by the most recently received publisher.
     ///
     /// This operator works with an upstream publisher of publishers, flattening
@@ -90,7 +90,7 @@ extension Publisher where Output: Publisher, Failure == Never {
 }
 
 extension Publisher where Output: Publisher, Failure == Never, Output.Failure == Never {
-
+    
     /// Republishes elements sent by the most recently received publisher.
     ///
     /// This operator works with an upstream publisher of publishers, flattening
@@ -108,7 +108,7 @@ extension Publisher where Output: Publisher, Failure == Never, Output.Failure ==
 }
 
 extension Publisher where Output: Publisher, Output.Failure == Never {
-
+    
     /// Republishes elements sent by the most recently received publisher.
     ///
     /// This operator works with an upstream publisher of publishers, flattening
@@ -129,7 +129,7 @@ extension Publisher where Output: Publisher, Output.Failure == Never {
 }
 
 extension Publishers {
-
+    
     /// A publisher that flattens nested publishers.
     ///
     /// Given a publisher that publishes `Publisher` instances,
@@ -146,17 +146,17 @@ extension Publishers {
     /// earlier publishers from performing unnecessary work, such as creating network
     /// request publishers from frequently-updating user interface publishers.
     public struct SwitchToLatest<NestedPublisher: Publisher, Upstream: Publisher>
-        : Publisher
-        where Upstream.Output == NestedPublisher,
-              Upstream.Failure == NestedPublisher.Failure
+    : Publisher
+    where Upstream.Output == NestedPublisher,
+          Upstream.Failure == NestedPublisher.Failure
     {
         public typealias Output = NestedPublisher.Output
-
+        
         public typealias Failure = NestedPublisher.Failure
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// Creates a publisher that “flattens” nested publishers.
         ///
         /// - Parameter upstream: The publisher from which this publisher receives
@@ -164,9 +164,9 @@ extension Publishers {
         public init(upstream: Upstream) {
             self.upstream = upstream
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Downstream.Input == Output, Downstream.Failure == Failure
+        where Downstream.Input == Output, Downstream.Failure == Failure
         {
             let outer = Outer(downstream: subscriber)
             subscriber.receive(subscription: outer)
@@ -177,18 +177,18 @@ extension Publishers {
 
 extension Publishers.SwitchToLatest {
     fileprivate final class Outer<Downstream: Subscriber>
-        : Subscriber,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == NestedPublisher.Output,
-              Downstream.Failure == Upstream.Failure
+    : Subscriber,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == NestedPublisher.Output,
+          Downstream.Failure == Upstream.Failure
     {
         typealias Input = Upstream.Output
-
+        
         typealias Failure = Upstream.Failure
-
+        
         private let downstream: Downstream
         private var outerSubscription: Subscription?
         private var currentInnerSubscription: Subscription?
@@ -201,16 +201,16 @@ extension Publishers.SwitchToLatest {
         private var sentCompletion = false
         private var awaitingInnerSubscription = false
         private var downstreamDemand = Subscribers.Demand.none
-
+        
         init(downstream: Downstream) {
             self.downstream = downstream
         }
-
+        
         deinit {
             lock.deallocate()
             downstreamLock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard outerSubscription == nil && !cancelled else {
@@ -222,20 +222,20 @@ extension Publishers.SwitchToLatest {
             lock.unlock()
             subscription.request(.unlimited)
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             if cancelled || finished {
                 lock.unlock()
                 return .none
             }
-
+            
             if let currentInnerSubscription = self.currentInnerSubscription.take()  {
                 lock.unlock()
                 currentInnerSubscription.cancel()
                 lock.lock()
             }
-
+            
             let index = nextInnerIndex
             currentInnerIndex = index
             nextInnerIndex += 1
@@ -244,17 +244,17 @@ extension Publishers.SwitchToLatest {
             input.subscribe(Side(inner: self, index: index))
             return .none
         }
-
+        
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             outerSubscription = nil
             finished = true
-
+            
             if cancelled {
                 lock.unlock()
                 return
             }
-
+            
             switch completion {
             case .finished:
                 if awaitingInnerSubscription {
@@ -280,7 +280,7 @@ extension Publishers.SwitchToLatest {
                 downstreamLock.unlock()
             }
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -292,36 +292,36 @@ extension Publishers.SwitchToLatest {
                 lock.unlock()
             }
         }
-
+        
         func cancel() {
             lock.lock()
             cancelled = true
             let currentInnerSubscription = self.currentInnerSubscription.take()
             let outerSubscription = self.outerSubscription.take()
             lock.unlock()
-
+            
             currentInnerSubscription?.cancel()
             outerSubscription?.cancel()
         }
-
+        
         var description: String { return "SwitchToLatest" }
-
+        
         var customMirror: Mirror {
             return Mirror(self, children: EmptyCollection())
         }
-
+        
         var playgroundDescription: Any { return description }
-
+        
         private func receiveInner(subscription: Subscription, _ index: UInt64) {
             lock.lock()
             guard currentInnerIndex == index &&
-                  !cancelled &&
-                  currentInnerSubscription == nil else {
-                lock.unlock()
-                subscription.cancel()
-                return
-            }
-
+                    !cancelled &&
+                    currentInnerSubscription == nil else {
+                        lock.unlock()
+                        subscription.cancel()
+                        return
+                    }
+            
             currentInnerSubscription = subscription
             awaitingInnerSubscription = false
             let downstreamDemand = self.downstreamDemand
@@ -330,7 +330,7 @@ extension Publishers.SwitchToLatest {
                 subscription.request(downstreamDemand)
             }
         }
-
+        
         private func receiveInner(_ input: NestedPublisher.Output,
                                   _ index: UInt64) -> Subscribers.Demand {
             lock.lock()
@@ -338,11 +338,11 @@ extension Publishers.SwitchToLatest {
                 lock.unlock()
                 return .none
             }
-
+            
             // This will crash if we don't have any demand yet.
             // Combine crashes here too.
             downstreamDemand -= 1
-
+            
             lock.unlock()
             downstreamLock.lock()
             let newDemand = downstream.receive(input)
@@ -352,10 +352,10 @@ extension Publishers.SwitchToLatest {
                 downstreamDemand += newDemand
                 lock.unlock()
             }
-
+            
             return newDemand
         }
-
+        
         private func receiveInner(completion: Subscribers.Completion<Failure>,
                                   _ index: UInt64) {
             lock.lock()
@@ -396,49 +396,49 @@ extension Publishers.SwitchToLatest {
 
 extension Publishers.SwitchToLatest.Outer {
     private struct Side
-        : Subscriber,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
+    : Subscriber,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
     {
         typealias Input = NestedPublisher.Output
-
+        
         typealias Failure = NestedPublisher.Failure
-
+        
         typealias Outer =
-            Publishers.SwitchToLatest<NestedPublisher, Upstream>.Outer<Downstream>
-
+        Publishers.SwitchToLatest<NestedPublisher, Upstream>.Outer<Downstream>
+        
         private let index: UInt64
         private let outer: Outer
-
+        
         let combineIdentifier = CombineIdentifier()
-
+        
         init(inner: Outer, index: UInt64) {
             self.index = index
             self.outer = inner
         }
-
+        
         func receive(subscription: Subscription) {
             outer.receiveInner(subscription: subscription, index)
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             return outer.receiveInner(input, index)
         }
-
+        
         func receive(completion: Subscribers.Completion<Failure>) {
             outer.receiveInner(completion: completion, index)
         }
-
+        
         var description: String { return "SwitchToLatest" }
-
+        
         var customMirror: Mirror {
             let children = CollectionOfOne<Mirror.Child>(
                 ("parentSubscription", outer.combineIdentifier)
             )
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }

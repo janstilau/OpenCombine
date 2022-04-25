@@ -16,18 +16,18 @@
  不过, 同 Rx 大量使用 Subject 作为成员变量不同的是, 在 Combine 里面, 是大量使用了 @PropertyWrapper 这种技术.
  */
 public protocol Subject: AnyObject, Publisher {
-
+    
     /// Sends a value to the subscriber.
     ///
     /// - Parameter value: The value to send.
     func send(_ value: Output)
-
+    
     /// Sends a completion signal to the subscriber.
     ///
     /// - Parameter completion: A `Completion` instance which indicates whether publishing
     ///   has finished normally or failed with an error.
     func send(completion: Subscribers.Completion<Failure>)
-
+    
     /// Sends a subscription to the subscriber.
     ///
     /// This call provides the `Subject` an opportunity to establish demand for any new
@@ -39,7 +39,7 @@ public protocol Subject: AnyObject, Publisher {
 }
 
 extension Subject where Output == Void {
-
+    
     /// Sends a void value to the subscriber.
     ///
     /// Use `Void` inputs and outputs when you want to signal that an event has occurred,

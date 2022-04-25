@@ -33,11 +33,11 @@
 ///     // Prints "24 will change"
 ///     // Prints "25"
 public protocol ObservableObject: AnyObject {
-
+    
     /// The type of publisher that emits before the object has changed.
     associatedtype ObjectWillChangePublisher: Publisher = ObservableObjectPublisher
-        where ObjectWillChangePublisher.Failure == Never
-
+    where ObjectWillChangePublisher.Failure == Never
+    
     /// A publisher that emits before the object has changed.
     var objectWillChange: ObjectWillChangePublisher { get }
 }
@@ -50,7 +50,7 @@ private protocol _ObservableObjectProperty {
 extension Published: _ObservableObjectProperty {}
 
 extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPublisher {
-
+    
     /// A publisher that emits before the object has changed.
     public var objectWillChange: ObservableObjectPublisher {
         var installedPublisher: ObservableObjectPublisher?
@@ -61,7 +61,7 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
                     // Visit other fields until we meet a @Published field
                     continue
                 }
-
+                
                 // Now we know that the field is @Published.
                 if let alreadyInstalledPublisher = property.objectWillChange {
                     installedPublisher = alreadyInstalledPublisher
@@ -69,7 +69,7 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
                     // already have a publisher installed.
                     break
                 }
-
+                
                 // Okay, this field doesn't have a publisher installed.
                 // This means that other fields don't have it either
                 // (because we install it only once and fields can't be added at runtime).
@@ -81,9 +81,9 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
                     installedPublisher = publisher
                     return publisher
                 }
-
+                
                 property.objectWillChange = lazilyCreatedPublisher
-
+                
                 // Continue visiting other fields.
             }
             reflection = aClass.superclassMirror
@@ -96,27 +96,27 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
 
 /// A publisher that publishes changes from observable objects.
 public final class ObservableObjectPublisher: Publisher {
-
+    
     public typealias Output = Void
-
+    
     public typealias Failure = Never
-
+    
     private let lock = UnfairLock.allocate()
-
+    
     private var connections = Set<Conduit>()
-
+    
     // TODO: Combine needs this for some reason
     private var identifier: ObjectIdentifier?
-
+    
     /// Creates an observable object publisher instance.
     public init() {}
-
+    
     deinit {
         lock.deallocate()
     }
-
+    
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
-        where Downstream.Input == Void, Downstream.Failure == Never
+    where Downstream.Input == Void, Downstream.Failure == Never
     {
         let inner = Inner(downstream: subscriber, parent: self)
         lock.lock()
@@ -124,7 +124,7 @@ public final class ObservableObjectPublisher: Publisher {
         lock.unlock()
         subscriber.receive(subscription: inner)
     }
-
+    
     public func send() {
         lock.lock()
         let connections = self.connections
@@ -133,7 +133,7 @@ public final class ObservableObjectPublisher: Publisher {
             connection.send()
         }
     }
-
+    
     private func remove(_ conduit: Conduit) {
         lock.lock()
         connections.remove(conduit)
@@ -143,50 +143,50 @@ public final class ObservableObjectPublisher: Publisher {
 
 extension ObservableObjectPublisher {
     private class Conduit: Hashable {
-
+        
         fileprivate func send() {
             abstractMethod()
         }
-
+        
         fileprivate static func == (lhs: Conduit, rhs: Conduit) -> Bool {
             return lhs === rhs
         }
-
+        
         fileprivate func hash(into hasher: inout Hasher) {
             hasher.combine(ObjectIdentifier(self))
         }
     }
-
+    
     private final class Inner<Downstream: Subscriber>
-        : Conduit,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Void, Downstream.Failure == Never
+    : Conduit,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Void, Downstream.Failure == Never
     {
         private enum State {
             case initialized
             case active
             case terminal
         }
-
+        
         private weak var parent: ObservableObjectPublisher?
         private let downstream: Downstream
         private let downstreamLock = UnfairRecursiveLock.allocate()
         private let lock = UnfairLock.allocate()
         private var state = State.initialized
-
+        
         init(downstream: Downstream, parent: ObservableObjectPublisher) {
             self.parent = parent
             self.downstream = downstream
         }
-
+        
         deinit {
             downstreamLock.deallocate()
             lock.deallocate()
         }
-
+        
         override func send() {
             lock.lock()
             let state = self.state
@@ -197,7 +197,7 @@ extension ObservableObjectPublisher {
                 downstreamLock.unlock()
             }
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             if state == .initialized {
@@ -205,21 +205,21 @@ extension ObservableObjectPublisher {
             }
             lock.unlock()
         }
-
+        
         func cancel() {
             lock.lock()
             state = .terminal
             lock.unlock()
             parent?.remove(self)
         }
-
+        
         var description: String { return "ObservableObjectPublisher" }
-
+        
         var customMirror: Mirror {
             let children = CollectionOfOne<Mirror.Child>(("downstream", downstream))
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any {
             return description
         }

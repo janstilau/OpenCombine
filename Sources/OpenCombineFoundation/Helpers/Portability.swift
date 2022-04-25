@@ -22,19 +22,19 @@ import Foundation
 ///
 /// Also, there are sume bugs in swift-corelibs-foundation in earlier Swift version.
 internal struct Timer {
-
+    
 #if canImport(Darwin)
     fileprivate typealias UnderlyingTimer = CFRunLoopTimer?
 #else
     fileprivate typealias UnderlyingTimer = Foundation.Timer
 #endif
-
+    
     fileprivate let underlyingTimer: UnderlyingTimer
-
+    
     private init(underlyingTimer: UnderlyingTimer) {
         self.underlyingTimer = underlyingTimer
     }
-
+    
     internal init(fire date: Date,
                   interval: TimeInterval,
                   repeats: Bool,
@@ -57,7 +57,7 @@ internal struct Timer {
         )
 #endif
     }
-
+    
     internal init(
         timeInterval: TimeInterval,
         repeats: Bool,
@@ -70,7 +70,7 @@ internal struct Timer {
             block: block
         )
     }
-
+    
     internal var tolerance: TimeInterval {
         get {
 #if canImport(Darwin)
@@ -87,15 +87,15 @@ internal struct Timer {
 #endif
         }
     }
-
+    
     internal func invalidate() {
 #if canImport(Darwin)
-            CFRunLoopTimerInvalidate(underlyingTimer)
+        CFRunLoopTimerInvalidate(underlyingTimer)
 #else
-            underlyingTimer.invalidate()
+        underlyingTimer.invalidate()
 #endif
     }
-
+    
 #if canImport(CoreFoundation)
     fileprivate func getCFRunLoopTimer() -> CFRunLoopTimer? {
 #if canImport(Darwin)
@@ -104,10 +104,10 @@ internal struct Timer {
         // Here we use the fact that in the specified version of swift-corelibs-foundation
         // the memory layout of Foundation.Timer is as follows:
         // https://github.com/apple/swift-corelibs-foundation/blob/4cd3bf083b4705d25ac76ef8d038a06bc586265a/Foundation/Timer.swift#L18-L29
-
+        
         // The first 2 words are reserved for reference counting
         let firstFieldOffset = MemoryLayout<Int>.size * 2
-
+        
         return Unmanaged
             .passUnretained(underlyingTimer)
             .toOpaque()
@@ -133,7 +133,7 @@ extension RunLoop {
         add(timer.underlyingTimer, forMode: mode)
 #endif
     }
-
+    
     internal func performBlockPortably(_ block: @escaping () -> Void) {
 #if canImport(Darwin)
         CFRunLoopPerformBlock(getCFRunLoop(), CFRunLoopMode.defaultMode.rawValue, block)
@@ -151,16 +151,16 @@ extension RunLoop.Mode {
 #else
         return rawValue.withCString {
 #if swift(>=5.3)
-          let encoding = CFStringBuiltInEncodings.UTF8.rawValue
+            let encoding = CFStringBuiltInEncodings.UTF8.rawValue
 #else
-          let encoding = CFStringEncoding(kCFStringEncodingUTF8)
+            let encoding = CFStringEncoding(kCFStringEncodingUTF8)
 #endif // swift(>=5.3)
-
-          return CFStringCreateWithCString(
-              nil,
-              $0,
-              encoding
-          )
+            
+            return CFStringCreateWithCString(
+                nil,
+                $0,
+                encoding
+            )
         }
 #endif
     }

@@ -10,14 +10,14 @@ import _Concurrency
 #endif
 
 extension Subscribers {
-
+    
     /// A signal that a publisher doesn’t produce additional elements, either due to
     /// normal completion or an error.
     public enum Completion<Failure: Error> {
-
+        
         /// The publisher finished normally.
         case finished
-
+        
         /// The publisher stopped publishing due to the indicated error.
         case failure(Failure)
     }
@@ -39,7 +39,7 @@ extension Subscribers.Completion {
 }
 
 extension Subscribers.Completion: Encodable where Failure: Encodable {
-
+    
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
@@ -66,7 +66,7 @@ extension Subscribers.Completion: Decodable where Failure: Decodable {
 }
 
 extension Subscribers.Completion {
-
+    
     /// Erases the `Failure` type to `Swift.Error`. This function exists
     /// because in Swift user-defined generic types are always
     /// [invariant](https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)).
@@ -78,7 +78,7 @@ extension Subscribers.Completion {
             return .failure(error)
         }
     }
-
+    
     internal var failure: Failure? {
         switch self {
         case .finished:

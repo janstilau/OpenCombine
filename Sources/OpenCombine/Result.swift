@@ -6,7 +6,7 @@
 //
 
 extension Result {
-
+    
     internal func tryMap<NewSuccess>(
         _ transform: (Success) throws -> NewSuccess
     ) -> Result<NewSuccess, Error> {
@@ -21,7 +21,7 @@ extension Result {
             return .failure(error)
         }
     }
-
+    
     internal func unwrapOr(_ handleError: (Failure) -> Success) -> Success {
         switch self {
         case .success(let success):
@@ -30,7 +30,7 @@ extension Result {
             return handleError(error)
         }
     }
-
+    
     internal func unwrapOr(_ handleError: @autoclosure () -> Success) -> Success {
         return unwrapOr { _ in handleError() }
     }

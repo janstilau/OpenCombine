@@ -6,7 +6,7 @@
 //
 
 extension ConnectablePublisher {
-
+    
     /// Automates the process of connecting or disconnecting from this connectable
     /// publisher.
     ///
@@ -32,39 +32,39 @@ extension ConnectablePublisher {
 }
 
 extension Publishers {
-
+    
     /// A publisher that automatically connects to an upstream connectable publisher.
     ///
     /// This publisher calls `connect()` on the upstream `ConnectablePublisher` when first
     /// attached to by a subscriber.
     public class Autoconnect<Upstream: ConnectablePublisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         private enum State {
             case disconnected
             case connected(refcount: Int, connection: Cancellable)
         }
-
+        
         /// The publisher from which this publisher receives elements.
         public final let upstream: Upstream
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         private var state = State.disconnected
-
+        
         public init(upstream: Upstream) {
             self.upstream = upstream
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Downstream.Input == Output, Downstream.Failure == Failure
+        where Downstream.Input == Output, Downstream.Failure == Failure
         {
             let inner = Inner(parent: self, downstream: subscriber)
             lock.lock()
@@ -82,7 +82,7 @@ extension Publishers {
                 lock.unlock()
             }
         }
-
+        
         fileprivate func willCancel() {
             lock.lock()
             switch state {
@@ -103,46 +103,46 @@ extension Publishers {
 }
 
 extension Publishers.Autoconnect {
-
+    
     private struct Inner<Downstream: Subscriber>
-        : Subscriber,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Output, Downstream.Failure == Failure
+    : Subscriber,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Output, Downstream.Failure == Failure
     {
         typealias Input = Upstream.Output
-
+        
         typealias Failure = Upstream.Failure
-
+        
         fileprivate let combineIdentifier = CombineIdentifier()
-
+        
         private let parent: Publishers.Autoconnect<Upstream>
-
+        
         private let downstream: Downstream
-
+        
         fileprivate init(parent: Publishers.Autoconnect<Upstream>,
                          downstream: Downstream) {
             self.parent = parent
             self.downstream = downstream
         }
-
+        
         fileprivate func receive(subscription: Subscription) {
             let sideEffectSubscription = SideEffectSubscription(subscription,
                                                                 parent: parent)
             downstream.receive(subscription: sideEffectSubscription)
         }
-
+        
         fileprivate func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             return downstream.receive(input)
         }
-
+        
         fileprivate func receive(completion: Subscribers.Completion<Failure>) {
             downstream.receive(completion: completion)
         }
-
+        
         fileprivate var description: String { return "Autoconnect" }
-
+        
         fileprivate var customMirror: Mirror {
             let children: [Mirror.Child] = [
                 ("parent", parent),
@@ -150,42 +150,42 @@ extension Publishers.Autoconnect {
             ]
             return Mirror(self, children: children)
         }
-
+        
         fileprivate var playgroundDescription: Any { return description }
     }
-
+    
     private struct SideEffectSubscription
-        : Subscription,
-          CustomStringConvertible,
-          CustomPlaygroundDisplayConvertible
+    : Subscription,
+      CustomStringConvertible,
+      CustomPlaygroundDisplayConvertible
     {
         private let parent: Publishers.Autoconnect<Upstream>
-
+        
         private let upstreamSubscription: Subscription
-
+        
         fileprivate init(_ upstreamSubscription: Subscription,
                          parent: Publishers.Autoconnect<Upstream>) {
             self.parent = parent
             self.upstreamSubscription = upstreamSubscription
         }
-
+        
         fileprivate func request(_ demand: Subscribers.Demand) {
             upstreamSubscription.request(demand)
         }
-
+        
         fileprivate func cancel() {
             parent.willCancel()
             upstreamSubscription.cancel()
         }
-
+        
         fileprivate var combineIdentifier: CombineIdentifier {
             return upstreamSubscription.combineIdentifier
         }
-
+        
         fileprivate var description: String {
             return String(describing: upstreamSubscription)
         }
-
+        
         var playgroundDescription: Any {
             return description
         }

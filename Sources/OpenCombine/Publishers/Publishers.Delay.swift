@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Delays delivery of all output to the downstream receiver by a specified amount of
     /// time on a particular scheduler.
     ///
@@ -79,29 +79,29 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     /// A publisher that delays delivery of elements and completion
     /// to the downstream receiver.
     public struct Delay<Upstream: Publisher, Context: Scheduler>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The publisher that this publisher receives elements from.
         public let upstream: Upstream
-
+        
         /// The amount of time to delay.
         public let interval: Context.SchedulerTimeType.Stride
-
+        
         /// The allowed tolerance in firing delayed events.
         public let tolerance: Context.SchedulerTimeType.Stride
-
+        
         /// The scheduler to deliver the delayed events.
         public let scheduler: Context
-
+        
         public let options: Context.SchedulerOptions?
-
+        
         public init(upstream: Upstream,
                     interval: Context.SchedulerTimeType.Stride,
                     tolerance: Context.SchedulerTimeType.Stride,
@@ -114,10 +114,10 @@ extension Publishers {
             self.scheduler = scheduler
             self.options = options
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Upstream.Failure == Downstream.Failure,
-                  Upstream.Output == Downstream.Input
+        where Upstream.Failure == Downstream.Failure,
+              Upstream.Output == Downstream.Input
         {
             let inner = Inner(downstream: subscriber,
                               interval: interval,
@@ -131,13 +131,13 @@ extension Publishers {
 
 extension Publishers.Delay {
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          Subscription
-        where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
+    : Subscriber,
+      Subscription
+    where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
     {
         typealias Input = Upstream.Output
         typealias Failure = Upstream.Failure
-
+        
         private let lock = UnfairLock.allocate()
         private let downstream: Downstream
         private let interval: Context.SchedulerTimeType.Stride
@@ -146,7 +146,7 @@ extension Publishers.Delay {
         private let options: Context.SchedulerOptions?
         private var state = SubscriptionStatus.awaitingSubscription
         private let downstreamLock = UnfairRecursiveLock.allocate()
-
+        
         fileprivate init(downstream: Downstream,
                          interval: Context.SchedulerTimeType.Stride,
                          tolerance: Context.SchedulerTimeType.Stride,
@@ -158,12 +158,12 @@ extension Publishers.Delay {
             self.scheduler = scheduler
             self.options = options
         }
-
+        
         deinit {
             lock.deallocate()
             downstreamLock.deallocate()
         }
-
+        
         private func schedule(_ work: @escaping () -> Void) {
             scheduler
                 .schedule(after: scheduler.now.advanced(by: interval),
@@ -171,7 +171,7 @@ extension Publishers.Delay {
                           options: options,
                           work)
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = state else {
@@ -185,7 +185,7 @@ extension Publishers.Delay {
             downstream.receive(subscription: self)
             downstreamLock.unlock()
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = state else {
@@ -198,7 +198,7 @@ extension Publishers.Delay {
             }
             return .none
         }
-
+        
         private func scheduledReceive(_ input: Input) {
             lock.lock()
             guard state.subscription != nil else {
@@ -215,7 +215,7 @@ extension Publishers.Delay {
             lock.unlock()
             subscription?.request(newDemand)
         }
-
+        
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard case let .subscribed(subscription) = state else {
@@ -228,7 +228,7 @@ extension Publishers.Delay {
                 self.scheduledReceive(completion: completion)
             }
         }
-
+        
         private func scheduledReceive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard case .pendingTerminal = state else {
@@ -244,7 +244,7 @@ extension Publishers.Delay {
             downstream.receive(completion: completion)
             downstreamLock.unlock()
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = state else {
@@ -254,7 +254,7 @@ extension Publishers.Delay {
             lock.unlock()
             subscription.request(demand)
         }
-
+        
         func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = state else {

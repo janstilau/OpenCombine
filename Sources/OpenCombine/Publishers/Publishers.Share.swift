@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Shares the output of an upstream publisher with multiple subscribers.
     ///
     /// The publisher returned by this operator supports multiple subscribers, all of whom
@@ -60,7 +60,7 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     /// A publisher that shares the output of an upstream publisher with multiple
     /// subscribers.
     ///
@@ -75,28 +75,28 @@ extension Publishers {
     /// other publishers. Use this type when you need a publisher instance that uses
     /// reference semantics.
     public final class Share<Upstream: Publisher>: Publisher, Equatable {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         private typealias MulticastSubject = PassthroughSubject<Output, Failure>
-
+        
         private let inner: Autoconnect<Multicast<Upstream, MulticastSubject>>
-
+        
         public let upstream: Upstream
-
+        
         public init(upstream: Upstream) {
             self.inner = upstream.multicast(subject: .init()).autoconnect()
             self.upstream = upstream
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Downstream.Input == Output, Downstream.Failure == Failure
+        where Downstream.Input == Output, Downstream.Failure == Failure
         {
             inner.subscribe(subscriber)
         }
-
+        
         public static func == (lhs: Share, rhs: Share) -> Bool {
             return lhs === rhs
         }

@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Buffers elements received from an upstream publisher.
     ///
     /// Use `buffer(size:prefetch:whenFull:)` to collect a specific number of elements
@@ -35,10 +35,10 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     /// A strategy for filling a buffer.
     public enum PrefetchStrategy {
-
+        
         /// A strategy to fill the buffer at subscription time, and keep it full
         /// thereafter.
         ///
@@ -46,46 +46,46 @@ extension Publishers {
         /// the upstream when the subscriber first connects. Afterwards, it continues
         /// to demand elements from the upstream to try to keep the buffer full.
         case keepFull
-
+        
         /// A strategy that avoids prefetching and instead performs requests on demand.
         ///
         /// This strategy just forwards the downstream’s requests to the upstream
         /// publisher.
         case byRequest
     }
-
+    
     /// A strategy that handles exhaustion of a buffer’s capacity.
     public enum BufferingStrategy<Failure: Error> {
-
+        
         /// When the buffer is full, discard the newly received element.
         case dropNewest
-
+        
         /// When the buffer is full, discard the oldest element in the buffer.
         case dropOldest
-
+        
         /// When the buffer is full, execute the closure to provide a custom error.
         case customError(() -> Failure)
     }
-
+    
     /// A publisher that buffers elements received from an upstream publisher.
     public struct Buffer<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// The maximum number of elements to store.
         public let size: Int
-
+        
         /// The strategy for initially populating the buffer.
         public let prefetch: Publishers.PrefetchStrategy
-
+        
         /// The action to take when the buffer becomes full.
         public let whenFull: Publishers.BufferingStrategy<Failure>
-
+        
         /// Creates a publisher that buffers elements received from an upstream publisher.
         /// - Parameter upstream: The publisher from which this publisher receives
         ///   elements.
@@ -101,9 +101,9 @@ extension Publishers {
             self.prefetch = prefetch
             self.whenFull = whenFull
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Downstream.Input == Output, Downstream.Failure == Failure
+        where Downstream.Input == Output, Downstream.Failure == Failure
         {
             let inner = Inner(downstream: subscriber,
                               size: size,
@@ -120,41 +120,41 @@ extension Publishers.PrefetchStrategy: Hashable {}
 
 extension Publishers.Buffer {
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
+    : Subscriber,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
     {
         typealias Input = Upstream.Output
-
+        
         typealias Failure = Upstream.Failure
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         private var recursion = false
-
+        
         private let size: Int
-
+        
         private let prefetch: Publishers.PrefetchStrategy // keepFull is 0x0
-
+        
         private let whenFull: Publishers.BufferingStrategy<Failure>
-
+        
         private let downstream: Downstream
-
+        
         private var state = SubscriptionStatus.awaitingSubscription
-
+        
         private var downstreamDemand = Subscribers.Demand.none
-
+        
         // TODO: Use a deque here?
         // Need to measure performance with large buffers and `dropOldest` strategy.
         private var values = [Input]()
-
+        
         private var upstreamFailed = false
-
+        
         private var terminal: Subscribers.Completion<Failure>?
-
+        
         init(downstream: Downstream,
              size: Int,
              prefetch: Publishers.PrefetchStrategy,
@@ -164,11 +164,11 @@ extension Publishers.Buffer {
             self.whenFull = whenFull
             self.downstream = downstream
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = state else {
@@ -178,7 +178,7 @@ extension Publishers.Buffer {
             }
             state = .subscribed(subscription)
             lock.unlock()
-
+            
             let upstreamDemand: Subscribers.Demand
             switch prefetch {
             case .keepFull:
@@ -189,7 +189,7 @@ extension Publishers.Buffer {
             subscription.request(upstreamDemand)
             downstream.receive(subscription: self)
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case let .subscribed(subscription) = state else {
@@ -212,7 +212,7 @@ extension Publishers.Buffer {
                         return .none
                     }
                 }
-
+                
                 values.append(input)
                 lock.unlock()
                 return drain()
@@ -221,7 +221,7 @@ extension Publishers.Buffer {
                 return .none
             }
         }
-
+        
         func receive(completion: Subscribers.Completion<Upstream.Failure>) {
             lock.lock()
             guard case .subscribed = state, terminal == nil else {
@@ -232,7 +232,7 @@ extension Publishers.Buffer {
             lock.unlock()
             _ = drain()
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = state else {
@@ -245,14 +245,14 @@ extension Publishers.Buffer {
             if recursion {
                 return
             }
-
+            
             let more = drain()
             if more != .none {
                 // Request the number of items just enough to fill the buffer.
                 subscription.request(more)
             }
         }
-
+        
         func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = state else {
@@ -264,7 +264,7 @@ extension Publishers.Buffer {
             lock.unlock()
             subscription.cancel()
         }
-
+        
         private func drain() -> Subscribers.Demand {
             var upstreamDemand = Subscribers.Demand.none
             lock.lock()
@@ -273,7 +273,7 @@ extension Publishers.Buffer {
                     lock.unlock()
                     return upstreamDemand
                 }
-
+                
                 if downstreamDemand > 0 {
                     if values.isEmpty {
                         if let completion = terminal {
@@ -295,52 +295,52 @@ extension Publishers.Buffer {
                     }
                     return upstreamDemand
                 }
-
+                
                 let poppedValues = lockedPop(downstreamDemand)
                 assert(poppedValues.count > 0,
                        """
                        We check that the buffer is not empty and downstreamDemand is \
                        nonzero, how can this be triggered?
                        """)
-
+                
                 // This should not crash because `lockedPop(_:)` returns at most
                 // `downstreamDemand` items.
                 downstreamDemand -= poppedValues.count
-
+                
                 recursion = true
                 lock.unlock()
-
+                
                 var newDownstreamDemand = Subscribers.Demand.none
                 var additionalUpstreamDemand = 0
-
+                
                 for value in poppedValues {
                     newDownstreamDemand += downstream.receive(value)
                     additionalUpstreamDemand += 1
                 }
-
+                
                 if prefetch == .keepFull {
                     upstreamDemand += additionalUpstreamDemand
                 }
-
+                
                 lock.lock()
                 recursion = false
                 downstreamDemand += newDownstreamDemand
             }
         }
-
+        
         private func lockedPop(_ demand: Subscribers.Demand) -> [Input] {
             assert(demand > 0)
             guard let max = demand.max else {
                 return values.take()
             }
-
+            
             let poppedValues = Array(values.prefix(max))
             values.removeFirst(poppedValues.count)
             return poppedValues
         }
-
+        
         var description: String { return "Buffer" }
-
+        
         var customMirror: Mirror {
             let children: [Mirror.Child] = [
                 ("values", values),
@@ -350,7 +350,7 @@ extension Publishers.Buffer {
             ]
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }

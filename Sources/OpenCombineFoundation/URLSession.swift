@@ -14,7 +14,7 @@ import FoundationNetworking
 import OpenCombine
 
 extension URLSession {
-
+    
     /// A namespace for disambiguation when both OpenCombine and Foundation are imported.
     ///
     /// Foundation extends `URLSession` with new methods and nested types.
@@ -29,36 +29,36 @@ extension URLSession {
     ///
     /// You can omit this whenever Combine is not available (e. g. on Linux).
     public struct OCombine {
-
+        
         public let session: URLSession
-
+        
         public init(_ session: URLSession) {
             self.session = session
         }
-
+        
         public struct DataTaskPublisher: Publisher {
-
+            
             public typealias Output = (data: Data, response: URLResponse)
-
+            
             public typealias Failure = URLError
-
+            
             public let request: URLRequest
-
+            
             public let session: URLSession
-
+            
             public init(request: URLRequest, session: URLSession) {
                 self.request = request
                 self.session = session
             }
-
+            
             public func receive<Downstream: Subscriber>(subscriber: Downstream)
-                where Downstream.Failure == Failure, Downstream.Input == Output
+            where Downstream.Failure == Failure, Downstream.Input == Output
             {
                 let subscription = Inner(parent: self, downstream: subscriber)
                 subscriber.receive(subscription: subscription)
             }
         }
-
+        
         /// Returns a publisher that wraps a URL session data task for a given URL.
         ///
         /// The publisher publishes data when the task completes, or terminates if
@@ -69,7 +69,7 @@ extension URLSession {
         public func dataTaskPublisher(for url: URL) -> DataTaskPublisher {
             return dataTaskPublisher(for: URLRequest(url: url))
         }
-
+        
         /// Returns a publisher that wraps a URL session data task for a given
         /// URL request.
         ///
@@ -82,14 +82,14 @@ extension URLSession {
             return .init(request: request, session: session)
         }
     }
-
+    
 #if !canImport(Combine)
     public typealias DataTaskPublisher = OCombine.DataTaskPublisher
 #endif
 }
 
 extension URLSession {
-
+    
     /// A namespace for disambiguation when both OpenCombine and Foundation are imported.
     ///
     /// Foundation extends `URLSession` with new methods and nested types.
@@ -104,7 +104,7 @@ extension URLSession {
     ///
     /// You can omit this whenever Combine is not available (e. g. on Linux).
     public var ocombine: OCombine { return .init(self) }
-
+    
 #if !canImport(Combine)
     /// Returns a publisher that wraps a URL session data task for a given URL.
     ///
@@ -116,7 +116,7 @@ extension URLSession {
     public func dataTaskPublisher(for url: URL) -> DataTaskPublisher {
         return ocombine.dataTaskPublisher(for: url)
     }
-
+    
     /// Returns a publisher that wraps a URL session data task for a given URL request.
     ///
     /// The publisher publishes data when the task completes, or terminates if the task
@@ -132,33 +132,33 @@ extension URLSession {
 
 extension URLSession.OCombine.DataTaskPublisher {
     private class Inner<Downstream: Subscriber>
-        : Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == (data: Data, response: URLResponse),
-              Downstream.Failure == URLError
+    : Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == (data: Data, response: URLResponse),
+          Downstream.Failure == URLError
     {
         private let lock = UnfairLock.allocate()
-
+        
         private var parent: URLSession.OCombine.DataTaskPublisher?
-
+        
         private var downstream: Downstream?
-
+        
         private var demand = Subscribers.Demand.none
-
+        
         private var task: URLSessionDataTask?
-
+        
         fileprivate init(parent: URLSession.OCombine.DataTaskPublisher,
                          downstream: Downstream) {
             self.parent = parent
             self.downstream = downstream
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -175,7 +175,7 @@ extension URLSession.OCombine.DataTaskPublisher {
             lock.unlock()
             task?.resume()
         }
-
+        
         private func handleResponse(data: Data?, response: URLResponse?, error: Error?) {
             lock.lock()
             guard demand > 0, parent != nil, let downstream = self.downstream else {
@@ -194,7 +194,7 @@ extension URLSession.OCombine.DataTaskPublisher {
                 downstream.receive(completion: .failure(URLError(.unknown)))
             }
         }
-
+        
         func cancel() {
             lock.lock()
             guard parent != nil else {
@@ -206,16 +206,16 @@ extension URLSession.OCombine.DataTaskPublisher {
             lock.unlock()
             task?.cancel()
         }
-
+        
         private func lockedTerminate() {
             parent = nil
             downstream = nil
             demand = .none
             task = nil
         }
-
+        
         var description: String { return "DataTaskPublisher" }
-
+        
         var customMirror: Mirror {
             lock.lock()
             defer { lock.unlock() }
@@ -227,7 +227,7 @@ extension URLSession.OCombine.DataTaskPublisher {
             ]
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }

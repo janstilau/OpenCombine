@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Publishes elements only after a specified time interval elapses between events.
     ///
     /// Use the `debounce(for:scheduler:options:)` operator to control the number of
@@ -80,27 +80,27 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     /// A publisher that publishes elements only after a specified time interval elapses
     /// between events.
     public struct Debounce<Upstream: Publisher, Context: Scheduler>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// The amount of time the publisher should wait before publishing an element.
         public let dueTime: Context.SchedulerTimeType.Stride
-
+        
         /// The scheduler on which this publisher delivers elements.
         public let scheduler: Context
-
+        
         /// Scheduler options that customize this publisher’s delivery of elements.
         public let options: Context.SchedulerOptions?
-
+        
         public init(upstream: Upstream,
                     dueTime: Context.SchedulerTimeType.Stride,
                     scheduler: Context,
@@ -110,9 +110,9 @@ extension Publishers {
             self.scheduler = scheduler
             self.options = options
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Downstream.Failure == Failure, Downstream.Input == Output
+        where Downstream.Failure == Failure, Downstream.Input == Output
         {
             let inner = Inner(downstream: subscriber,
                               dueTime: dueTime,
@@ -125,53 +125,53 @@ extension Publishers {
 
 extension Publishers.Debounce {
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Upstream.Output == Downstream.Input,
-              Upstream.Failure == Downstream.Failure
+    : Subscriber,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Upstream.Output == Downstream.Input,
+          Upstream.Failure == Downstream.Failure
     {
         typealias Input = Upstream.Output
-
+        
         typealias Failure = Upstream.Failure
-
+        
         private typealias Generation = UInt64
-
+        
         private enum CancellerState {
             case pending
             case active(Cancellable)
-
+            
             fileprivate func cancel() {
                 if case let .active(cancellable) = self {
                     cancellable.cancel()
                 }
             }
         }
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         private let downstreamLock = UnfairRecursiveLock.allocate()
-
+        
         private let downstream: Downstream
-
+        
         private let dueTime: Context.SchedulerTimeType.Stride
-
+        
         private let scheduler: Context
-
+        
         private let options: Context.SchedulerOptions?
-
+        
         private var state = SubscriptionStatus.awaitingSubscription
-
+        
         private var currentCancellers = [Generation : CancellerState]()
-
+        
         private var currentValue: Output?
-
+        
         private var currentGeneration: Generation = 0
-
+        
         private var downstreamDemand = Subscribers.Demand.none
-
+        
         init(downstream: Downstream,
              dueTime: Context.SchedulerTimeType.Stride,
              scheduler: Context,
@@ -181,12 +181,12 @@ extension Publishers.Debounce {
             self.scheduler = scheduler
             self.options = options
         }
-
+        
         deinit {
             lock.deallocate()
             downstreamLock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = state else {
@@ -201,7 +201,7 @@ extension Publishers.Debounce {
             downstreamLock.unlock()
             subscription.request(.unlimited)
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = state else {
@@ -229,7 +229,7 @@ extension Publishers.Debounce {
             }
             return .none
         }
-
+        
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard case .subscribed = state else {
@@ -248,7 +248,7 @@ extension Publishers.Debounce {
                 self.downstreamLock.unlock()
             }
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case .subscribed = state else {
@@ -258,7 +258,7 @@ extension Publishers.Debounce {
             downstreamDemand += demand
             lock.unlock()
         }
-
+        
         func cancel() {
             lock.lock()
             guard case .subscribed(let subscription) = state else {
@@ -273,9 +273,9 @@ extension Publishers.Debounce {
             }
             subscription.cancel()
         }
-
+        
         var description: String { return "Debounce" }
-
+        
         var customMirror: Mirror {
             let children: [Mirror.Child] = [
                 ("downstream", downstream),
@@ -284,16 +284,16 @@ extension Publishers.Debounce {
             ]
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
-
+        
         private func due(generation: Generation) {
             lock.lock()
             guard case .subscribed = state else {
                 lock.unlock()
                 return
             }
-
+            
             // If this condition holds, it means that no values were received
             // in this time frame => we should propagate the current value downstream.
             guard generation == currentGeneration, let value = currentValue else {
@@ -302,28 +302,28 @@ extension Publishers.Debounce {
                 canceller?.cancel()
                 return
             }
-
+            
             guard let canceller = currentCancellers[generation].take() else {
                 lock.unlock()
                 return
             }
-
+            
             let hasAnyDemand = downstreamDemand != .none
             if hasAnyDemand {
                 downstreamDemand -= 1
             }
-
+            
             lock.unlock()
             canceller.cancel()
-
+            
             guard hasAnyDemand else { return }
-
+            
             downstreamLock.lock()
             let newDemand = downstream.receive(value)
             downstreamLock.unlock()
-
+            
             if newDemand == .none { return }
-
+            
             lock.lock()
             downstreamDemand += newDemand
             lock.unlock()

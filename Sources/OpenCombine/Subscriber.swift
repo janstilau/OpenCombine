@@ -29,15 +29,15 @@
 /// - `assign(to:on:)` writes each newly-received value to a property identified by
 ///   a key path on a given instance.
 public protocol Subscriber: CustomCombineIdentifierConvertible {
-
+    
     /// The kind of values this subscriber receives.
     associatedtype Input
-
+    
     /// The kind of errors this subscriber might receive.
     ///
     /// Use `Never` if this `Subscriber` cannot receive errors.
     associatedtype Failure: Error
-
+    
     /// Tells the subscriber that it has successfully subscribed to the publisher and may
     /// request items.
     ///
@@ -45,14 +45,14 @@ public protocol Subscriber: CustomCombineIdentifierConvertible {
     /// - Parameter subscription: A subscription that represents the connection between
     ///   publisher and subscriber.
     func receive(subscription: Subscription)
-
+    
     /// Tells the subscriber that the publisher has produced an element.
     ///
     /// - Parameter input: The published element.
     /// - Returns: A `Subscribers.Demand` instance indicating how many more elements
     ///   the subscriber expects to receive.
     func receive(_ input: Input) -> Subscribers.Demand
-
+    
     /// Tells the subscriber that the publisher has completed publishing, either normally
     /// or with an error.
     ///
@@ -62,7 +62,7 @@ public protocol Subscriber: CustomCombineIdentifierConvertible {
 }
 
 extension Subscriber where Input == Void {
-
+    
     /// Tells the subscriber that a publisher of void elements is ready to receive further
     /// requests.
     ///

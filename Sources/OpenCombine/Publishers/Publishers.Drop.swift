@@ -31,25 +31,25 @@ extension Publishers {
     /// A publisher that omits a specified number of elements before republishing
     /// later elements.
     public struct Drop<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// The number of elements to drop.
         public let count: Int
-
+        
         public init(upstream: Upstream, count: Int) {
             self.upstream = upstream
             self.count = count
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Upstream.Failure == Downstream.Failure,
-                  Upstream.Output == Downstream.Input
+        where Upstream.Failure == Downstream.Failure,
+              Upstream.Output == Downstream.Input
         {
             let inner = Inner(downstream: subscriber, count: count)
             subscriber.receive(subscription: inner)
@@ -62,37 +62,37 @@ extension Publishers.Drop: Equatable where Upstream: Equatable {}
 
 extension Publishers.Drop {
     private final class Inner<Downstream: Subscriber>
-        : Subscription,
-          Subscriber,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Upstream.Output == Downstream.Input,
-              Upstream.Failure == Downstream.Failure
+    : Subscription,
+      Subscriber,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Upstream.Output == Downstream.Input,
+          Upstream.Failure == Downstream.Failure
     {
         typealias Input = Upstream.Output
-
+        
         typealias Failure = Upstream.Failure
-
+        
         private let downstream: Downstream
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         private var subscription: Subscription?
-
+        
         private var pendingDemand = Subscribers.Demand.none
-
+        
         private var count: Int
-
+        
         fileprivate init(downstream: Downstream, count: Int) {
             self.downstream = downstream
             self.count = count
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard self.subscription == nil else {
@@ -108,7 +108,7 @@ extension Publishers.Drop {
                 subscription.request(demandToRequestFromUpstream)
             }
         }
-
+        
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             // Combine doesn't lock here!
             if count > 0 {
@@ -117,14 +117,14 @@ extension Publishers.Drop {
             }
             return downstream.receive(input)
         }
-
+        
         func receive(completion: Subscribers.Completion<Upstream.Failure>) {
             lock.lock()
             subscription = nil
             lock.unlock()
             downstream.receive(completion: completion)
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -136,20 +136,20 @@ extension Publishers.Drop {
             lock.unlock()
             subscription.request(demand)
         }
-
+        
         func cancel() {
             lock.lock()
             let subscription = self.subscription.take()
             lock.unlock()
             subscription?.cancel()
         }
-
+        
         var description: String { return "Drop" }
-
+        
         var customMirror: Mirror {
             return Mirror(self, children: EmptyCollection())
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }

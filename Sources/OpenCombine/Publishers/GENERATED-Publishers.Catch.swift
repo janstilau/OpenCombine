@@ -12,7 +12,7 @@
 //
 
 extension Publisher {
-
+    
     /// Handles errors from an upstream publisher by replacing it with another publisher.
     ///
     /// Use `catch()` to replace an error from an upstream publisher with a new publisher.
@@ -46,11 +46,11 @@ extension Publisher {
     public func `catch`<NewPublisher: Publisher>(
         _ handler: @escaping (Failure) -> NewPublisher
     ) -> Publishers.Catch<Self, NewPublisher>
-        where NewPublisher.Output == Output
+    where NewPublisher.Output == Output
     {
         return .init(upstream: self, handler: handler)
     }
-
+    
     /// Handles errors from an upstream publisher by either replacing it with another
     /// publisher or throwing a new error.
     ///
@@ -97,30 +97,30 @@ extension Publisher {
     public func tryCatch<NewPublisher: Publisher>(
         _ handler: @escaping (Failure) throws -> NewPublisher
     ) -> Publishers.TryCatch<Self, NewPublisher>
-        where NewPublisher.Output == Output
+    where NewPublisher.Output == Output
     {
         return .init(upstream: self, handler: handler)
     }
 }
 
 extension Publishers {
-
+    
     /// A publisher that handles errors from an upstream publisher by replacing the failed
     /// publisher with another publisher.
     public struct Catch<Upstream: Publisher, NewPublisher: Publisher>: Publisher
-        where Upstream.Output == NewPublisher.Output
+    where Upstream.Output == NewPublisher.Output
     {
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = NewPublisher.Failure
-
+        
         /// The publisher that this publisher receives elements from.
         public let upstream: Upstream
-
+        
         /// A closure that accepts the upstream failure as input and returns a publisher
         /// to replace the upstream publisher.
         public let handler: (Upstream.Failure) -> NewPublisher
-
+        
         /// Creates a publisher that handles errors from an upstream publisher by
         /// replacing the failed publisher with another publisher.
         ///
@@ -133,16 +133,16 @@ extension Publishers {
             self.upstream = upstream
             self.handler = handler
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Downstream.Input == Output, Downstream.Failure == Failure
+        where Downstream.Input == Output, Downstream.Failure == Failure
         {
             let inner = Inner(downstream: subscriber, handler: handler)
             let uncaughtS = Inner.UncaughtS(inner: inner)
             upstream.subscribe(uncaughtS)
         }
     }
-
+    
     /// A publisher that handles errors from an upstream publisher by replacing
     /// the failed publisher with another publisher or producing a new error.
     ///
@@ -150,19 +150,19 @@ extension Publishers {
     /// its `Failure` type as `Error`. This is different from `Publishers.Catch`, which
     /// gets its failure type from the replacement publisher.
     public struct TryCatch<Upstream: Publisher, NewPublisher: Publisher>: Publisher
-        where Upstream.Output == NewPublisher.Output
+    where Upstream.Output == NewPublisher.Output
     {
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Error
-
+        
         /// The publisher that this publisher receives elements from.
         public let upstream: Upstream
-
+        
         /// A closure that accepts the upstream failure as input and either returns
         /// a publisher to replace the upstream publisher or throws an error.
         public let handler: (Upstream.Failure) throws -> NewPublisher
-
+        
         /// Creates a publisher that handles errors from an upstream publisher by
         /// replacing the failed publisher with another publisher or by throwing an error.
         ///
@@ -176,9 +176,9 @@ extension Publishers {
             self.upstream = upstream
             self.handler = handler
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Downstream.Input == Output, Downstream.Failure == Failure
+        where Downstream.Input == Output, Downstream.Failure == Failure
         {
             let inner = Inner(downstream: subscriber, handler: handler)
             let uncaughtS = Inner.UncaughtS(inner: inner)
@@ -189,12 +189,12 @@ extension Publishers {
 
 extension Publishers.Catch {
     private final class Inner<Downstream: Subscriber>
-        : Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Upstream.Output,
-              Downstream.Failure == NewPublisher.Failure
+    : Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Upstream.Output,
+          Downstream.Failure == NewPublisher.Failure
     {
         struct UncaughtS: Subscriber,
                           CustomStringConvertible,
@@ -202,64 +202,64 @@ extension Publishers.Catch {
                           CustomPlaygroundDisplayConvertible
         {
             typealias Input = Upstream.Output
-
+            
             typealias Failure = Upstream.Failure
-
+            
             let inner: Inner
-
+            
             var combineIdentifier: CombineIdentifier { return inner.combineIdentifier }
-
+            
             func receive(subscription: Subscription) {
                 inner.receivePre(subscription: subscription)
             }
-
+            
             func receive(_ input: Input) -> Subscribers.Demand {
                 return inner.receivePre(input)
             }
-
+            
             func receive(completion: Subscribers.Completion<Failure>) {
                 return inner.receivePre(completion: completion)
             }
-
+            
             var description: String { return inner.description }
-
+            
             var customMirror: Mirror { return inner.customMirror }
-
+            
             var playgroundDescription: Any { return description }
         }
-
+        
         struct CaughtS: Subscriber,
                         CustomStringConvertible,
                         CustomReflectable,
                         CustomPlaygroundDisplayConvertible
         {
             typealias Input = NewPublisher.Output
-
+            
             typealias Failure = NewPublisher.Failure
-
+            
             let inner: Inner
-
+            
             var combineIdentifier: CombineIdentifier { return inner.combineIdentifier }
-
+            
             func receive(subscription: Subscription) {
                 inner.receivePost(subscription: subscription)
             }
-
+            
             func receive(_ input: Input) -> Subscribers.Demand {
                 return inner.receivePost(input)
             }
-
+            
             func receive(completion: Subscribers.Completion<Failure>) {
                 inner.receivePost(completion: completion)
             }
-
+            
             var description: String { return inner.description }
-
+            
             var customMirror: Mirror { return inner.customMirror }
-
+            
             var playgroundDescription: Any { return description }
         }
-
+        
         private enum State {
             case pendingPre
             case pre(Subscription)
@@ -267,27 +267,27 @@ extension Publishers.Catch {
             case post(Subscription)
             case cancelled
         }
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         private var demand = Subscribers.Demand.none
-
+        
         private var state = State.pendingPre
-
+        
         private let downstream: Downstream
-
+        
         private let handler: (Upstream.Failure) -> NewPublisher
-
+        
         init(downstream: Downstream,
              handler: @escaping (Upstream.Failure) -> NewPublisher) {
             self.downstream = downstream
             self.handler = handler
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receivePre(subscription: Subscription) {
             lock.lock()
             guard case .pendingPre = state else {
@@ -299,7 +299,7 @@ extension Publishers.Catch {
             lock.unlock()
             downstream.receive(subscription: self)
         }
-
+        
         func receivePre(_ input: Upstream.Output) -> Subscribers.Demand {
             lock.lock()
             demand -= 1
@@ -310,7 +310,7 @@ extension Publishers.Catch {
             lock.unlock()
             return newDemand
         }
-
+        
         func receivePre(completion: Subscribers.Completion<Upstream.Failure>) {
             switch completion {
             case .finished:
@@ -337,7 +337,7 @@ extension Publishers.Catch {
                 }
             }
         }
-
+        
         func receivePost(subscription: Subscription) {
             lock.lock()
             guard case .pendingPost = state else {
@@ -352,11 +352,11 @@ extension Publishers.Catch {
                 subscription.request(demand)
             }
         }
-
+        
         func receivePost(_ input: NewPublisher.Output) -> Subscribers.Demand {
             return downstream.receive(input)
         }
-
+        
         func receivePost(completion: Subscribers.Completion<NewPublisher.Failure>) {
             lock.lock()
             guard case .post = state else {
@@ -367,7 +367,7 @@ extension Publishers.Catch {
             lock.unlock()
             downstream.receive(completion: completion)
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -392,7 +392,7 @@ extension Publishers.Catch {
                 lock.unlock()
             }
         }
-
+        
         func cancel() {
             lock.lock()
             switch state {
@@ -404,9 +404,9 @@ extension Publishers.Catch {
                 lock.unlock()
             }
         }
-
+        
         var description: String { return "Catch" }
-
+        
         var customMirror: Mirror {
             let children: [Mirror.Child] = [
                 ("downstream", downstream),
@@ -414,19 +414,19 @@ extension Publishers.Catch {
             ]
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }
 
 extension Publishers.TryCatch {
     private final class Inner<Downstream: Subscriber>
-        : Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Upstream.Output,
-              Downstream.Failure == Error
+    : Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Upstream.Output,
+          Downstream.Failure == Error
     {
         struct UncaughtS: Subscriber,
                           CustomStringConvertible,
@@ -434,64 +434,64 @@ extension Publishers.TryCatch {
                           CustomPlaygroundDisplayConvertible
         {
             typealias Input = Upstream.Output
-
+            
             typealias Failure = Upstream.Failure
-
+            
             let inner: Inner
-
+            
             var combineIdentifier: CombineIdentifier { return inner.combineIdentifier }
-
+            
             func receive(subscription: Subscription) {
                 inner.receivePre(subscription: subscription)
             }
-
+            
             func receive(_ input: Input) -> Subscribers.Demand {
                 return inner.receivePre(input)
             }
-
+            
             func receive(completion: Subscribers.Completion<Failure>) {
                 return inner.receivePre(completion: completion)
             }
-
+            
             var description: String { return inner.description }
-
+            
             var customMirror: Mirror { return inner.customMirror }
-
+            
             var playgroundDescription: Any { return description }
         }
-
+        
         struct CaughtS: Subscriber,
                         CustomStringConvertible,
                         CustomReflectable,
                         CustomPlaygroundDisplayConvertible
         {
             typealias Input = NewPublisher.Output
-
+            
             typealias Failure = NewPublisher.Failure
-
+            
             let inner: Inner
-
+            
             var combineIdentifier: CombineIdentifier { return inner.combineIdentifier }
-
+            
             func receive(subscription: Subscription) {
                 inner.receivePost(subscription: subscription)
             }
-
+            
             func receive(_ input: Input) -> Subscribers.Demand {
                 return inner.receivePost(input)
             }
-
+            
             func receive(completion: Subscribers.Completion<Failure>) {
                 inner.receivePost(completion: completion)
             }
-
+            
             var description: String { return inner.description }
-
+            
             var customMirror: Mirror { return inner.customMirror }
-
+            
             var playgroundDescription: Any { return description }
         }
-
+        
         private enum State {
             case pendingPre
             case pre(Subscription)
@@ -499,27 +499,27 @@ extension Publishers.TryCatch {
             case post(Subscription)
             case cancelled
         }
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         private var demand = Subscribers.Demand.none
-
+        
         private var state = State.pendingPre
-
+        
         private let downstream: Downstream
-
+        
         private let handler: (Upstream.Failure) throws -> NewPublisher
-
+        
         init(downstream: Downstream,
              handler: @escaping (Upstream.Failure) throws -> NewPublisher) {
             self.downstream = downstream
             self.handler = handler
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receivePre(subscription: Subscription) {
             lock.lock()
             guard case .pendingPre = state else {
@@ -531,7 +531,7 @@ extension Publishers.TryCatch {
             lock.unlock()
             downstream.receive(subscription: self)
         }
-
+        
         func receivePre(_ input: Upstream.Output) -> Subscribers.Demand {
             lock.lock()
             demand -= 1
@@ -542,7 +542,7 @@ extension Publishers.TryCatch {
             lock.unlock()
             return newDemand
         }
-
+        
         func receivePre(completion: Subscribers.Completion<Upstream.Failure>) {
             switch completion {
             case .finished:
@@ -576,7 +576,7 @@ extension Publishers.TryCatch {
                 }
             }
         }
-
+        
         func receivePost(subscription: Subscription) {
             lock.lock()
             guard case .pendingPost = state else {
@@ -591,11 +591,11 @@ extension Publishers.TryCatch {
                 subscription.request(demand)
             }
         }
-
+        
         func receivePost(_ input: NewPublisher.Output) -> Subscribers.Demand {
             return downstream.receive(input)
         }
-
+        
         func receivePost(completion: Subscribers.Completion<NewPublisher.Failure>) {
             lock.lock()
             guard case .post = state else {
@@ -606,7 +606,7 @@ extension Publishers.TryCatch {
             lock.unlock()
             downstream.receive(completion: completion.eraseError())
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -631,7 +631,7 @@ extension Publishers.TryCatch {
                 lock.unlock()
             }
         }
-
+        
         func cancel() {
             lock.lock()
             switch state {
@@ -643,9 +643,9 @@ extension Publishers.TryCatch {
                 lock.unlock()
             }
         }
-
+        
         var description: String { return "TryCatch" }
-
+        
         var customMirror: Mirror {
             let children: [Mirror.Child] = [
                 ("downstream", downstream),
@@ -653,7 +653,7 @@ extension Publishers.TryCatch {
             ]
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }

@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Replaces any errors in the stream with the provided element.
     ///
     /// If the upstream publisher fails with an error, this publisher emits the provided
@@ -44,27 +44,27 @@ extension Publisher {
 extension Publishers {
     /// A publisher that replaces any errors in the stream with a provided element.
     public struct ReplaceError<Upstream: Publisher>: Publisher {
-
+        
         /// The kind of values published by this publisher.
         public typealias Output = Upstream.Output
-
+        
         /// The kind of errors this publisher might publish.
         ///
         /// Use `Never` if this `Publisher` does not publish errors.
         public typealias Failure = Never
-
+        
         /// The element with which to replace errors from the upstream publisher.
         public let output: Upstream.Output
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         public init(upstream: Upstream,
                     output: Output) {
             self.upstream = upstream
             self.output = output
         }
-
+        
         /// This function is called to attach the specified `Subscriber`
         /// to this `Publisher` by `subscribe(_:)`
         ///
@@ -73,7 +73,7 @@ extension Publishers {
         ///     - subscriber: The subscriber to attach to this `Publisher`.
         ///                   once attached it can begin to receive values.
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Upstream.Output == Downstream.Input, Downstream.Failure == Failure
+        where Upstream.Output == Downstream.Input, Downstream.Failure == Failure
         {
             upstream.subscribe(Inner(downstream: subscriber, output: output))
         }
@@ -81,38 +81,38 @@ extension Publishers {
 }
 
 extension Publishers.ReplaceError: Equatable
-    where Upstream: Equatable, Upstream.Output: Equatable
+where Upstream: Equatable, Upstream.Output: Equatable
 {}
 
 extension Publishers.ReplaceError {
-
+    
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Upstream.Output == Downstream.Input
+    : Subscriber,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Upstream.Output == Downstream.Input
     {
         typealias Input = Upstream.Output
         typealias Failure = Upstream.Failure
-
+        
         private let output: Upstream.Output
         private let downstream: Downstream
         private var status = SubscriptionStatus.awaitingSubscription
         private var terminated = false
         private var pendingDemand = Subscribers.Demand.none
         private var lock = UnfairLock.allocate()
-
+        
         fileprivate init(downstream: Downstream, output: Upstream.Output) {
             self.downstream = downstream
             self.output = output
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = status else {
@@ -124,7 +124,7 @@ extension Publishers.ReplaceError {
             lock.unlock()
             downstream.receive(subscription: self)
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = status else {
@@ -142,7 +142,7 @@ extension Publishers.ReplaceError {
             lock.unlock()
             return demand
         }
-
+        
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard case .subscribed = status, !terminated else {
@@ -169,7 +169,7 @@ extension Publishers.ReplaceError {
                 downstream.receive(completion: .finished)
             }
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -188,7 +188,7 @@ extension Publishers.ReplaceError {
             lock.unlock()
             subscription.request(demand)
         }
-
+        
         func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = status else {
@@ -199,13 +199,13 @@ extension Publishers.ReplaceError {
             lock.unlock()
             subscription.cancel()
         }
-
+        
         var description: String { return "ReplaceError" }
-
+        
         var customMirror: Mirror {
             return Mirror(self, children: EmptyCollection())
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }

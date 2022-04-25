@@ -5,7 +5,7 @@
 //
 
 extension Publisher {
-
+    
     /// Transforms elements from the upstream publisher by providing the current
     /// element to a closure along with the last value returned by the closure.
     ///
@@ -38,7 +38,7 @@ extension Publisher {
                      initialResult: initialResult,
                      nextPartialResult: nextPartialResult)
     }
-
+    
     /// Transforms elements from the upstream publisher by providing the current element
     /// to an error-throwing closure along with the last value returned by the closure.
     ///
@@ -93,17 +93,17 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     public struct Scan<Upstream: Publisher, Output>: Publisher {
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         public let upstream: Upstream
-
+        
         public let initialResult: Output
-
+        
         public let nextPartialResult: (Output, Upstream.Output) -> Output
-
+        
         public init(upstream: Upstream,
                     initialResult: Output,
                     nextPartialResult: @escaping (Output, Upstream.Output) -> Output) {
@@ -111,26 +111,26 @@ extension Publishers {
             self.initialResult = initialResult
             self.nextPartialResult = nextPartialResult
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Output == Downstream.Input, Upstream.Failure == Downstream.Failure
+        where Output == Downstream.Input, Upstream.Failure == Downstream.Failure
         {
             upstream.subscribe(Inner(downstream: subscriber,
                                      initialResult: initialResult,
                                      nextPartialResult: nextPartialResult))
         }
     }
-
+    
     public struct TryScan<Upstream: Publisher, Output>: Publisher {
-
+        
         public typealias Failure = Error
-
+        
         public let upstream: Upstream
-
+        
         public let initialResult: Output
-
+        
         public let nextPartialResult: (Output, Upstream.Output) throws -> Output
-
+        
         public init(
             upstream: Upstream,
             initialResult: Output,
@@ -140,9 +140,9 @@ extension Publishers {
             self.initialResult = initialResult
             self.nextPartialResult = nextPartialResult
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Output == Downstream.Input, Downstream.Failure == Error
+        where Output == Downstream.Input, Downstream.Failure == Error
         {
             upstream.subscribe(Inner(downstream: subscriber,
                                      initialResult: initialResult,
@@ -152,27 +152,27 @@ extension Publishers {
 }
 
 extension Publishers.Scan {
-
+    
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Upstream.Failure == Downstream.Failure
+    : Subscriber,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Upstream.Failure == Downstream.Failure
     {
         // NOTE: this class has been audited for thread safety.
         // Combine doesn't use any locking here.
-
+        
         typealias Input = Upstream.Output
-
+        
         typealias Failure = Upstream.Failure
-
+        
         private let downstream: Downstream
-
+        
         private let nextPartialResult: (Downstream.Input, Input) -> Downstream.Input
-
+        
         private var result: Downstream.Input
-
+        
         fileprivate init(
             downstream: Downstream,
             initialResult: Downstream.Input,
@@ -183,22 +183,22 @@ extension Publishers.Scan {
             self.result = initialResult
             self.nextPartialResult = nextPartialResult
         }
-
+        
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             result = nextPartialResult(result, input)
             return downstream.receive(result)
         }
-
+        
         func receive(completion: Subscribers.Completion<Failure>) {
             downstream.receive(completion: completion)
         }
-
+        
         var description: String { return "Scan" }
-
+        
         var customMirror: Mirror {
             let children: [Mirror.Child] = [
                 ("downstream", downstream),
@@ -206,54 +206,54 @@ extension Publishers.Scan {
             ]
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }
 
 extension Publishers.TryScan {
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Failure == Error
+    : Subscriber,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Failure == Error
     {
         // NOTE: this class has been audited for thread safety.
-
+        
         typealias Input = Upstream.Output
-
+        
         typealias Failure = Upstream.Failure
-
+        
         private let downstream: Downstream
-
+        
         private let nextPartialResult:
-            (Downstream.Input, Input) throws -> Downstream.Input
-
+        (Downstream.Input, Input) throws -> Downstream.Input
+        
         private var result: Downstream.Input
-
+        
         private var status = SubscriptionStatus.awaitingSubscription
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         private var finished = false
-
+        
         fileprivate init(
             downstream: Downstream,
             initialResult: Downstream.Input,
             nextPartialResult:
-                @escaping (Downstream.Input, Input) throws -> Downstream.Input
+            @escaping (Downstream.Input, Input) throws -> Downstream.Input
         ) {
             self.downstream = downstream
             self.nextPartialResult = nextPartialResult
             self.result = initialResult
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = status else {
@@ -265,7 +265,7 @@ extension Publishers.TryScan {
             lock.unlock()
             downstream.receive(subscription: self)
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             do {
                 result = try nextPartialResult(result, input)
@@ -283,7 +283,7 @@ extension Publishers.TryScan {
                 return .none
             }
         }
-
+        
         func receive(completion: Subscribers.Completion<Upstream.Failure>) {
             // Combine doesn't use locking in this method!
             guard case .subscribed = status else {
@@ -291,7 +291,7 @@ extension Publishers.TryScan {
             }
             downstream.receive(completion: completion.eraseError())
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = status else {
@@ -301,7 +301,7 @@ extension Publishers.TryScan {
             lock.unlock()
             subscription.request(demand)
         }
-
+        
         func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = status else {
@@ -312,9 +312,9 @@ extension Publishers.TryScan {
             lock.unlock()
             subscription.cancel()
         }
-
+        
         var description: String { return "TryScan" }
-
+        
         var customMirror: Mirror {
             lock.lock()
             defer { lock.unlock() }
@@ -325,7 +325,7 @@ extension Publishers.TryScan {
             ]
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }

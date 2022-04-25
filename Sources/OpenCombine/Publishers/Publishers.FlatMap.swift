@@ -5,7 +5,7 @@
 //
 
 extension Publisher {
-
+    
     /// Transforms all elements from an upstream publisher into a new publisher up to
     /// a maximum number of publishers you specify.
     ///
@@ -62,15 +62,15 @@ extension Publisher {
         maxPublishers: Subscribers.Demand = .unlimited,
         _ transform: @escaping (Output) -> Child
     ) -> Publishers.FlatMap<Child, Self>
-        where Result == Child.Output, Failure == Child.Failure {
-            return .init(upstream: self,
-                         maxPublishers: maxPublishers,
-                         transform: transform)
+    where Result == Child.Output, Failure == Child.Failure {
+        return .init(upstream: self,
+                     maxPublishers: maxPublishers,
+                     transform: transform)
     }
 }
 
 extension Publisher where Failure == Never {
-
+    
     /// Transforms all elements from an upstream publisher into a new publisher up to
     /// a maximum number of publishers you specify.
     ///
@@ -88,7 +88,7 @@ extension Publisher where Failure == Never {
         return setFailureType(to: Child.Failure.self)
             .flatMap(maxPublishers: maxPublishers, transform)
     }
-
+    
     /// Transforms all elements from an upstream publisher into a new publisher up to
     /// a maximum number of publishers you specify.
     ///
@@ -108,7 +108,7 @@ extension Publisher where Failure == Never {
 }
 
 extension Publisher {
-
+    
     /// Transforms all elements from an upstream publisher into a new publisher up to
     /// a maximum number of publishers you specify.
     ///
@@ -123,7 +123,7 @@ extension Publisher {
         maxPublishers: Subscribers.Demand = .unlimited,
         _ transform: @escaping (Output) -> Child
     ) -> Publishers.FlatMap<Publishers.SetFailureType<Child, Failure>, Self>
-        where Child.Failure == Never
+    where Child.Failure == Never
     {
         return flatMap(maxPublishers: maxPublishers) {
             transform($0).setFailureType(to: Failure.self)
@@ -132,22 +132,22 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     /// A publisher that transforms elements from an upstream publisher into a new
     /// publisher.
     public struct FlatMap<Child: Publisher, Upstream: Publisher>: Publisher
-        where Child.Failure == Upstream.Failure
+    where Child.Failure == Upstream.Failure
     {
         public typealias Output = Child.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         public let upstream: Upstream
-
+        
         public let maxPublishers: Subscribers.Demand
-
+        
         public let transform: (Upstream.Output) -> Child
-
+        
         public init(upstream: Upstream, maxPublishers: Subscribers.Demand,
                     transform: @escaping (Upstream.Output) -> Child) {
             self.upstream = upstream
@@ -155,7 +155,7 @@ extension Publishers {
             self.transform = transform
         }
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Child.Output == Downstream.Input, Upstream.Failure == Downstream.Failure
+        where Child.Output == Downstream.Input, Upstream.Failure == Downstream.Failure
         {
             let outer = Outer(downstream: subscriber,
                               maxPublishers: maxPublishers,
@@ -168,43 +168,43 @@ extension Publishers {
 
 extension Publishers.FlatMap {
     private final class Outer<Downstream: Subscriber>
-        : Subscriber,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Child.Output, Downstream.Failure == Upstream.Failure
+    : Subscriber,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Child.Output, Downstream.Failure == Upstream.Failure
     {
         typealias Input = Upstream.Output
         typealias Failure = Upstream.Failure
-
+        
         private typealias SubscriptionIndex = Int
-
+        
         /// All requests to this subscription should be made with the `outerLock`
         /// acquired.
         private var outerSubscription: Subscription?
-
+        
         /// The lock for requesting from `outerSubscription`.
         private let outerLock = UnfairRecursiveLock.allocate()
-
+        
         /// The lock for modifying the state. All mutable state here should be
         /// read and modified with this lock acquired.
         /// The only exception is the `downstreamRecursive` field, which is guarded
         /// by the `downstreamLock`.
         private let lock = UnfairLock.allocate()
-
+        
         /// All the calls to the downstream subscriber should be made with this lock
         /// acquired.
         private let downstreamLock = UnfairRecursiveLock.allocate()
-
+        
         private let downstream: Downstream
-
+        
         private var downstreamDemand = Subscribers.Demand.none
-
+        
         /// This variable is set to `true` whenever we call `downstream.receive(_:)`,
         /// and then set back to `false`.
         private var downstreamRecursive = false
-
+        
         private var innerRecursive = false
         private var subscriptions = [SubscriptionIndex : Subscription]()
         private var nextInnerIndex: SubscriptionIndex = 0
@@ -214,7 +214,7 @@ extension Publishers.FlatMap {
         private let map: (Input) -> Child
         private var cancelledOrCompleted = false
         private var outerFinished = false
-
+        
         init(downstream: Downstream,
              maxPublishers: Subscribers.Demand,
              map: @escaping (Upstream.Output) -> Child) {
@@ -222,15 +222,15 @@ extension Publishers.FlatMap {
             self.maxPublishers = maxPublishers
             self.map = map
         }
-
+        
         deinit {
             outerLock.deallocate()
             lock.deallocate()
             downstreamLock.deallocate()
         }
-
+        
         // MARK: - Subscriber
-
+        
         fileprivate func receive(subscription: Subscription) {
             lock.lock()
             guard outerSubscription == nil, !cancelledOrCompleted else {
@@ -242,7 +242,7 @@ extension Publishers.FlatMap {
             lock.unlock()
             subscription.request(maxPublishers)
         }
-
+        
         fileprivate func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             let cancelledOrCompleted = self.cancelledOrCompleted
@@ -259,7 +259,7 @@ extension Publishers.FlatMap {
             child.subscribe(Side(index: innerIndex, inner: self))
             return .none
         }
-
+        
         fileprivate func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             outerSubscription = nil
@@ -286,9 +286,9 @@ extension Publishers.FlatMap {
                 downstreamLock.unlock()
             }
         }
-
+        
         // MARK: - Subscription
-
+        
         fileprivate func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             if downstreamRecursive {
@@ -352,7 +352,7 @@ extension Publishers.FlatMap {
             }
             releaseLockThenSendCompletionDownstreamIfNeeded(outerFinished: outerFinished)
         }
-
+        
         fileprivate func cancel() {
             lock.lock()
             if cancelledOrCompleted {
@@ -369,33 +369,33 @@ extension Publishers.FlatMap {
             // Combine doesn't acquire outerLock here. Weird.
             outerSubscription?.cancel()
         }
-
+        
         // MARK: - Reflection
-
+        
         fileprivate var description: String { return "FlatMap" }
-
+        
         fileprivate var customMirror: Mirror {
             return Mirror(self, children: EmptyCollection())
         }
-
+        
         fileprivate var playgroundDescription: Any { return description }
-
+        
         // MARK: - Private
-
+        
         private func receiveInner(subscription: Subscription,
                                   _ index: SubscriptionIndex) {
             lock.lock()
             pendingSubscriptions -= 1
             subscriptions[index] = subscription
-
+            
             let demand = downstreamDemand == .unlimited
-                ? Subscribers.Demand.unlimited
-                : .max(1)
-
+            ? Subscribers.Demand.unlimited
+            : .max(1)
+            
             lock.unlock()
             subscription.request(demand)
         }
-
+        
         private func receiveInner(_ input: Child.Output,
                                   _ index: SubscriptionIndex) -> Subscribers.Demand {
             lock.lock()
@@ -427,7 +427,7 @@ extension Publishers.FlatMap {
             }
             return .max(1)
         }
-
+        
         private func receiveInner(completion: Subscribers.Completion<Child.Failure>,
                                   _ index: SubscriptionIndex) {
             switch completion {
@@ -457,7 +457,7 @@ extension Publishers.FlatMap {
                 downstreamLock.unlock()
             }
         }
-
+        
         private func requestOneMorePublisher() {
             if maxPublishers != .unlimited {
                 outerLock.lock()
@@ -465,7 +465,7 @@ extension Publishers.FlatMap {
                 outerLock.unlock()
             }
         }
-
+        
         /// - Precondition: `lock` is acquired
         /// - Postcondition: `lock` is released
         ///
@@ -486,13 +486,13 @@ extension Publishers.FlatMap {
                 downstreamLock.unlock()
                 return true
             }
-
+            
             lock.unlock()
             return false
         }
-
+        
         // MARK: - Side
-
+        
         private struct Side: Subscriber,
                              CustomStringConvertible,
                              CustomReflectable,
@@ -500,33 +500,33 @@ extension Publishers.FlatMap {
             private let index: SubscriptionIndex
             private let inner: Outer
             fileprivate let combineIdentifier = CombineIdentifier()
-
+            
             fileprivate init(index: SubscriptionIndex, inner: Outer) {
                 self.index = index
                 self.inner = inner
             }
-
+            
             fileprivate func receive(subscription: Subscription) {
                 inner.receiveInner(subscription: subscription, index)
             }
-
+            
             fileprivate func receive(_ input: Child.Output) -> Subscribers.Demand {
                 return inner.receiveInner(input, index)
             }
-
+            
             fileprivate func receive(completion: Subscribers.Completion<Child.Failure>) {
                 inner.receiveInner(completion: completion, index)
             }
-
+            
             fileprivate var description: String { return "FlatMap" }
-
+            
             fileprivate var customMirror: Mirror {
                 let children = CollectionOfOne<Mirror.Child>(
                     ("parentSubscription", inner.combineIdentifier)
                 )
                 return Mirror(self, children: children)
             }
-
+            
             fileprivate var playgroundDescription: Any { return description }
         }
     }

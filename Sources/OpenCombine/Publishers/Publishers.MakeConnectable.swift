@@ -6,7 +6,7 @@
 //
 
 extension Publisher where Failure == Never {
-
+    
     /// Creates a connectable wrapper around the publisher.
     ///
     /// In the following example, `makeConnectable()` wraps its upstream publisher
@@ -44,7 +44,7 @@ extension Publisher where Failure == Never {
 }
 
 extension Publishers {
-
+    
     /// A publisher that provides explicit connectability to another publisher.
     ///
     /// `Publishers.MakeConnectable` is a `ConnectablePublisher`, which allows you to
@@ -55,26 +55,26 @@ extension Publishers {
     /// Use the `makeConnectable()` operator to wrap an upstream publisher with
     /// an instance of this publisher.
     public struct MakeConnectable<Upstream: Publisher>: ConnectablePublisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         private let inner: Multicast<Upstream, PassthroughSubject<Output, Failure>>
-
+        
         /// Creates a connectable publisher, attached to the provide upstream publisher.
         ///
         /// - Parameter upstream: The publisher from which to receive elements.
         public init(upstream: Upstream) {
             inner = upstream.multicast(subject: .init())
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Downstream.Failure == Failure, Downstream.Input == Output
+        where Downstream.Failure == Failure, Downstream.Input == Output
         {
             inner.subscribe(subscriber)
         }
-
+        
         public func connect() -> Cancellable {
             return inner.connect()
         }

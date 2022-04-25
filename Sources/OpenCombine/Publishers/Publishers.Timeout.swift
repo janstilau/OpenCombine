@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Terminates publishing if the upstream publisher exceeds the specified time
     /// interval without producing an element.
     ///
@@ -74,23 +74,23 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     public struct Timeout<Upstream: Publisher, Context: Scheduler>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         public let upstream: Upstream
-
+        
         public let interval: Context.SchedulerTimeType.Stride
-
+        
         public let scheduler: Context
-
+        
         public let options: Context.SchedulerOptions?
-
+        
         public let customError: (() -> Upstream.Failure)?
-
+        
         public init(upstream: Upstream,
                     interval: Context.SchedulerTimeType.Stride,
                     scheduler: Context,
@@ -102,9 +102,9 @@ extension Publishers {
             self.options = options
             self.customError = customError
         }
-
+        
         public func receive<Downsteam: Subscriber>(subscriber: Downsteam)
-            where Downsteam.Failure == Failure, Downsteam.Input == Output
+        where Downsteam.Failure == Failure, Downsteam.Input == Output
         {
             let inner = Inner(downstream: subscriber,
                               interval: interval,
@@ -118,39 +118,39 @@ extension Publishers {
 
 extension Publishers.Timeout {
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
+    : Subscriber,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
     {
         typealias Input = Upstream.Output
-
+        
         typealias Failure = Upstream.Failure
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         private let downstreamLock = UnfairRecursiveLock.allocate()
-
+        
         private let downstream: Downstream
-
+        
         private let interval: Context.SchedulerTimeType.Stride
-
+        
         private let scheduler: Context
-
+        
         private let options: Context.SchedulerOptions?
-
+        
         private let customError: (() -> Upstream.Failure)?
-
+        
         private var state = SubscriptionStatus.awaitingSubscription
-
+        
         private var didTimeout = false
-
+        
         private var timer: AnyCancellable?
-
+        
         private var initialDemand = false
-
+        
         init(downstream: Downstream,
              interval: Context.SchedulerTimeType.Stride,
              scheduler: Context,
@@ -162,12 +162,12 @@ extension Publishers.Timeout {
             self.options = options
             self.customError = customError
         }
-
+        
         deinit {
             lock.deallocate()
             downstreamLock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = state else {
@@ -182,7 +182,7 @@ extension Publishers.Timeout {
             downstream.receive(subscription: self)
             downstreamLock.unlock()
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard !didTimeout, case .subscribed = state else {
@@ -198,7 +198,7 @@ extension Publishers.Timeout {
             }
             return .none
         }
-
+        
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard case .subscribed = state else {
@@ -211,7 +211,7 @@ extension Publishers.Timeout {
                 self.scheduledReceive(completion: completion)
             }
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = state else {
@@ -225,7 +225,7 @@ extension Publishers.Timeout {
             lock.unlock()
             subscription.request(demand)
         }
-
+        
         func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = state else {
@@ -237,13 +237,13 @@ extension Publishers.Timeout {
             timer?.cancel()
             subscription.cancel()
         }
-
+        
         var description: String { return "Timeout" }
-
+        
         var customMirror: Mirror { return Mirror(self, children: EmptyCollection()) }
-
+        
         var playgroundDescription: Any { return description }
-
+        
         private func timedOut() {
             lock.lock()
             guard !didTimeout, case let .subscribed(subscription) = state else {
@@ -259,7 +259,7 @@ extension Publishers.Timeout {
                 .receive(completion: customError.map { .failure($0()) } ?? .finished)
             downstreamLock.unlock()
         }
-
+        
         private func timeoutClock() -> AnyCancellable {
             let cancellable = scheduler
                 .schedule(after: scheduler.now.advanced(by: interval),
@@ -269,7 +269,7 @@ extension Publishers.Timeout {
                           timedOut)
             return AnyCancellable(cancellable.cancel)
         }
-
+        
         private func scheduledReceive(_ input: Input) {
             lock.lock()
             guard !didTimeout, case let .subscribed(subscription) = state else {
@@ -284,7 +284,7 @@ extension Publishers.Timeout {
                 subscription.request(newDemand)
             }
         }
-
+        
         private func scheduledReceive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard case .subscribed = state else {

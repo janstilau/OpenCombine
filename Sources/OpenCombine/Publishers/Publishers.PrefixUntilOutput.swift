@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Republishes elements until another publisher emits an element.
     ///
     /// After the second publisher publishes an element, the publisher returned by this
@@ -24,24 +24,24 @@ extension Publisher {
 
 extension Publishers {
     public struct PrefixUntilOutput<Upstream: Publisher, Other: Publisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// Another publisher, whose first output causes this publisher to finish.
         public let other: Other
-
+        
         public init(upstream: Upstream, other: Other) {
             self.upstream = upstream
             self.other = other
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Downstream.Failure == Failure, Downstream.Input == Output
+        where Downstream.Failure == Failure, Downstream.Input == Output
         {
             upstream.subscribe(Inner(downstream: subscriber, trigger: other))
         }
@@ -50,53 +50,53 @@ extension Publishers {
 
 extension Publishers.PrefixUntilOutput {
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          Subscription
-        where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
+    : Subscriber,
+      Subscription
+    where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
     {
         typealias Input = Upstream.Output
-
+        
         typealias Failure = Upstream.Failure
-
+        
         private struct Termination: Subscriber {
-
+            
             let inner: Inner
-
+            
             var combineIdentifier: CombineIdentifier {
                 return inner.combineIdentifier
             }
-
+            
             func receive(subscription: Subscription) {
                 inner.terminationReceive(subscription: subscription)
             }
-
+            
             func receive(_ input: Other.Output) -> Subscribers.Demand {
                 return inner.terminationReceive(input)
             }
-
+            
             func receive(completion: Subscribers.Completion<Other.Failure>) {
                 inner.terminationReceive(completion: completion)
             }
         }
-
+        
         private var termination: Termination?
         private var prefixState = SubscriptionStatus.awaitingSubscription
         private var terminationState = SubscriptionStatus.awaitingSubscription
         private var triggered = false
         private let lock = UnfairLock.allocate()
         private let downstream: Downstream
-
+        
         init(downstream: Downstream, trigger: Other) {
             self.downstream = downstream
             let termination = Termination(inner: self)
             self.termination = termination
             trigger.subscribe(termination)
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = prefixState else {
@@ -108,7 +108,7 @@ extension Publishers.PrefixUntilOutput {
             lock.unlock()
             downstream.receive(subscription: self)
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = prefixState else {
@@ -118,7 +118,7 @@ extension Publishers.PrefixUntilOutput {
             lock.unlock()
             return downstream.receive(input)
         }
-
+        
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             let prefixState = self.prefixState
@@ -132,7 +132,7 @@ extension Publishers.PrefixUntilOutput {
                 downstream.receive(completion: completion)
             }
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = prefixState else {
@@ -142,7 +142,7 @@ extension Publishers.PrefixUntilOutput {
             lock.unlock()
             subscription.request(demand)
         }
-
+        
         func cancel() {
             lock.lock()
             let prefixSubscription = prefixState.subscription
@@ -153,9 +153,9 @@ extension Publishers.PrefixUntilOutput {
             prefixSubscription?.cancel()
             terminationSubscription?.cancel()
         }
-
+        
         // MARK: - Private
-
+        
         private func terminationReceive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = terminationState else {
@@ -167,7 +167,7 @@ extension Publishers.PrefixUntilOutput {
             lock.unlock()
             subscription.request(.max(1))
         }
-
+        
         private func terminationReceive(_ input: Other.Output) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = terminationState else {
@@ -184,7 +184,7 @@ extension Publishers.PrefixUntilOutput {
             downstream.receive(completion: .finished)
             return .none
         }
-
+        
         private func terminationReceive(
             completion: Subscribers.Completion<Other.Failure>
         ) {

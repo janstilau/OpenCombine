@@ -26,20 +26,20 @@ internal func __nextCombineIdentifier() -> UInt64 {
 ///
 ///     let combineIdentifier = CombineIdentifier()
 public struct CombineIdentifier: Hashable, CustomStringConvertible {
-
+    
     private let rawValue: UInt64
-
+    
     /// Creates a unique Combine identifier.
     public init() {
         // __nextCombineIdentifier, 就是一个全局量的修改.
         rawValue = __nextCombineIdentifier()
     }
-
+    
     /// Creates a Combine identifier, using the bit pattern of the provided object.
     public init(_ obj: AnyObject) {
         rawValue = UInt64(UInt(bitPattern: ObjectIdentifier(obj)))
     }
-
+    
     public var description: String {
         return "0x\(String(rawValue, radix: 16))"
     }

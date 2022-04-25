@@ -10,7 +10,7 @@
 /// You can create a ”Never” publisher — one which never sends values and never
 /// finishes or fails — with the initializer `Empty(completeImmediately: false)`.
 public struct Empty<Output, Failure: Error>: Publisher, Equatable {
-
+    
     /// Creates an empty publisher.
     ///
     /// - Parameter completeImmediately: A Boolean value that indicates whether
@@ -18,7 +18,7 @@ public struct Empty<Output, Failure: Error>: Publisher, Equatable {
     public init(completeImmediately: Bool = true) {
         self.completeImmediately = completeImmediately
     }
-
+    
     /// Creates an empty publisher with the given completion behavior and output and
     /// failure types.
     ///
@@ -35,16 +35,16 @@ public struct Empty<Output, Failure: Error>: Publisher, Equatable {
                 failureType: Failure.Type) {
         self.init(completeImmediately: completeImmediately)
     }
-
+    
     /// A Boolean value that indicates whether the publisher immediately sends
     /// a completion.
     ///
     /// If `true`, the publisher finishes immediately after sending a subscription
     /// to the subscriber. If `false`, it never completes.
     public let completeImmediately: Bool
-
+    
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
-        where Output == Downstream.Input, Failure == Downstream.Failure
+    where Output == Downstream.Input, Failure == Downstream.Failure
     {
         subscriber.receive(subscription: Subscriptions.empty)
         if completeImmediately {

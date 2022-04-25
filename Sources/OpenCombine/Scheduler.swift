@@ -7,23 +7,23 @@
 
 /// A protocol that provides a scheduler with an expression for relative time.
 public protocol SchedulerTimeIntervalConvertible {
-
+    
     /// Converts the specified number of seconds into an instance of this scheduler time
     /// type.
     static func seconds(_ s: Int) -> Self
-
+    
     /// Converts the specified number of seconds, as a floating-point value, into
     /// an instance of this scheduler time type.
     static func seconds(_ s: Double) -> Self
-
+    
     /// Converts the specified number of milliseconds into an instance of this scheduler
     /// time type.
     static func milliseconds(_ ms: Int) -> Self
-
+    
     /// Converts the specified number of microseconds into an instance of this scheduler
     /// time type.
     static func microseconds(_ us: Int) -> Self
-
+    
     /// Converts the specified number of nanoseconds into an instance of this scheduler
     /// time type.
     static func nanoseconds(_ ns: Int) -> Self
@@ -39,32 +39,32 @@ public protocol SchedulerTimeIntervalConvertible {
 /// options to control how they execute the actions passed to them. These options may
 /// control factors like which threads or dispatch queues execute the actions.
 public protocol Scheduler {
-
+    
     /// Describes an instant in time for this scheduler.
     associatedtype SchedulerTimeType: Strideable
-        where SchedulerTimeType.Stride: SchedulerTimeIntervalConvertible
-
+    where SchedulerTimeType.Stride: SchedulerTimeIntervalConvertible
+    
     /// A type that defines options accepted by the scheduler.
     ///
     /// This type is freely definable by each `Scheduler`. Typically, operations that
     /// take a `Scheduler` parameter will also take `SchedulerOptions`.
     associatedtype SchedulerOptions
-
+    
     /// This scheduler’s definition of the current moment in time.
     var now: SchedulerTimeType { get }
-
+    
     /// The minimum tolerance allowed by the scheduler.
     var minimumTolerance: SchedulerTimeType.Stride { get }
-
+    
     /// Performs the action at the next possible opportunity.
     func schedule(options: SchedulerOptions?, _ action: @escaping () -> Void)
-
+    
     /// Performs the action at some time after the specified date.
     func schedule(after date: SchedulerTimeType,
                   tolerance: SchedulerTimeType.Stride,
                   options: SchedulerOptions?,
                   _ action: @escaping () -> Void)
-
+    
     /// Performs the action at some time after the specified date, at the specified
     /// frequency, optionally taking into account tolerance if possible.
     func schedule(after date: SchedulerTimeType,
@@ -75,7 +75,7 @@ public protocol Scheduler {
 }
 
 extension Scheduler {
-
+    
     /// Performs the action at some time after the specified date, using the scheduler’s
     /// minimum tolerance.
     ///
@@ -85,13 +85,13 @@ extension Scheduler {
                          _ action: @escaping () -> Void) {
         schedule(after: date, tolerance: minimumTolerance, action)
     }
-
+    
     /// Performs the action at the next possible opportunity, without options.
     @inlinable
     public func schedule(_ action: @escaping () -> Void) {
         schedule(options: nil, action)
     }
-
+    
     /// Performs the action at some time after the specified date.
     ///
     /// The immediate scheduler ignores `date` and performs the action immediately.
@@ -101,7 +101,7 @@ extension Scheduler {
                          _ action: @escaping () -> Void) {
         schedule(after: date, tolerance: tolerance, options: nil, action)
     }
-
+    
     /// Performs the action at some time after the specified date, at the specified
     /// frequency, taking into account tolerance if possible.
     ///
@@ -117,7 +117,7 @@ extension Scheduler {
                         options: nil,
                         action)
     }
-
+    
     /// Performs the action at some time after the specified date, at the specified
     /// frequency, using minimum tolerance possible for this Scheduler.
     ///

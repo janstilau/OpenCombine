@@ -15,13 +15,13 @@
 ///
 ///     let combineIdentifier = CombineIdentifier()
 public protocol CustomCombineIdentifierConvertible {
-
+    
     /// A unique identifier for identifying publisher streams.
     var combineIdentifier: CombineIdentifier { get }
 }
 
 extension CustomCombineIdentifierConvertible where Self: AnyObject {
-
+    
     public var combineIdentifier: CombineIdentifier {
         return CombineIdentifier(self)
     }

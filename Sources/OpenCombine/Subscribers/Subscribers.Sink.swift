@@ -6,34 +6,34 @@
 //
 
 extension Subscribers {
-
+    
     /// A simple subscriber that requests an unlimited number of values upon subscription.
     public final class Sink<Input, Failure: Error>
-        : Subscriber,
-          Cancellable,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
+    : Subscriber,
+      Cancellable,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
     {
-
+        
         /// The closure to execute on receipt of a value.
         public var receiveValue: (Input) -> Void
-
+        
         /// The closure to execute on completion.
         public var receiveCompletion: (Subscribers.Completion<Failure>) -> Void
-
+        
         private var status = SubscriptionStatus.awaitingSubscription
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         public var description: String { return "Sink" }
-
+        
         public var customMirror: Mirror {
             return Mirror(self, children: EmptyCollection())
         }
-
+        
         public var playgroundDescription: Any { return description }
-
+        
         /// Initializes a sink with the provided closures.
         ///
         /// - Parameters:
@@ -46,11 +46,11 @@ extension Subscribers {
             self.receiveCompletion = receiveCompletion
             self.receiveValue = receiveValue
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         public func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = status else {
@@ -62,7 +62,7 @@ extension Subscribers {
             lock.unlock()
             subscription.request(.unlimited)
         }
-
+        
         public func receive(_ value: Input) -> Subscribers.Demand {
             lock.lock()
             let receiveValue = self.receiveValue
@@ -70,28 +70,28 @@ extension Subscribers {
             receiveValue(value)
             return .none
         }
-
+        
         public func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             status = .terminal
             let receiveCompletion = self.receiveCompletion
             self.receiveCompletion = { _ in }
-
+            
             // We MUST release the closures AFTER unlocking the lock,
             // since releasing a closure may trigger execution of arbitrary code,
             // for example, if the closure captures an object with a deinit.
             // When closure deallocates, the object's deinit is called, and holding
             // the lock at that moment can lead to deadlocks.
             // See https://github.com/OpenCombine/OpenCombine/issues/208
-
+            
             withExtendedLifetime(receiveValue) {
                 receiveValue = { _ in }
                 lock.unlock()
             }
-
+            
             receiveCompletion(completion)
         }
-
+        
         public func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = status else {
@@ -99,14 +99,14 @@ extension Subscribers {
                 return
             }
             status = .terminal
-
+            
             // We MUST release the closures AFTER unlocking the lock,
             // since releasing a closure may trigger execution of arbitrary code,
             // for example, if the closure captures an object with a deinit.
             // When closure deallocates, the object's deinit is called, and holding
             // the lock at that moment can lead to deadlocks.
             // See https://github.com/OpenCombine/OpenCombine/issues/208
-
+            
             withExtendedLifetime((receiveValue, receiveCompletion)) {
                 receiveCompletion = { _ in }
                 receiveValue = { _ in }
@@ -118,7 +118,7 @@ extension Subscribers {
 }
 
 extension Publisher {
-
+    
     /// Attaches a subscriber with closure-based behavior.
     ///
     /// Use `sink(receiveCompletion:receiveValue:)` to observe values received by
@@ -165,7 +165,7 @@ extension Publisher {
 }
 
 extension Publisher where Failure == Never {
-
+    
     /// Attaches a subscriber with closure-based behavior to a publisher that never fails.
     ///
     /// Use `sink(receiveValue:)` to observe values received by the publisher and print

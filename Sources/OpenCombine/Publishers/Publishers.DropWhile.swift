@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Omits elements from the upstream publisher until a given closure returns false,
     /// before republishing all remaining elements.
     ///
@@ -35,7 +35,7 @@ extension Publisher {
     ) -> Publishers.DropWhile<Self> {
         return .init(upstream: self, predicate: predicate)
     }
-
+    
     /// Omits elements from the upstream publisher until an error-throwing closure returns
     /// false, before republishing all remaining elements.
     ///
@@ -81,54 +81,54 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     /// A publisher that omits elements from an upstream publisher until a given closure
     /// returns false.
     public struct DropWhile<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// The closure that indicates whether to drop the element.
         public let predicate: (Output) -> Bool
-
+        
         public init(upstream: Upstream, predicate: @escaping (Output) -> Bool) {
             self.upstream = upstream
             self.predicate = predicate
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Failure == Downstream.Failure, Output == Downstream.Input
+        where Failure == Downstream.Failure, Output == Downstream.Input
         {
             upstream.subscribe(Inner(downstream: subscriber, predicate: predicate))
         }
     }
-
+    
     /// A publisher that omits elements from an upstream publisher until a given
     /// error-throwing closure returns false.
     public struct TryDropWhile<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Error
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// The error-throwing closure that indicates whether to drop the element.
         public let predicate: (Upstream.Output) throws -> Bool
-
+        
         public init(upstream: Upstream, predicate: @escaping (Output) throws -> Bool) {
             self.upstream = upstream
             self.predicate = predicate
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Output == Downstream.Input, Downstream.Failure == Error
+        where Output == Downstream.Input, Downstream.Failure == Error
         {
             upstream.subscribe(Inner(downstream: subscriber, predicate: predicate))
         }
@@ -137,38 +137,38 @@ extension Publishers {
 
 extension Publishers.DropWhile {
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Upstream.Output == Downstream.Input, Downstream.Failure == Upstream.Failure
+    : Subscriber,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Upstream.Output == Downstream.Input, Downstream.Failure == Upstream.Failure
     {
         // NOTE: This class has been audited for thread safety.
-
+        
         typealias Input = Upstream.Output
-
+        
         typealias Failure = Upstream.Failure
-
+        
         private var status = SubscriptionStatus.awaitingSubscription
-
+        
         private let downstream: Downstream
-
+        
         private var predicate: ((Input) -> Bool)?
-
+        
         private var dropping = true
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         fileprivate init(downstream: Downstream, predicate: @escaping (Input) -> Bool) {
             self.downstream = downstream
             self.predicate = predicate
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = status else {
@@ -180,7 +180,7 @@ extension Publishers.DropWhile {
             lock.unlock()
             downstream.receive(subscription: self)
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = status, let shouldDrop = predicate else {
@@ -189,7 +189,7 @@ extension Publishers.DropWhile {
             }
             let dropping = self.dropping
             lock.unlock()
-
+            
             if dropping {
                 if shouldDrop(input) {
                     return .max(1)
@@ -199,10 +199,10 @@ extension Publishers.DropWhile {
                     lock.unlock()
                 }
             }
-
+            
             return downstream.receive(input)
         }
-
+        
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard case .subscribed = status else {
@@ -214,7 +214,7 @@ extension Publishers.DropWhile {
             lock.unlock()
             downstream.receive(completion: completion)
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -225,7 +225,7 @@ extension Publishers.DropWhile {
             lock.unlock()
             subscription.request(demand)
         }
-
+        
         func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = status else {
@@ -237,52 +237,52 @@ extension Publishers.DropWhile {
             lock.unlock()
             subscription.cancel()
         }
-
+        
         var description: String { return "DropWhile" }
-
+        
         var customMirror: Mirror { return Mirror(self, children: EmptyCollection()) }
-
+        
         var playgroundDescription: Any { return description }
     }
 }
 
 extension Publishers.TryDropWhile {
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Upstream.Output == Downstream.Input, Downstream.Failure == Error
+    : Subscriber,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Upstream.Output == Downstream.Input, Downstream.Failure == Error
     {
         // NOTE: This class has been audited for thread safety.
-
+        
         typealias Input = Upstream.Output
-
+        
         typealias Failure = Upstream.Failure
-
+        
         private var status = SubscriptionStatus.awaitingSubscription
-
+        
         private let downstream: Downstream
-
+        
         private var predicate: ((Input) throws -> Bool)?
-
+        
         private var dropping = true
-
+        
         private var finished = false
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         fileprivate init(downstream: Downstream,
                          predicate: @escaping (Input) throws -> Bool) {
             self.downstream = downstream
             self.predicate = predicate
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = status else {
@@ -294,17 +294,17 @@ extension Publishers.TryDropWhile {
             lock.unlock()
             downstream.receive(subscription: self)
         }
-
+        
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             lock.lock()
             guard case let .subscribed(subscription) = status,
                   let shouldDrop = predicate else {
-                lock.unlock()
-                return .none
-            }
+                      lock.unlock()
+                      return .none
+                  }
             let dropping = self.dropping
             lock.unlock()
-
+            
             if dropping {
                 do {
                     if try shouldDrop(input) {
@@ -325,10 +325,10 @@ extension Publishers.TryDropWhile {
                     return .none
                 }
             }
-
+            
             return downstream.receive(input)
         }
-
+        
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard case .subscribed = status else {
@@ -339,12 +339,12 @@ extension Publishers.TryDropWhile {
             let wasFinished = finished
             finished = true
             lock.unlock()
-
+            
             if !wasFinished {
                 downstream.receive(completion: completion.eraseError())
             }
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -355,7 +355,7 @@ extension Publishers.TryDropWhile {
             lock.unlock()
             subscription.request(demand)
         }
-
+        
         func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = status else {
@@ -368,11 +368,11 @@ extension Publishers.TryDropWhile {
             lock.unlock()
             subscription.cancel()
         }
-
+        
         var description: String { return "TryDropWhile" }
-
+        
         var customMirror: Mirror { return Mirror(self, children: EmptyCollection()) }
-
+        
         var playgroundDescription: Any { return description }
     }
 }

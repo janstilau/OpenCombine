@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Replaces an empty stream with the provided element.
     ///
     /// Use `replaceEmpty(with:)` to provide a replacement element if the upstream
@@ -42,29 +42,29 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     /// A publisher that replaces an empty stream with a provided element.
     public struct ReplaceEmpty<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The element to deliver when the upstream publisher finishes
         /// without delivering any elements.
         public let output: Upstream.Output
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         public init(upstream: Upstream, output: Output) {
             self.upstream = upstream
             self.output = output
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Upstream.Failure == Downstream.Failure,
-                  Upstream.Output == Downstream.Input
+        where Upstream.Failure == Downstream.Failure,
+              Upstream.Output == Downstream.Input
         {
             let inner = Inner(downstream: subscriber, output: output)
             upstream.subscribe(inner)
@@ -73,42 +73,42 @@ extension Publishers {
 }
 
 extension Publishers.ReplaceEmpty: Equatable
-    where Upstream: Equatable, Upstream.Output: Equatable {}
+where Upstream: Equatable, Upstream.Output: Equatable {}
 
 extension Publishers.ReplaceEmpty {
-
+    
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Upstream.Failure == Downstream.Failure,
-              Upstream.Output == Downstream.Input
+    : Subscriber,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Upstream.Failure == Downstream.Failure,
+          Upstream.Output == Downstream.Input
     {
-
+        
         typealias Input = Upstream.Output
         typealias Failure = Upstream.Failure
-
+        
         private let output: Output
         private let downstream: Downstream
-
+        
         private var receivedUpstream = false
         private var lock = UnfairLock.allocate()
         private var downstreamRequested = false
         private var finishedWithoutUpstream = false
-
+        
         private var status = SubscriptionStatus.awaitingSubscription
-
+        
         fileprivate init(downstream: Downstream, output: Output) {
             self.downstream = downstream
             self.output = output
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = status else {
@@ -121,7 +121,7 @@ extension Publishers.ReplaceEmpty {
             downstream.receive(subscription: self)
             subscription.request(.unlimited)
         }
-
+        
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = status else {
@@ -132,7 +132,7 @@ extension Publishers.ReplaceEmpty {
             lock.unlock()
             return downstream.receive(input)
         }
-
+        
         func receive(completion: Subscribers.Completion<Upstream.Failure>) {
             lock.lock()
             guard case .subscribed = status else {
@@ -160,7 +160,7 @@ extension Publishers.ReplaceEmpty {
                 downstream.receive(completion: completion)
             }
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -178,7 +178,7 @@ extension Publishers.ReplaceEmpty {
             lock.unlock()
             subscription.request(demand)
         }
-
+        
         func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = status else {
@@ -189,13 +189,13 @@ extension Publishers.ReplaceEmpty {
             lock.unlock()
             subscription.cancel()
         }
-
+        
         var description: String { return "ReplaceEmpty" }
-
+        
         var customMirror: Mirror {
             return Mirror(self, children: EmptyCollection())
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }

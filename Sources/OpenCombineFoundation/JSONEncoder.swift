@@ -9,9 +9,9 @@ import Foundation
 import OpenCombine
 
 extension JSONEncoder: TopLevelEncoder {
-  public typealias Output = Data
+    public typealias Output = Data
 }
 
 extension JSONDecoder: TopLevelDecoder {
-  public typealias Input = Data
+    public typealias Input = Data
 }

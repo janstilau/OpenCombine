@@ -17,7 +17,7 @@ import _Concurrency
 
 #if canImport(_Concurrency) && compiler(>=5.5) || compiler(>=5.5.1)
 extension Publisher where Failure == Never {
-
+    
     @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
     public var values: AsyncPublisher<Self> {
         return .init(self)
@@ -26,17 +26,17 @@ extension Publisher where Failure == Never {
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public struct AsyncPublisher<Upstream: Publisher>: AsyncSequence
-    where Upstream.Failure == Never
+where Upstream.Failure == Never
 {
-
+    
     public typealias Element = Upstream.Output
-
+    
     public struct Iterator: AsyncIteratorProtocol {
-
+        
         public typealias Element = Upstream.Output
-
+        
         fileprivate let inner: Inner
-
+        
         public mutating func next() async -> Element? {
             return await withTaskCancellationHandler(
                 handler: { [inner] in inner.cancel() },
@@ -44,15 +44,15 @@ public struct AsyncPublisher<Upstream: Publisher>: AsyncSequence
             )
         }
     }
-
+    
     public typealias AsyncIterator = Iterator
-
+    
     private let publisher: Upstream
-
+    
     public init(_ publisher: Upstream) {
         self.publisher = publisher
     }
-
+    
     public func makeAsyncIterator() -> Iterator {
         let inner = Iterator.Inner()
         publisher.subscribe(inner)
@@ -62,26 +62,26 @@ public struct AsyncPublisher<Upstream: Publisher>: AsyncSequence
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 extension AsyncPublisher.Iterator {
-
+    
     fileprivate final class Inner: Subscriber, Cancellable {
         typealias Input = Upstream.Output
         typealias Failure = Upstream.Failure
-
+        
         private enum State {
             case awaitingSubscription
             case subscribed(Subscription)
             case terminal
         }
-
+        
         private let lock = UnfairLock.allocate()
         private var pending: [UnsafeContinuation<Input?, Never>] = []
         private var state = State.awaitingSubscription
         private var pendingDemand = Subscribers.Demand.none
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = state else {
@@ -97,7 +97,7 @@ extension AsyncPublisher.Iterator {
                 subscription.request(pendingDemand)
             }
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = state else {
@@ -112,7 +112,7 @@ extension AsyncPublisher.Iterator {
             continuation.resume(returning: input)
             return .none
         }
-
+        
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             state = .terminal
@@ -120,7 +120,7 @@ extension AsyncPublisher.Iterator {
             lock.unlock()
             pending.resumeAllWithNil()
         }
-
+        
         func cancel() {
             lock.lock()
             let pending = self.pending.take()
@@ -135,7 +135,7 @@ extension AsyncPublisher.Iterator {
             subscription.cancel()
             pending.resumeAllWithNil()
         }
-
+        
         fileprivate func next() async -> Input? {
             return await withUnsafeContinuation { continuation in
                 lock.lock()
@@ -157,7 +157,7 @@ extension AsyncPublisher.Iterator {
     }
 }
 extension Publisher {
-
+    
     @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
     public var values: AsyncThrowingPublisher<Self> {
         return .init(self)
@@ -167,15 +167,15 @@ extension Publisher {
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public struct AsyncThrowingPublisher<Upstream: Publisher>: AsyncSequence
 {
-
+    
     public typealias Element = Upstream.Output
-
+    
     public struct Iterator: AsyncIteratorProtocol {
-
+        
         public typealias Element = Upstream.Output
-
+        
         fileprivate let inner: Inner
-
+        
         public mutating func next() async throws -> Element? {
             return try await withTaskCancellationHandler(
                 handler: { [inner] in inner.cancel() },
@@ -183,15 +183,15 @@ public struct AsyncThrowingPublisher<Upstream: Publisher>: AsyncSequence
             )
         }
     }
-
+    
     public typealias AsyncIterator = Iterator
-
+    
     private let publisher: Upstream
-
+    
     public init(_ publisher: Upstream) {
         self.publisher = publisher
     }
-
+    
     public func makeAsyncIterator() -> Iterator {
         let inner = Iterator.Inner()
         publisher.subscribe(inner)
@@ -201,26 +201,26 @@ public struct AsyncThrowingPublisher<Upstream: Publisher>: AsyncSequence
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 extension AsyncThrowingPublisher.Iterator {
-
+    
     fileprivate final class Inner: Subscriber, Cancellable {
         typealias Input = Upstream.Output
         typealias Failure = Upstream.Failure
-
+        
         private enum State {
             case awaitingSubscription
             case subscribed(Subscription)
             case terminal(Error?)
         }
-
+        
         private let lock = UnfairLock.allocate()
         private var pending: [UnsafeContinuation<Input?, Error>] = []
         private var state = State.awaitingSubscription
         private var pendingDemand = Subscribers.Demand.none
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = state else {
@@ -236,7 +236,7 @@ extension AsyncThrowingPublisher.Iterator {
                 subscription.request(pendingDemand)
             }
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = state else {
@@ -251,7 +251,7 @@ extension AsyncThrowingPublisher.Iterator {
             continuation.resume(returning: input)
             return .none
         }
-
+        
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             switch state {
@@ -277,7 +277,7 @@ extension AsyncThrowingPublisher.Iterator {
                 pending.resumeAllWithNil()
             }
         }
-
+        
         func cancel() {
             lock.lock()
             let pending = self.pending.take()
@@ -292,7 +292,7 @@ extension AsyncThrowingPublisher.Iterator {
             subscription.cancel()
             pending.resumeAllWithNil()
         }
-
+        
         fileprivate func next() async throws -> Input? {
             return try await withUnsafeThrowingContinuation { continuation in
                 lock.lock()
@@ -321,7 +321,7 @@ extension AsyncThrowingPublisher.Iterator {
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 extension Sequence {
     fileprivate func resumeAllWithNil<Output, Failure: Error>()
-        where Element == UnsafeContinuation<Output?, Failure>
+    where Element == UnsafeContinuation<Output?, Failure>
     {
         for continuation in self {
             continuation.resume(returning: nil)

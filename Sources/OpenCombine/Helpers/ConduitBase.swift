@@ -6,21 +6,21 @@
 //
 
 internal class ConduitBase<Output, Failure: Error>: Subscription {
-
+    
     internal init() {}
-
+    
     internal func offer(_ output: Output) {
         abstractMethod()
     }
-
+    
     internal func finish(completion: Subscribers.Completion<Failure>) {
         abstractMethod()
     }
-
+    
     internal func request(_ demand: Subscribers.Demand) {
         abstractMethod()
     }
-
+    
     internal func cancel() {
         abstractMethod()
     }

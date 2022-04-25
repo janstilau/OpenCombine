@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Publishes a single Boolean value that indicates whether all received elements pass
     /// a given predicate.
     ///
@@ -42,7 +42,7 @@ extension Publisher {
     ) -> Publishers.AllSatisfy<Self> {
         return .init(upstream: self, predicate: predicate)
     }
-
+    
     /// Publishes a single Boolean value that indicates whether all received elements pass
     /// a given error-throwing predicate.
     ///
@@ -93,61 +93,61 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     /// A publisher that publishes a single Boolean value that indicates whether
     /// all received elements pass a given predicate.
     public struct AllSatisfy<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Bool
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// A closure that evaluates each received element.
         ///
         ///  Return `true` to continue, or `false` to cancel the upstream and finish.
         public let predicate: (Upstream.Output) -> Bool
-
+        
         public init(upstream: Upstream, predicate: @escaping (Upstream.Output) -> Bool) {
             self.upstream = upstream
             self.predicate = predicate
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Upstream.Failure == Downstream.Failure, Downstream.Input == Bool
+        where Upstream.Failure == Downstream.Failure, Downstream.Input == Bool
         {
             upstream.subscribe(Inner(downstream: subscriber, predicate: predicate))
         }
     }
-
+    
     /// A publisher that publishes a single Boolean value that indicates whether
     /// all received elements pass a given error-throwing predicate.
     public struct TryAllSatisfy<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Bool
-
+        
         public typealias Failure = Error
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// A closure that evaluates each received element.
         ///
         /// Return `true` to continue, or `false` to cancel the upstream and complete.
         /// The closure may throw, in which case the publisher cancels the upstream
         /// publisher and fails with the thrown error.
         public let predicate: (Upstream.Output) throws -> Bool
-
+        
         public init(upstream: Upstream,
                     predicate: @escaping (Upstream.Output) throws -> Bool) {
             self.upstream = upstream
             self.predicate = predicate
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Downstream.Failure == Error, Downstream.Input == Bool
+        where Downstream.Failure == Error, Downstream.Input == Bool
         {
             upstream.subscribe(Inner(downstream: subscriber, predicate: predicate))
         }
@@ -156,18 +156,18 @@ extension Publishers {
 
 extension Publishers.AllSatisfy {
     private final class Inner<Downstream: Subscriber>
-        : ReduceProducer<Downstream,
-                         Upstream.Output,
-                         Bool,
-                         Upstream.Failure,
-                         (Upstream.Output) -> Bool>
-        where Downstream.Input == Output, Upstream.Failure == Downstream.Failure
+    : ReduceProducer<Downstream,
+      Upstream.Output,
+      Bool,
+      Upstream.Failure,
+      (Upstream.Output) -> Bool>
+    where Downstream.Input == Output, Upstream.Failure == Downstream.Failure
     {
         fileprivate init(downstream: Downstream,
                          predicate: @escaping (Upstream.Output) -> Bool) {
             super.init(downstream: downstream, initial: true, reduce: predicate)
         }
-
+        
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {
@@ -175,28 +175,28 @@ extension Publishers.AllSatisfy {
                 result = false
                 return .finished
             }
-
+            
             return .continue
         }
-
+        
         override var description: String { return "AllSatisfy" }
     }
 }
 
 extension Publishers.TryAllSatisfy {
     private final class Inner<Downstream: Subscriber>
-        : ReduceProducer<Downstream,
-                         Upstream.Output,
-                         Bool,
-                         Upstream.Failure,
-                         (Upstream.Output) throws -> Bool>
-        where Downstream.Input == Output, Downstream.Failure == Error
+    : ReduceProducer<Downstream,
+      Upstream.Output,
+      Bool,
+      Upstream.Failure,
+      (Upstream.Output) throws -> Bool>
+    where Downstream.Input == Output, Downstream.Failure == Error
     {
         fileprivate init(downstream: Downstream,
                          predicate: @escaping (Upstream.Output) throws -> Bool) {
             super.init(downstream: downstream, initial: true, reduce: predicate)
         }
-
+        
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {
@@ -208,10 +208,10 @@ extension Publishers.TryAllSatisfy {
             } catch {
                 return .failure(error)
             }
-
+            
             return .continue
         }
-
+        
         override var description: String { return "TryAllSatisfy" }
     }
 }

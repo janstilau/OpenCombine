@@ -10,7 +10,7 @@ internal protocol HasDefaultValue {
 }
 
 extension HasDefaultValue {
-
+    
     @inline(__always)
     internal mutating func take() -> Self {
         let taken = self

@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Prefixes a publisher’s output with the specified values.
     ///
     /// Use `prepend(_:)` when you need to prepend specific elements before the output
@@ -30,7 +30,7 @@ extension Publisher {
     ) -> Publishers.Concatenate<Publishers.Sequence<[Output], Failure>, Self> {
         return prepend(elements)
     }
-
+    
     /// Prefixes a publisher’s output with the specified sequence.
     ///
     /// Use `prepend(_:)` to publish values from two publishers when you need to prepend
@@ -54,11 +54,11 @@ extension Publisher {
     public func prepend<Elements: Sequence>(
         _ elements: Elements
     ) -> Publishers.Concatenate<Publishers.Sequence<Elements, Failure>, Self>
-        where Output == Elements.Element
+    where Output == Elements.Element
     {
         return prepend(.init(sequence: elements))
     }
-
+    
     /// Prefixes the output of this publisher with the elements emitted by the given
     /// publisher.
     ///
@@ -82,11 +82,11 @@ extension Publisher {
     public func prepend<Prefix: Publisher>(
         _ publisher: Prefix
     ) -> Publishers.Concatenate<Prefix, Self>
-        where Failure == Prefix.Failure, Output == Prefix.Output
+    where Failure == Prefix.Failure, Output == Prefix.Output
     {
         return .init(prefix: publisher, suffix: self)
     }
-
+    
     /// Appends a publisher’s output with the specified elements.
     ///
     /// Use `append(_:)` when you need to prepend specific elements after the output of
@@ -111,7 +111,7 @@ extension Publisher {
     ) -> Publishers.Concatenate<Self, Publishers.Sequence<[Output], Failure>> {
         return append(elements)
     }
-
+    
     /// Appends a publisher’s output with the specified sequence.
     ///
     /// Use `append(_:)` to append a sequence to the end of
@@ -135,11 +135,11 @@ extension Publisher {
     public func append<Elements: Sequence>(
         _ elements: Elements
     ) -> Publishers.Concatenate<Self, Publishers.Sequence<Elements, Failure>>
-        where Output == Elements.Element
+    where Output == Elements.Element
     {
         return append(.init(sequence: elements))
     }
-
+    
     /// Appends the output of this publisher with the elements emitted by the given
     /// publisher.
     ///
@@ -167,37 +167,37 @@ extension Publisher {
     public func append<Suffix: Publisher>(
         _ publisher: Suffix
     ) -> Publishers.Concatenate<Self, Suffix>
-        where Suffix.Failure == Failure, Suffix.Output == Output
+    where Suffix.Failure == Failure, Suffix.Output == Output
     {
         return .init(prefix: self, suffix: publisher)
     }
 }
 
 extension Publishers {
-
+    
     /// A publisher that emits all of one publisher’s elements before those from another
     /// publisher.
     public struct Concatenate<Prefix: Publisher, Suffix: Publisher>: Publisher
-        where Prefix.Failure == Suffix.Failure, Prefix.Output == Suffix.Output
+    where Prefix.Failure == Suffix.Failure, Prefix.Output == Suffix.Output
     {
         public typealias Output = Suffix.Output
-
+        
         public typealias Failure = Suffix.Failure
-
+        
         /// The publisher to republish, in its entirety, before republishing elements from
         /// `suffix`.
         public let prefix: Prefix
-
+        
         /// The publisher to republish only after `prefix` finishes.
         public let suffix: Suffix
-
+        
         public init(prefix: Prefix, suffix: Suffix) {
             self.prefix = prefix
             self.suffix = suffix
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Suffix.Failure == Downstream.Failure, Suffix.Output == Downstream.Input
+        where Suffix.Failure == Downstream.Failure, Suffix.Output == Downstream.Input
         {
             let inner = Inner(downstream: subscriber, suffix: suffix)
             prefix.subscribe(Inner<Downstream>.PrefixSubscriber(inner: inner))
@@ -209,45 +209,45 @@ extension Publishers.Concatenate: Equatable where Prefix: Equatable, Suffix: Equ
 
 extension Publishers.Concatenate {
     fileprivate final class Inner<Downstream: Subscriber>
-        : Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Suffix.Output, Downstream.Failure == Suffix.Failure
+    : Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Suffix.Output, Downstream.Failure == Suffix.Failure
     {
         typealias Input = Suffix.Output
-
+        
         typealias Failure = Suffix.Failure
-
+        
         fileprivate struct PrefixSubscriber {
             let inner: Inner<Downstream>
         }
-
+        
         fileprivate struct SuffixSubscriber {
             let inner: Inner<Downstream>
         }
-
+        
         private let downstream: Downstream
-
+        
         private var prefixState = SubscriptionStatus.awaitingSubscription
-
+        
         private var suffixState = SubscriptionStatus.awaitingSubscription
-
+        
         private var suffix: Suffix?
-
+        
         private var pending = Subscribers.Demand.none
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         fileprivate init(downstream: Downstream, suffix: Suffix) {
             self.downstream = downstream
             self.suffix = suffix
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             pending += demand
@@ -259,37 +259,37 @@ extension Publishers.Concatenate {
             lock.unlock()
             subscription.request(demand)
         }
-
+        
         func cancel() {
             lock.lock()
             let upstreamSubscription =
-                prefixState.subscription ?? suffixState.subscription
+            prefixState.subscription ?? suffixState.subscription
             prefixState = .terminal
             suffixState = .terminal
-
+            
             // We MUST release the object AFTER unlocking the lock,
             // since releasing it may trigger execution of arbitrary code,
             // for example, if the object has a deinit.
             // When the object deallocates, its deinit is called, and holding
             // the lock at that moment can lead to deadlocks.
-
+            
             withExtendedLifetime(suffix) {
                 suffix = nil
                 lock.unlock()
                 upstreamSubscription?.cancel()
             }
         }
-
+        
         var description: String { return "Concatenate" }
-
+        
         var customMirror: Mirror {
             return Mirror(self, children: EmptyCollection())
         }
-
+        
         var playgroundDescription: Any { return description }
-
+        
         // MARK: - Private
-
+        
         private func prefixReceive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = prefixState else {
@@ -301,7 +301,7 @@ extension Publishers.Concatenate {
             lock.unlock()
             downstream.receive(subscription: self)
         }
-
+        
         private func prefixReceive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = prefixState, pending != .none else {
@@ -319,7 +319,7 @@ extension Publishers.Concatenate {
             lock.unlock()
             return newDemand
         }
-
+        
         private func prefixReceive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard case .subscribed = prefixState else {
@@ -335,7 +335,7 @@ extension Publishers.Concatenate {
                 downstream.receive(completion: completion)
             }
         }
-
+        
         private func suffixReceive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = suffixState else {
@@ -350,7 +350,7 @@ extension Publishers.Concatenate {
                 subscription.request(pending)
             }
         }
-
+        
         private func suffixReceive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = suffixState else {
@@ -360,7 +360,7 @@ extension Publishers.Concatenate {
             lock.unlock()
             return downstream.receive(input)
         }
-
+        
         private func suffixReceive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard case .subscribed = suffixState else {
@@ -378,30 +378,30 @@ extension Publishers.Concatenate {
 // MARK: - PrefixSubscriber conformances
 
 extension Publishers.Concatenate.Inner.PrefixSubscriber: Subscriber {
-
+    
     fileprivate typealias Input = Suffix.Output
-
+    
     fileprivate typealias Failure = Suffix.Failure
-
+    
     fileprivate var combineIdentifier: CombineIdentifier {
         return inner.combineIdentifier
     }
-
+    
     fileprivate func receive(subscription: Subscription) {
         inner.prefixReceive(subscription: subscription)
     }
-
+    
     fileprivate func receive(_ input: Input) -> Subscribers.Demand {
         return inner.prefixReceive(input)
     }
-
+    
     fileprivate func receive(completion: Subscribers.Completion<Failure>) {
         inner.prefixReceive(completion: completion)
     }
 }
 
 extension Publishers.Concatenate.Inner.PrefixSubscriber
-    : CustomStringConvertible
+: CustomStringConvertible
 {
     fileprivate var description: String {
         return inner.description
@@ -409,7 +409,7 @@ extension Publishers.Concatenate.Inner.PrefixSubscriber
 }
 
 extension Publishers.Concatenate.Inner.PrefixSubscriber
-    : CustomReflectable
+: CustomReflectable
 {
     fileprivate var customMirror: Mirror {
         return inner.customMirror
@@ -417,7 +417,7 @@ extension Publishers.Concatenate.Inner.PrefixSubscriber
 }
 
 extension Publishers.Concatenate.Inner.PrefixSubscriber
-    : CustomPlaygroundDisplayConvertible
+: CustomPlaygroundDisplayConvertible
 {
     fileprivate var playgroundDescription: Any {
         return inner.playgroundDescription
@@ -427,30 +427,30 @@ extension Publishers.Concatenate.Inner.PrefixSubscriber
 // MARK: - SuffixSubscriber conformances
 
 extension Publishers.Concatenate.Inner.SuffixSubscriber: Subscriber {
-
+    
     fileprivate typealias Input = Suffix.Output
-
+    
     fileprivate typealias Failure = Suffix.Failure
-
+    
     fileprivate var combineIdentifier: CombineIdentifier {
         return inner.combineIdentifier
     }
-
+    
     fileprivate func receive(subscription: Subscription) {
         inner.suffixReceive(subscription: subscription)
     }
-
+    
     fileprivate func receive(_ input: Input) -> Subscribers.Demand {
         return inner.suffixReceive(input)
     }
-
+    
     fileprivate func receive(completion: Subscribers.Completion<Failure>) {
         inner.suffixReceive(completion: completion)
     }
 }
 
 extension Publishers.Concatenate.Inner.SuffixSubscriber
-    : CustomStringConvertible
+: CustomStringConvertible
 {
     fileprivate var description: String {
         return inner.description
@@ -458,7 +458,7 @@ extension Publishers.Concatenate.Inner.SuffixSubscriber
 }
 
 extension Publishers.Concatenate.Inner.SuffixSubscriber
-    : CustomReflectable
+: CustomReflectable
 {
     fileprivate var customMirror: Mirror {
         return inner.customMirror
@@ -466,7 +466,7 @@ extension Publishers.Concatenate.Inner.SuffixSubscriber
 }
 
 extension Publishers.Concatenate.Inner.SuffixSubscriber
-    : CustomPlaygroundDisplayConvertible
+: CustomPlaygroundDisplayConvertible
 {
     fileprivate var playgroundDescription: Any {
         return inner.playgroundDescription

@@ -21,7 +21,7 @@ extension SubscriptionStatus {
             return false
         }
     }
-
+    
     internal var subscription: Subscription? {
         switch self {
         case .awaitingSubscription, .terminal:

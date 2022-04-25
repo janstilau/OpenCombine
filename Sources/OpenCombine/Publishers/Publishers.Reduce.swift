@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Applies a closure that collects each element of a stream and publishes a final
     /// result upon completion.
     ///
@@ -41,7 +41,7 @@ extension Publisher {
                      initial: initialResult,
                      nextPartialResult: nextPartialResult)
     }
-
+    
     /// Applies an error-throwing closure that collects each element of a stream and
     /// publishes a final result upon completion.
     ///
@@ -65,7 +65,7 @@ extension Publisher {
     ///         .catch({ _ in Just(Double.nan) })
     ///         .sink { print("\($0)") }
     ///
-
+    
     /// - Parameters:
     ///   - initialResult: The value that the closure receives the first time it’s called.
     ///   - nextPartialResult: An error-throwing closure that takes
@@ -85,22 +85,22 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     /// A publisher that applies a closure to all received elements and produces
     /// an accumulated value when the upstream publisher finishes.
     public struct Reduce<Upstream: Publisher, Output>: Publisher {
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         public let upstream: Upstream
-
+        
         /// The initial value provided on the first invocation of the closure.
         public let initial: Output
-
+        
         /// A closure that takes the previously-accumulated value and the next element
         /// from the upstream publisher to produce a new value.
         public let nextPartialResult: (Output, Upstream.Output) -> Output
-
+        
         public init(upstream: Upstream,
                     initial: Output,
                     nextPartialResult: @escaping (Output, Upstream.Output) -> Output) {
@@ -108,9 +108,9 @@ extension Publishers {
             self.initial = initial
             self.nextPartialResult = nextPartialResult
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Output == Downstream.Input, Upstream.Failure == Downstream.Failure
+        where Output == Downstream.Input, Upstream.Failure == Downstream.Failure
         {
             let inner = Inner(downstream: subscriber,
                               initial: initial,
@@ -118,26 +118,26 @@ extension Publishers {
             upstream.subscribe(inner)
         }
     }
-
+    
     /// A publisher that applies an error-throwing closure to all received elements and
     /// produces an accumulated value when the upstream publisher finishes.
     public struct TryReduce<Upstream: Publisher, Output>: Publisher {
-
+        
         public typealias Failure = Error
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// The initial value provided on the first invocation of the closure.
         public let initial: Output
-
+        
         /// An error-throwing closure that takes the previously-accumulated value and
         /// the next element from the upstream to produce a new value.
         ///
         /// If this closure throws an error, the publisher fails and passes the error
         /// to its subscriber.
         public let nextPartialResult: (Output, Upstream.Output) throws -> Output
-
+        
         public init(
             upstream: Upstream,
             initial: Output,
@@ -147,9 +147,9 @@ extension Publishers {
             self.initial = initial
             self.nextPartialResult = nextPartialResult
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Output == Downstream.Input, Downstream.Failure == Error
+        where Output == Downstream.Input, Downstream.Failure == Error
         {
             let inner = Inner(downstream: subscriber,
                               initial: initial,
@@ -161,12 +161,12 @@ extension Publishers {
 
 extension Publishers.Reduce {
     private final class Inner<Downstream: Subscriber>
-        : ReduceProducer<Downstream,
-                         Upstream.Output,
-                         Output,
-                         Upstream.Failure,
-                         (Output, Upstream.Output) -> Output>
-        where Downstream.Input == Output, Upstream.Failure == Downstream.Failure
+    : ReduceProducer<Downstream,
+      Upstream.Output,
+      Output,
+      Upstream.Failure,
+      (Output, Upstream.Output) -> Output>
+    where Downstream.Input == Output, Upstream.Failure == Downstream.Failure
     {
         override func receive(
             newValue: Upstream.Output
@@ -174,19 +174,19 @@ extension Publishers.Reduce {
             result = reduce(result!, newValue)
             return .continue
         }
-
+        
         override var description: String { return "Reduce" }
     }
 }
 
 extension Publishers.TryReduce {
     private final class Inner<Downstream: Subscriber>
-        : ReduceProducer<Downstream,
-                         Upstream.Output,
-                         Output,
-                         Upstream.Failure,
-                         (Output, Upstream.Output) throws -> Output>
-        where Downstream.Input == Output, Downstream.Failure == Error
+    : ReduceProducer<Downstream,
+      Upstream.Output,
+      Output,
+      Upstream.Failure,
+      (Output, Upstream.Output) throws -> Output>
+    where Downstream.Input == Output, Downstream.Failure == Error
     {
         override func receive(
             newValue: Upstream.Output
@@ -198,7 +198,7 @@ extension Publishers.TryReduce {
                 return .failure(error)
             }
         }
-
+        
         override var description: String { return "TryReduce" }
     }
 }

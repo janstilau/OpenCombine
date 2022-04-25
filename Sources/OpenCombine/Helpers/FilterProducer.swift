@@ -20,49 +20,49 @@ internal class FilterProducer<Downstream: Subscriber,
                               Output,
                               UpstreamFailure: Error,
                               Filter>
-    : CustomStringConvertible,
-      CustomReflectable
-    where Downstream.Input == Output
+: CustomStringConvertible,
+  CustomReflectable
+where Downstream.Input == Output
 {
     // MARK: - State
-
+    
     private enum State {
         case awaitingSubscription
         case connected(Subscription)
         case completed
     }
-
+    
     internal final let filter: Filter
-
+    
     internal final let downstream: Downstream
-
+    
     private let lock = UnfairLock.allocate()
-
+    
     private var state = State.awaitingSubscription
-
+    
     internal init(downstream: Downstream, filter: Filter) {
         self.downstream = downstream
         self.filter = filter
     }
-
+    
     deinit {
         lock.deallocate()
     }
-
+    
     // MARK: - Abstract methods
-
+    
     internal func receive(
         newValue: Input
     ) -> PartialCompletion<Output?, Downstream.Failure> {
         abstractMethod()
     }
-
+    
     internal var description: String {
         abstractMethod()
     }
-
+    
     // MARK: - CustomReflectable
-
+    
     internal var customMirror: Mirror {
         let children = CollectionOfOne<Mirror.Child>(("downstream", downstream))
         return Mirror(self, children: children)
@@ -70,7 +70,7 @@ internal class FilterProducer<Downstream: Subscriber,
 }
 
 extension FilterProducer: Subscriber {
-
+    
     internal func receive(subscription: Subscription) {
         lock.lock()
         guard case .awaitingSubscription = state else {
@@ -82,7 +82,7 @@ extension FilterProducer: Subscriber {
         lock.unlock()
         downstream.receive(subscription: self)
     }
-
+    
     internal func receive(_ input: Input) -> Subscribers.Demand {
         lock.lock()
         switch state {
@@ -112,10 +112,10 @@ extension FilterProducer: Subscriber {
                 downstream.receive(completion: .failure(error))
             }
         }
-
+        
         return .none
     }
-
+    
     internal func receive(completion: Subscribers.Completion<UpstreamFailure>) {
         lock.lock()
         switch state {
@@ -139,7 +139,7 @@ extension FilterProducer: Subscriber {
 }
 
 extension FilterProducer: Subscription {
-
+    
     internal func request(_ demand: Subscribers.Demand) {
         demand.assertNonZero()
         lock.lock()
@@ -155,7 +155,7 @@ extension FilterProducer: Subscription {
             subscription.request(demand)
         }
     }
-
+    
     internal func cancel() {
         lock.lock()
         guard case let .connected(subscription) = state else {

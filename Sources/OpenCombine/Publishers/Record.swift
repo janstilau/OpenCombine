@@ -8,10 +8,10 @@
 /// A publisher that allows for recording a series of inputs and a completion for later
 /// playback to each subscriber.
 public struct Record<Output, Failure: Error>: Publisher {
-
+    
     /// The recorded output and completion.
     public let recording: Recording
-
+    
     /// Creates a publisher to interactively record a series of outputs and a completion.
     ///
     /// - Parameter record: A recording instance that can be retrieved after completion
@@ -21,7 +21,7 @@ public struct Record<Output, Failure: Error>: Publisher {
         record(&recording)
         self.init(recording: recording)
     }
-
+    
     /// Creates a record publisher from an existing recording.
     ///
     /// - Parameter recording: A previously-recorded recording of published elements
@@ -29,7 +29,7 @@ public struct Record<Output, Failure: Error>: Publisher {
     public init(recording: Recording) {
         self.recording = recording
     }
-
+    
     /// Creates a record publisher to publish the provided elements, followed by
     /// the provided completion value.
     ///
@@ -39,9 +39,9 @@ public struct Record<Output, Failure: Error>: Publisher {
     public init(output: [Output], completion: Subscribers.Completion<Failure>) {
         self.init(recording: Recording(output: output, completion: completion))
     }
-
+    
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
-        where Output == Downstream.Input, Failure == Downstream.Failure
+    where Output == Downstream.Input, Failure == Downstream.Failure
     {
         if recording.output.isEmpty {
             subscriber.receive(subscription: Subscriptions.empty)
@@ -53,32 +53,32 @@ public struct Record<Output, Failure: Error>: Publisher {
             subscriber.receive(subscription: inner)
         }
     }
-
+    
     /// A recorded sequence of outputs, followed by a completion value.
     public struct Recording {
-
+        
         public typealias Input = Output
-
+        
         private enum State {
             case input
             case complete
         }
-
+        
         private var state: State
-
+        
         /// The output which will be sent to a `Subscriber`.
         public private(set) var output: [Output]
-
+        
         /// The completion which will be sent to a `Subscriber`.
         public private(set) var completion: Subscribers.Completion<Failure>
-
+        
         /// Set up a recording in a state ready to receive output.
         public init() {
             state = .input
             output = []
             completion = .finished
         }
-
+        
         /// Set up a complete recording with the specified output and completion.
         public init(output: [Output],
                     completion: Subscribers.Completion<Failure> = .finished) {
@@ -86,7 +86,7 @@ public struct Record<Output, Failure: Error>: Publisher {
             self.output = output
             self.completion = completion
         }
-
+        
         /// Add an output to the recording.
         ///
         /// A `fatalError` will be raised if output is added after adding completion.
@@ -95,7 +95,7 @@ public struct Record<Output, Failure: Error>: Publisher {
                          "Receiving values after completion is not allowed")
             output.append(input)
         }
-
+        
         /// Add a completion to the recording.
         ///
         /// A `fatalError` will be raised if more than one completion is added.
@@ -111,12 +111,12 @@ public struct Record<Output, Failure: Error>: Publisher {
 extension Record: Codable where Output: Codable, Failure: Codable {}
 
 extension Record.Recording: Codable where Output: Codable, Failure: Codable {
-
+    
     private enum CodingKeys: String, CodingKey {
         case output = "output"
         case completion = "completion"
     }
-
+    
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let output = try container.decode([Output].self, forKey: .output)
@@ -124,11 +124,11 @@ extension Record.Recording: Codable where Output: Codable, Failure: Codable {
                                               forKey: .completion)
         self.init(output: output, completion: completion)
     }
-
+    
     public func encode(into encoder: Encoder) throws {
         try encode(to: encoder)
     }
-
+    
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(output, forKey: .output)
@@ -137,18 +137,18 @@ extension Record.Recording: Codable where Output: Codable, Failure: Codable {
 }
 
 extension Record {
-
+    
     // This class is almost the same as Publishers.Sequence.Inner
     // despite some small details.
     private final class Inner<Downstream: Subscriber>
-        : Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
+    : Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
     where Downstream.Input == Output, Downstream.Failure == Failure
     {
         // NOTE: This class has been audited for thread-safety
-
+        
         private var sequence: [Output]?
         private let completion: Subscribers.Completion<Failure>
         private var downstream: Downstream?
@@ -157,7 +157,7 @@ extension Record {
         private var pendingDemand = Subscribers.Demand.none
         private var recursion = false
         private var lock = UnfairLock.allocate()
-
+        
         fileprivate init(downstream: Downstream,
                          sequence: [Output],
                          completion: Subscribers.Completion<Failure>) {
@@ -167,17 +167,17 @@ extension Record {
             self.iterator = sequence.makeIterator()
             next = iterator.next()
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         var description: String {
             lock.lock()
             defer { lock.unlock() }
             return sequence.map { $0.description } ?? "Cancelled Events"
         }
-
+        
         var customMirror: Mirror {
             lock.lock()
             defer { lock.unlock() }
@@ -187,9 +187,9 @@ extension Record {
             ]
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
-
+        
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard downstream != nil else {
@@ -201,7 +201,7 @@ extension Record {
                 lock.unlock()
                 return
             }
-
+            
             while let downstream = self.downstream, pendingDemand > 0 {
                 if let current = self.next {
                     pendingDemand -= 1
@@ -214,7 +214,7 @@ extension Record {
                     pendingDemand += additionalDemand
                     self.next = next
                 }
-
+                
                 if next == nil {
                     self.downstream = nil
                     self.sequence = nil
@@ -223,10 +223,10 @@ extension Record {
                     return
                 }
             }
-
+            
             lock.unlock()
         }
-
+        
         func cancel() {
             lock.lock()
             downstream = nil

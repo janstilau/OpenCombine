@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Performs the specified closures when publisher events occur.
     ///
     /// Use `handleEvents` when you want to examine elements as they progress through
@@ -68,37 +68,37 @@ extension Publisher {
 }
 
 extension Publishers {
-
+    
     /// A publisher that performs the specified closures when publisher events occur.
     public struct HandleEvents<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
-
+        
         /// A closure that executes when the publisher receives the subscription from
         /// the upstream publisher.
         public var receiveSubscription: ((Subscription) -> Void)?
-
+        
         ///  A closure that executes when the publisher receives a value from the upstream
         ///  publisher.
         public var receiveOutput: ((Upstream.Output) -> Void)?
-
+        
         /// A closure that executes when the publisher receives the completion from
         /// the upstream publisher.
         public var receiveCompletion:
-            ((Subscribers.Completion<Upstream.Failure>) -> Void)?
-
+        ((Subscribers.Completion<Upstream.Failure>) -> Void)?
+        
         ///  A closure that executes when the downstream receiver cancels publishing.
         public var receiveCancel: (() -> Void)?
-
+        
         /// A closure that executes when the publisher receives a request for more
         /// elements.
         public var receiveRequest: ((Subscribers.Demand) -> Void)?
-
+        
         public init(
             upstream: Upstream,
             receiveSubscription: ((Subscription) -> Void)? = nil,
@@ -114,10 +114,10 @@ extension Publishers {
             self.receiveCancel = receiveCancel
             self.receiveRequest = receiveRequest
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Upstream.Failure == Downstream.Failure,
-                  Upstream.Output == Downstream.Input
+        where Upstream.Failure == Downstream.Failure,
+              Upstream.Output == Downstream.Input
         {
             let inner = Inner(self, downstream: subscriber)
             upstream.subscribe(inner)
@@ -127,26 +127,26 @@ extension Publishers {
 
 extension Publishers.HandleEvents {
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
+    : Subscriber,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
     {
         typealias Input = Upstream.Output
         typealias Failure = Upstream.Failure
-
+        
         private var status = SubscriptionStatus.awaitingSubscription
         private let lock = UnfairLock.allocate()
         public var receiveSubscription: ((Subscription) -> Void)?
         public var receiveOutput: ((Upstream.Output) -> Void)?
         public var receiveCompletion:
-            ((Subscribers.Completion<Upstream.Failure>) -> Void)?
+        ((Subscribers.Completion<Upstream.Failure>) -> Void)?
         public var receiveCancel: (() -> Void)?
         public var receiveRequest: ((Subscribers.Demand) -> Void)?
         private let downstream: Downstream
-
+        
         init(_ events: Publishers.HandleEvents<Upstream>, downstream: Downstream) {
             self.receiveSubscription = events.receiveSubscription
             self.receiveOutput = events.receiveOutput
@@ -155,11 +155,11 @@ extension Publishers.HandleEvents {
             self.receiveRequest = events.receiveRequest
             self.downstream = downstream
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             if let receiveSubscription = self.receiveSubscription {
@@ -176,7 +176,7 @@ extension Publishers.HandleEvents {
             lock.unlock()
             downstream.receive(subscription: self)
         }
-
+        
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             if let receiveOutput = self.receiveOutput {
@@ -198,7 +198,7 @@ extension Publishers.HandleEvents {
             }
             return newDemand
         }
-
+        
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             if let receiveCompletion = self.receiveCompletion {
@@ -210,7 +210,7 @@ extension Publishers.HandleEvents {
             lock.unlock()
             downstream.receive(completion: completion)
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             if let receiveRequest = self.receiveRequest {
@@ -225,7 +225,7 @@ extension Publishers.HandleEvents {
             lock.unlock()
             subscription.request(demand)
         }
-
+        
         func cancel() {
             lock.lock()
             if let receiveCancel = self.receiveCancel {
@@ -241,13 +241,13 @@ extension Publishers.HandleEvents {
             lock.unlock()
             subscription.cancel()
         }
-
+        
         var description: String { return "HandleEvents" }
-
+        
         var customMirror: Mirror { return Mirror(self, children: EmptyCollection()) }
-
+        
         var playgroundDescription: Any { return description }
-
+        
         private func lockedTerminate() {
             receiveSubscription = nil
             receiveOutput       = nil

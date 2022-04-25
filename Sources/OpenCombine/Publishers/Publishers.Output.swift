@@ -6,7 +6,7 @@
 //
 
 extension Publisher {
-
+    
     /// Republishes elements up to the specified maximum count.
     ///
     /// Use `prefix(_:)` to limit the number of elements republished to the downstream
@@ -31,7 +31,7 @@ extension Publisher {
 }
 
 extension Publisher {
-
+    
     /// Publishes a specific element, indicated by its index in the sequence of published
     /// elements.
     ///
@@ -55,7 +55,7 @@ extension Publisher {
     public func output(at index: Int) -> Publishers.Output<Self> {
         return output(in: index...index)
     }
-
+    
     /// Publishes elements specified by their range in the sequence of published elements.
     ///
     /// Use `output(in:)` to republish a range indices you specify in the published
@@ -76,28 +76,28 @@ extension Publisher {
     /// - Parameter range: A range that indicates which elements to publish.
     /// - Returns: A publisher that publishes elements specified by a range.
     public func output<Range: RangeExpression>(in range: Range) -> Publishers.Output<Self>
-        where Range.Bound == Int
+    where Range.Bound == Int
     {
         return .init(upstream: self, range: range.relative(to: 0 ..< .max))
     }
 }
 
 extension Publishers {
-
+    
     /// A publisher that publishes elements specified by a range in the sequence of
     /// published elements.
     public struct Output<Upstream: Publisher>: Publisher {
-
+        
         public typealias Output = Upstream.Output
-
+        
         public typealias Failure = Upstream.Failure
-
+        
         /// The publisher that this publisher receives elements from.
         public let upstream: Upstream
-
+        
         /// The range of elements to publish.
         public let range: CountableRange<Int>
-
+        
         /// Creates a publisher that publishes elements specified by a range.
         ///
         /// - Parameters:
@@ -109,10 +109,10 @@ extension Publishers {
             self.upstream = upstream
             self.range = range
         }
-
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Upstream.Failure == Downstream.Failure,
-                  Upstream.Output == Downstream.Input
+        where Upstream.Failure == Downstream.Failure,
+              Upstream.Output == Downstream.Input
         {
             upstream.subscribe(Inner(downstream: subscriber, range: range))
         }
@@ -123,39 +123,39 @@ extension Publishers.Output: Equatable where Upstream: Equatable {}
 
 extension Publishers.Output {
     private final class Inner<Downstream: Subscriber>
-        : Subscriber,
-          Subscription,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
+    : Subscriber,
+      Subscription,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
     {
         // NOTE: This class has been audited for thread safety
-
+        
         typealias Input = Upstream.Output
-
+        
         typealias Failure = Upstream.Failure
-
+        
         private let downstream: Downstream
-
+        
         private var status = SubscriptionStatus.awaitingSubscription
-
+        
         private var remainingUntilStart: Int
-
+        
         private var remainingCount: Int
-
+        
         private let lock = UnfairLock.allocate()
-
+        
         fileprivate init(downstream: Downstream, range: CountableRange<Int>) {
             self.downstream = downstream
             self.remainingUntilStart = range.lowerBound
             self.remainingCount = range.count
         }
-
+        
         deinit {
             lock.deallocate()
         }
-
+        
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = status else {
@@ -167,13 +167,13 @@ extension Publishers.Output {
             lock.unlock()
             downstream.receive(subscription: self)
         }
-
+        
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             if remainingUntilStart > 0 {
                 remainingUntilStart -= 1
                 return .max(1)
             }
-
+            
             let newDemand: Subscribers.Demand
             if remainingCount > 0 {
                 remainingCount -= 1
@@ -184,7 +184,7 @@ extension Publishers.Output {
             }
             return newDemand
         }
-
+        
         func receive(completion: Subscribers.Completion<Upstream.Failure>) {
             lock.lock()
             guard case .subscribed = status else {
@@ -195,7 +195,7 @@ extension Publishers.Output {
             lock.unlock()
             downstream.receive(completion: completion)
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = status else {
@@ -205,7 +205,7 @@ extension Publishers.Output {
             lock.unlock()
             subscription.request(demand)
         }
-
+        
         func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = status else {
@@ -216,15 +216,15 @@ extension Publishers.Output {
             lock.unlock()
             subscription.cancel()
         }
-
+        
         var description: String { return "Output" }
-
+        
         var customMirror: Mirror { return Mirror(self, children: EmptyCollection()) }
-
+        
         var playgroundDescription: Any { return description }
-
+        
         // MARK: - Private
-
+        
         private func cancelUpstreamAndFinish() {
             assert(remainingCount == 0)
             lock.lock()
