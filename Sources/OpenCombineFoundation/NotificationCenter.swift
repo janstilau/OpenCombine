@@ -141,7 +141,8 @@ extension Notification {
       CustomStringConvertible,
       CustomReflectable,
       CustomPlaygroundDisplayConvertible
-    where Downstream.Input == Notification, Downstream.Failure == Never
+    where Downstream.Input == Notification,
+            Downstream.Failure == Never
     {
         private let lock = UnfairLock.allocate()
         
@@ -164,6 +165,7 @@ extension Notification {
             self.center = center
             self.name = name
             self.object = object
+            // 这里, 对 downstream 进行了强引用.
             self.observation = center
                 .addObserver(forName: name, object: object, queue: nil) { [weak self] in
                     self?.didReceiveNotification($0, downstream: downstream)
@@ -201,11 +203,11 @@ extension Notification {
         func cancel() {
             lock.lock()
             guard let center = self.center.take(),
-                  let observation = self.observation.take()
-            else {
+                  let observation = self.observation.take() else {
                 lock.unlock()
                 return
             }
+            
             self.object = nil
             lock.unlock()
             center.removeObserver(observation)

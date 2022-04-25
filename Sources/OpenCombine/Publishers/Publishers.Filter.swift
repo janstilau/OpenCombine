@@ -179,6 +179,7 @@ extension Publishers {
 }
 
 extension Publishers.Filter {
+    
     private struct Inner<Downstream: Subscriber>
     : Subscriber,
       CustomStringConvertible,
