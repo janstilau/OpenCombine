@@ -15,28 +15,28 @@
 /// A `PassthroughSubject` drops values if there are no subscribers, or its current demand
 /// is zero.
 public final class PassthroughSubject<Output, Failure: Error>: Subject {
-
+    
     private let lock = UnfairLock.allocate()
-
+    
     private var active = true
-
+    
     private var completion: Subscribers.Completion<Failure>?
-
+    
     private var downstreams = ConduitList<Output, Failure>.empty
-
+    
     internal var upstreamSubscriptions: [Subscription] = []
-
+    
     internal var hasAnyDownstreamDemand = false
-
+    
     public init() {}
-
+    
     deinit {
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
         lock.deallocate()
     }
-
+    
     public func send(subscription: Subscription) {
         lock.lock()
         upstreamSubscriptions.append(subscription)
@@ -46,9 +46,9 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
             subscription.request(.unlimited)
         }
     }
-
+    
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
-        where Output == Downstream.Input, Failure == Downstream.Failure
+    where Output == Downstream.Input, Failure == Downstream.Failure
     {
         lock.lock()
         if active {
@@ -63,7 +63,7 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
             subscriber.receive(completion: completion)
         }
     }
-
+    
     public func send(_ input: Output) {
         lock.lock()
         guard active else {
@@ -76,7 +76,7 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
             conduit.offer(input)
         }
     }
-
+    
     public func send(completion: Subscribers.Completion<Failure>) {
         lock.lock()
         guard active else {
@@ -91,7 +91,7 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
             conduit.finish(completion: completion)
         }
     }
-
+    
     private func acknowledgeDownstreamDemand() {
         lock.lock()
         if hasAnyDownstreamDemand {
@@ -105,7 +105,7 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
             subscription.request(.unlimited)
         }
     }
-
+    
     private func disassociate(_ conduit: ConduitBase<Output, Failure>) {
         lock.lock()
         guard active else {
@@ -118,36 +118,36 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
 }
 
 extension PassthroughSubject {
-
+    
     private final class Conduit<Downstream: Subscriber>
-        : ConduitBase<Output, Failure>,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Output, Downstream.Failure == Failure
+    : ConduitBase<Output, Failure>,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Output, Downstream.Failure == Failure
     {
-
+        
         fileprivate var parent: PassthroughSubject?
-
+        
         fileprivate var downstream: Downstream?
-
+        
         fileprivate var demand = Subscribers.Demand.none
-
+        
         private var lock = UnfairLock.allocate()
-
+        
         private var downstreamLock = UnfairRecursiveLock.allocate()
-
+        
         fileprivate init(parent: PassthroughSubject,
                          downstream: Downstream) {
             self.parent = parent
             self.downstream = downstream
         }
-
+        
         deinit {
             lock.deallocate()
             downstreamLock.deallocate()
         }
-
+        
         override func offer(_ output: Output) {
             lock.lock()
             guard demand > 0, let downstream = self.downstream else {
@@ -164,7 +164,7 @@ extension PassthroughSubject {
             demand += newDemand
             lock.unlock()
         }
-
+        
         override func finish(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard let downstream = self.downstream.take() else {
@@ -178,7 +178,7 @@ extension PassthroughSubject {
             downstream.receive(completion: completion)
             downstreamLock.unlock()
         }
-
+        
         override func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -191,7 +191,7 @@ extension PassthroughSubject {
             lock.unlock()
             parent?.acknowledgeDownstreamDemand()
         }
-
+        
         override func cancel() {
             lock.lock()
             if downstream.take() == nil {
@@ -202,9 +202,9 @@ extension PassthroughSubject {
             lock.unlock()
             parent?.disassociate(self)
         }
-
+        
         var description: String { return "PassthroughSubject" }
-
+        
         var customMirror: Mirror {
             lock.lock()
             defer { lock.unlock() }
@@ -216,7 +216,7 @@ extension PassthroughSubject {
             ]
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }
