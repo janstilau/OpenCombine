@@ -6,21 +6,21 @@
 //
 
 internal final class PublishedSubject<Output>: Subject {
-
+    
     internal typealias Failure = Never
-
+    
     private let lock = UnfairLock.allocate()
-
+    
     private var downstreams = ConduitList<Output, Failure>.empty
-
+    
     private var currentValue: Output
-
+    
     private var upstreamSubscriptions: [Subscription] = []
-
+    
     private var hasAnyDownstreamDemand = false
-
+    
     private var changePublisher: ObservableObjectPublisher?
-
+    
     internal var value: Output {
         get {
             lock.lock()
@@ -31,7 +31,7 @@ internal final class PublishedSubject<Output>: Subject {
             send(newValue)
         }
     }
-
+    
     internal var objectWillChange: ObservableObjectPublisher? {
         get {
             lock.lock()
@@ -44,27 +44,27 @@ internal final class PublishedSubject<Output>: Subject {
             changePublisher = newValue
         }
     }
-
+    
     internal init(_ value: Output) {
         self.currentValue = value
     }
-
+    
     deinit {
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
         lock.deallocate()
     }
-
+    
     internal func send(subscription: Subscription) {
         lock.lock()
         upstreamSubscriptions.append(subscription)
         lock.unlock()
         subscription.request(.unlimited)
     }
-
+    
     internal func receive<Downstream: Subscriber>(subscriber: Downstream)
-        where Downstream.Input == Output, Downstream.Failure == Never
+    where Downstream.Input == Output, Downstream.Failure == Never
     {
         lock.lock()
         let conduit = Conduit(parent: self, downstream: subscriber)
@@ -72,7 +72,7 @@ internal final class PublishedSubject<Output>: Subject {
         lock.unlock()
         subscriber.receive(subscription: conduit)
     }
-
+    
     internal func send(_ input: Output) {
         lock.lock()
         let downstreams = self.downstreams
@@ -86,11 +86,11 @@ internal final class PublishedSubject<Output>: Subject {
         currentValue = input
         lock.unlock()
     }
-
+    
     internal func send(completion: Subscribers.Completion<Never>) {
         fatalError("unreachable")
     }
-
+    
     private func disassociate(_ conduit: ConduitBase<Output, Failure>) {
         lock.lock()
         downstreams.remove(conduit)
@@ -99,38 +99,38 @@ internal final class PublishedSubject<Output>: Subject {
 }
 
 extension PublishedSubject {
-
+    
     private final class Conduit<Downstream: Subscriber>
-        : ConduitBase<Output, Failure>,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Output, Downstream.Failure == Never
+    : ConduitBase<Output, Failure>,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Output, Downstream.Failure == Never
     {
-
+        
         fileprivate var parent: PublishedSubject?
-
+        
         fileprivate var downstream: Downstream?
-
+        
         fileprivate var demand = Subscribers.Demand.none
-
+        
         private var lock = UnfairLock.allocate()
-
+        
         private var downstreamLock = UnfairRecursiveLock.allocate()
-
+        
         private var deliveredCurrentValue = false
-
+        
         fileprivate init(parent: PublishedSubject,
                          downstream: Downstream) {
             self.parent = parent
             self.downstream = downstream
         }
-
+        
         deinit {
             lock.deallocate()
             downstreamLock.deallocate()
         }
-
+        
         override func offer(_ output: Output) {
             lock.lock()
             guard demand > 0, let downstream = self.downstream else {
@@ -149,7 +149,7 @@ extension PublishedSubject {
             demand += newDemand
             lock.unlock()
         }
-
+        
         override func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -162,9 +162,9 @@ extension PublishedSubject {
                 lock.unlock()
                 return
             }
-
+            
             // Hasn't yet delivered the current value
-
+            
             self.demand += demand
             deliveredCurrentValue = true
             if let currentValue = self.parent?.value {
@@ -179,7 +179,7 @@ extension PublishedSubject {
             }
             lock.unlock()
         }
-
+        
         override func cancel() {
             lock.lock()
             if self.downstream == nil {
@@ -191,9 +191,9 @@ extension PublishedSubject {
             lock.unlock()
             parent?.disassociate(self)
         }
-
+        
         var description: String { return "PublishedSubject" }
-
+        
         var customMirror: Mirror {
             lock.lock()
             defer { lock.unlock() }
@@ -205,7 +205,7 @@ extension PublishedSubject {
             ]
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }

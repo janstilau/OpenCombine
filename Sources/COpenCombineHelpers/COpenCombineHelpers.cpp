@@ -57,6 +57,7 @@
 
 namespace {
 
+// 使用了  std::atomic<uint64_t> 这种技术, 来确保了, 这是一个原子操作.
 std::atomic<uint64_t> next_combine_identifier;
 
 class PlatformIndependentMutex {
@@ -192,6 +193,7 @@ using StdRecursiveMutex = GenericMutex<std::recursive_mutex>;
 } // end anonymous namespace
 
 uint64_t opencombine_next_combine_identifier(void) {
+    // 使用 next_combine_identifier 进行原子 Int 值的增加减少. 
     return next_combine_identifier.fetch_add(1);
 }
 

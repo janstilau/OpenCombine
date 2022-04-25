@@ -10,6 +10,7 @@ import UIKit
 import Combine
 
 class LoginViewController: UIViewController {
+    
     @IBOutlet weak private var usernameTextField: UITextField!
     @IBOutlet weak private var passwordTextField: UITextField!
     @IBOutlet weak private var loginButton: UIButton!
@@ -18,7 +19,6 @@ class LoginViewController: UIViewController {
     private let executing = CurrentValueSubject<Bool, Never>(false)
     private var cancellableBag = Set<AnyCancellable>()
 
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         let credentials = Publishers.CombineLatest($username, $password)

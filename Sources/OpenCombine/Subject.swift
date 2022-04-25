@@ -10,6 +10,11 @@
 /// A subject is a publisher that you can use to ”inject” values into a stream, by calling
 /// its `send()` method. This can be useful for adapting existing imperative code to the
 /// Combine model.
+
+/*
+ 和 Rx 的版本, 没有太大的区别. 主要用来进行命令式到响应式的切换的.
+ 不过, 同 Rx 大量使用 Subject 作为成员变量不同的是, 在 Combine 里面, 是大量使用了 @PropertyWrapper 这种技术.
+ */
 public protocol Subject: AnyObject, Publisher {
 
     /// Sends a value to the subscriber.

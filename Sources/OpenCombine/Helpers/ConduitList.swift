@@ -5,6 +5,9 @@
 //  Created by Sergej Jaskiewicz on 25.06.2020.
 //
 
+/*
+ conduit 管道. 
+ */
 internal enum ConduitList<Output, Failure: Error> {
     case empty
     case single(ConduitBase<Output, Failure>)

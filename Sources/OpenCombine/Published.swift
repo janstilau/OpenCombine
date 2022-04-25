@@ -39,10 +39,12 @@ extension Publisher where Failure == Never {
     ///
     /// - Parameter published: A property marked with the `@Published` attribute, which
     ///   receives and republishes all elements received from the upstream publisher.
-    public func assign(to published: inout Published<Output>.Publisher) {
+    public func assign(to published: inout Published<Output>.PublishedPublisher) {
         subscribe(PublishedSubscriber(published.subject))
     }
 }
+
+
 
 /// A type that publishes a property marked with an attribute.
 ///
@@ -76,20 +78,42 @@ extension Publisher where Failure == Never {
 /// > Important: The `@Published` attribute is class constrained. Use it with properties
 /// of classes, not with non-class types like structures.
 ///
-/// ### See Also
-///
-/// - `Publisher.assign(to:)`
+/*
+ 苹果文档.
+ Publishing a property with the @Published attribute creates a publisher of this type. You access the publisher with the $ operator, as shown here:
+ class Weather {
+     @Published var temperature: Double
+     init(temperature: Double) {
+         self.temperature = temperature
+     }
+ }
+
+ let weather = Weather(temperature: 20)
+ cancellable = weather.$temperature
+     .sink() {
+         print ("Temperature now: \($0)")
+ }
+ weather.temperature = 25
+
+ // Prints:
+ // Temperature now: 20.0
+ // Temperature now: 25.0
+ When the property changes, publishing occurs in the property’s willSet block, meaning subscribers receive the new value before it’s actually set on the property. In the above example, the second time the sink executes its closure, it receives the parameter value 25. However, if the closure evaluated weather.temperature, the value returned would be 20.
+ */
+
+// 非常重要的一个 PropertyWrapper
 @available(swift, introduced: 5.1)
 @propertyWrapper
 public struct Published<Value> {
 
-    /// A publisher for properties marked with the `@Published` attribute.
-    public struct Publisher: OpenCombine.Publisher {
+    // 专门建立了一个 Publisher 的类型. 可以看到, 真正的实现, 是里面藏了一个 Subject 实现的.
+    public struct PublishedPublisher: OpenCombine.Publisher {
 
         public typealias Output = Value
 
         public typealias Failure = Never
 
+        // 实际上, 被 @Published 修饰的属性. 是需要 PublishedSubject 来进行真正实现的.
         fileprivate let subject: PublishedSubject<Value>
 
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
@@ -105,8 +129,9 @@ public struct Published<Value> {
 
     private enum Storage {
         case value(Value)
-        case publisher(Publisher)
+        case publisher(PublishedPublisher)
     }
+    
     @propertyWrapper
     private final class Box {
         var wrappedValue: Storage
@@ -132,26 +157,10 @@ public struct Published<Value> {
         }
     }
 
-    /// Creates the published instance with an initial wrapped value.
-    ///
-    /// Don't use this initializer directly. Instead, create a property with
-    /// the `@Published` attribute, as shown here:
-    ///
-    ///     @Published var lastUpdated: Date = Date()
-    ///
-    /// - Parameter wrappedValue: The publisher's initial value.
     public init(initialValue: Value) {
         self.init(wrappedValue: initialValue)
     }
 
-    /// Creates the published instance with an initial value.
-    ///
-    /// Don't use this initializer directly. Instead, create a property with
-    /// the `@Published` attribute, as shown here:
-    ///
-    ///     @Published var lastUpdated: Date = Date()
-    ///
-    /// - Parameter initialValue: The publisher's initial value.
     public init(wrappedValue: Value) {
         _storage = Box(wrappedValue: .value(wrappedValue))
     }
@@ -159,14 +168,14 @@ public struct Published<Value> {
     /// The property for which this instance exposes a publisher.
     ///
     /// The `projectedValue` is the property accessed with the `$` operator.
-    public var projectedValue: Publisher {
+    public var projectedValue: PublishedPublisher {
         mutating get {
             return getPublisher()
         }
         set { // swiftlint:disable:this unused_setter_value
             switch storage {
             case .value(let value):
-                storage = .publisher(Publisher(value))
+                storage = .publisher(PublishedPublisher(value))
             case .publisher:
                 break
             }
@@ -174,10 +183,10 @@ public struct Published<Value> {
     }
 
     /// Note: This method can mutate `storage`
-    internal func getPublisher() -> Publisher {
+    internal func getPublisher() -> PublishedPublisher {
         switch storage {
         case .value(let value):
-            let publisher = Publisher(value)
+            let publisher = PublishedPublisher(value)
             storage = .publisher(publisher)
             return publisher
         case .publisher(let publisher):
@@ -210,12 +219,11 @@ public struct Published<Value> {
         set {
             switch object[keyPath: storageKeyPath].storage {
             case .value:
-                object[keyPath: storageKeyPath].storage = .publisher(Publisher(newValue))
+                object[keyPath: storageKeyPath].storage = .publisher(PublishedPublisher(newValue))
             case .publisher(let publisher):
                 publisher.subject.value = newValue
             }
         }
-        // TODO: Benchmark and explore a possibility to use _modify
     }
 }
 #else

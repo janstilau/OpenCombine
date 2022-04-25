@@ -31,6 +31,7 @@ public struct CombineIdentifier: Hashable, CustomStringConvertible {
 
     /// Creates a unique Combine identifier.
     public init() {
+        // __nextCombineIdentifier, 就是一个全局量的修改.
         rawValue = __nextCombineIdentifier()
     }
 

@@ -1,9 +1,3 @@
-//
-//  PassthroughSubject.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 11.06.2019.
-//
 
 /// A subject that broadcasts elements to downstream subscribers.
 ///
@@ -14,6 +8,7 @@
 /// a buffer of the most recently-published element.
 /// A `PassthroughSubject` drops values if there are no subscribers, or its current demand
 /// is zero.
+
 public final class PassthroughSubject<Output, Failure: Error>: Subject {
     
     private let lock = UnfairLock.allocate()
@@ -64,6 +59,9 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
         }
     }
     
+    /*
+     没有了 Event 这个概念, 在使用 Combine 的时候, 其实是更加的清晰了. 
+     */
     public func send(_ input: Output) {
         lock.lock()
         guard active else {
