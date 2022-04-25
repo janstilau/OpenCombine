@@ -1,0 +1,28 @@
+PODS:
+  - OpenCombine (0.13.0)
+  - OpenCombineDispatch (0.13.0):
+    - OpenCombine (>= 0.12.0)
+  - OpenCombineFoundation (0.13.0):
+    - OpenCombine (>= 0.12.0)
+
+DEPENDENCIES:
+  - OpenCombine (from `../../`)
+  - OpenCombineDispatch (from `../../`)
+  - OpenCombineFoundation (from `../../`)
+
+EXTERNAL SOURCES:
+  OpenCombine:
+    :path: "../../"
+  OpenCombineDispatch:
+    :path: "../../"
+  OpenCombineFoundation:
+    :path: "../../"
+
+SPEC CHECKSUMS:
+  OpenCombine: 8d4ec617562967299e60007f32a73ce908eca14f
+  OpenCombineDispatch: 107bf14a1bf2ac7441c347e9f1a3f08bf0b2d8f3
+  OpenCombineFoundation: 15d690ae1df328cdb7182ebfc234570dedb9c469
+
+PODFILE CHECKSUM: 109d19c8111cb575c3463df90222ed30859a45b2
+
+COCOAPODS: 1.11.2

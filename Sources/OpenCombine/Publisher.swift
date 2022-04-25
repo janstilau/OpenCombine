@@ -42,15 +42,15 @@
 ///   the property gains a publisher that emits an event whenever the property’s value
 ///   changes. See the `Published` type for an example of this approach.
 public protocol Publisher {
-
+    
     /// The kind of values published by this publisher.
     associatedtype Output
-
+    
     /// The kind of errors this publisher might publish.
     ///
     /// Use `Never` if this `Publisher` does not publish errors.
     associatedtype Failure: Error
-
+    
     /// Attaches the specified subscriber to this publisher.
     ///
     /// Always call this function instead of `receive(subscriber:)`.
@@ -61,11 +61,11 @@ public protocol Publisher {
     /// - Parameter subscriber: The subscriber to attach to this publisher. After
     ///   attaching, the subscriber can start to receive values.
     func receive<Subscriber: OpenCombine.Subscriber>(subscriber: Subscriber)
-        where Failure == Subscriber.Failure, Output == Subscriber.Input
+    where Failure == Subscriber.Failure, Output == Subscriber.Input
 }
 
 extension Publisher {
-
+    
     /// Attaches the specified subscriber to this publisher.
     ///
     /// Always call this function instead of `receive(subscriber:)`.
@@ -77,12 +77,12 @@ extension Publisher {
     ///     - subscriber: The subscriber to attach to this `Publisher`. After attaching,
     ///       the subscriber can start to receive values.
     public func subscribe<Subscriber: OpenCombine.Subscriber>(_ subscriber: Subscriber)
-        where Failure == Subscriber.Failure, Output == Subscriber.Input
+    where Failure == Subscriber.Failure, Output == Subscriber.Input
     {
         if let hook = DebugHook.getGlobalHook() {
             if var marker = subscriber as? SubscriberTapMarker {
                 let anySubscriber = marker.inner
-                    as! AnySubscriber<Subscriber.Input, Subscriber.Failure>
+                as! AnySubscriber<Subscriber.Input, Subscriber.Failure>
                 hook.willReceive(publisher: self, subscriber: anySubscriber)
                 receive(subscriber: subscriber)
                 hook.didReceive(publisher: self, subscriber: anySubscriber)
@@ -96,14 +96,14 @@ extension Publisher {
             receive(subscriber: subscriber)
         }
     }
-
+    
     /// Attaches the specified subject to this publisher.
     ///
     /// - Parameter subject: The subject to attach to this publisher.
     public func subscribe<Subject: OpenCombine.Subject>(
         _ subject: Subject
     ) -> AnyCancellable
-        where Failure == Subject.Failure, Output == Subject.Output
+    where Failure == Subject.Failure, Output == Subject.Output
     {
         let subscriber = SubjectSubscriber(subject)
         self.subscribe(subscriber)
