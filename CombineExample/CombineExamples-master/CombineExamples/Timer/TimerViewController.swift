@@ -10,6 +10,7 @@ import UIKit
 import Combine
 
 class TimerViewController: UIViewController {
+    
     @IBOutlet weak var timerLabel: UILabel!
     @IBOutlet weak var tableView: UITableView! {
         didSet { tableView.dataSource = self }
@@ -37,7 +38,7 @@ class TimerViewController: UIViewController {
             }
             .store(in: &cancellableBag)
         
-       splitButtonTaps
+        splitButtonTaps
             .map { [weak self] _ -> AnyPublisher<String, Never> in
                 guard let strongSelf = self else {
                     return Empty().eraseToAnyPublisher()

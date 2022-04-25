@@ -1,9 +1,3 @@
-//
-//  Publisher.swift
-//  OpenCombine
-//
-//  Created by Sergej Jaskiewicz on 10.06.2019.
-//
 
 /// Declares that a type can transmit a sequence of values over time.
 ///

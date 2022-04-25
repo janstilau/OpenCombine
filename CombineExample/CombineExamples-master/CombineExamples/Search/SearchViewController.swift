@@ -10,6 +10,7 @@ import UIKit
 import Combine
 
 class SearchViewController: UIViewController {
+    
     @IBOutlet weak var queryTextField: UITextField!
     @IBOutlet weak var tableView: UITableView! {
         didSet { tableView.dataSource = self }
@@ -18,9 +19,12 @@ class SearchViewController: UIViewController {
     private var repos = [Repo]()
     private var cancellableBag = Set<AnyCancellable>()
     
+    @Published private var query: String = ""
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        // 在 ViewDidLoad 中, 进行信号的后续事件的绑定.
         $query
             .throttle(for: 0.5, scheduler: DispatchQueue.main, latest: true)
             .removeDuplicates()
@@ -43,8 +47,9 @@ class SearchViewController: UIViewController {
             .store(in: &cancellableBag)
     }
     
-    @Published private var query: String = ""
+    
     @IBAction func queryDidChange(_ sender: UITextField) {
+        // 在 Target-Action 里面, 进行信号的发送.
         query = sender.text ?? ""
     }
 }

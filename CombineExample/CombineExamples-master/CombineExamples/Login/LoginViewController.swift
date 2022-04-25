@@ -16,11 +16,16 @@ class LoginViewController: UIViewController {
     @IBOutlet weak private var loginButton: UIButton!
     @IBOutlet weak private var activityIndicator: UIActivityIndicatorView!
     
+    @Published private var username: String = ""
+    @Published private var password: String = ""
+    private let loginTaps = PassthroughSubject<Void, Never>()
+    
     private let executing = CurrentValueSubject<Bool, Never>(false)
     private var cancellableBag = Set<AnyCancellable>()
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        //
         let credentials = Publishers.CombineLatest($username, $password)
             .share()
         
@@ -34,6 +39,7 @@ class LoginViewController: UIViewController {
         
         loginTaps
             .withLatestFrom(credentials)
+        // HandleEvent 应该就是 do 吧.
             .handleEvents(receiveOutput: { [weak self] _ in
                 guard let strongSelf = self else { return }
                 strongSelf.executing.send(true)
@@ -62,6 +68,7 @@ class LoginViewController: UIViewController {
             })
             .store(in: &cancellableBag)
         
+        // executing 的改变, 是在上述的网络交互的过程中进行的改变.
         executing
             .map(!)
             .receive(on: DispatchQueue.main)
@@ -70,17 +77,15 @@ class LoginViewController: UIViewController {
             .store(in: &cancellableBag)
     }
 
-    @Published private var username: String = ""
     @IBAction func usernameDidChange(_ sender: UITextField) {
         username = sender.text ?? ""
     }
     
-    @Published private var password: String = ""
     @IBAction func passwordDidChange(_ sender: UITextField) {
         password = sender.text ?? ""
     }
     
-    private let loginTaps = PassthroughSubject<Void, Never>()
+    // 原有的 Target Action, 触发了 Subject 的改动. 而 Subject 下面, 进行了各种回调的注册.
     @IBAction func loginDidTap(_ sender: UIButton) {
         loginTaps.send()
     }
