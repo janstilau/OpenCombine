@@ -66,10 +66,12 @@ extension NotificationCenter {
             public func receive<Downstream: Subscriber>(subscriber: Downstream)
             where Downstream.Failure == Never, Downstream.Input == Notification
             {
+                // 这里, 生成的 Subscription 是真正的响应链条里面的节点.
                 let subscription = Notification.Subscription(center: center,
                                                              name: name,
                                                              object: object,
                                                              downstream: subscriber)
+                // 在这里, 生成了 Notification.Subscription 对象, 然后交给下游, 让下游进行 Demand 的管理.
                 subscriber.receive(subscription: subscription)
             }
         }
@@ -84,6 +86,7 @@ extension NotificationCenter {
         /// - Returns: A publisher that emits events when broadcasting notifications.
         public func publisher(for name: Notification.Name,
                               object: AnyObject? = nil) -> Publisher {
+            // 这里返回的, 就是 Publisher 对象. 绑定了类型, 就可以直接使用 init 函数了.
             return .init(center: center, name: name, object: object)
         }
     }
@@ -135,14 +138,17 @@ extension NotificationCenter.OCombine.Publisher: Equatable {
     }
 }
 
+// 大量使用了嵌套类型.
 extension Notification {
+    
+    // 真正的, 节点对象.
     fileprivate final class Subscription<Downstream: Subscriber>
     : OpenCombine.Subscription,
       CustomStringConvertible,
       CustomReflectable,
       CustomPlaygroundDisplayConvertible
     where Downstream.Input == Notification,
-            Downstream.Failure == Never
+          Downstream.Failure == Never
     {
         private let lock = UnfairLock.allocate()
         
@@ -156,7 +162,7 @@ extension Notification {
         
         private var object: AnyObject?
         
-        private var observation: AnyObject?
+        private var observation: AnyObject? // Imperative 的 Obj.
         
         fileprivate init(center: NotificationCenter,
                          name: Notification.Name,
@@ -177,6 +183,7 @@ extension Notification {
             downstreamLock.deallocate()
         }
         
+        // 每次, 收到通知之后, 其实会有 demand 的 -1 操作的.
         private func didReceiveNotification(_ notification: Notification,
                                             downstream: Downstream) {
             lock.lock()
@@ -187,15 +194,18 @@ extension Notification {
             demand -= 1
             lock.unlock()
             downstreamLock.lock()
+            // 然后, 在这里, 才会真正通知后方节点, 进行数据的接受.
             let newDemand = downstream.receive(notification)
             downstreamLock.unlock()
             lock.lock()
+            // demand 根据后续节点的返回值, 进行管理.
             demand += newDemand
             lock.unlock()
         }
         
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
+            // 在这里, 对于 demand 进行了更改.
             self.demand += demand
             lock.unlock()
         }
@@ -204,12 +214,13 @@ extension Notification {
             lock.lock()
             guard let center = self.center.take(),
                   let observation = self.observation.take() else {
-                lock.unlock()
-                return
-            }
+                      lock.unlock()
+                      return
+                  }
             
             self.object = nil
             lock.unlock()
+            // 这里, 对于 downStream 进行了强引用的解除. 
             center.removeObserver(observation)
         }
         

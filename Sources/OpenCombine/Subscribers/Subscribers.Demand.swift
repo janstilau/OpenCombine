@@ -15,24 +15,20 @@ extension Subscribers {
     
     /// A requested number of items, sent to a publisher from a subscriber through
     /// the subscription.
+    // 其实, 就是对于 Int 值的封装. 使用类型, 来包装基本数据类型, 重构里面的技巧.
     public struct Demand: Equatable,
                           Comparable,
                           Hashable,
                           Codable,
                           CustomStringConvertible
     {
-        @usableFromInline
         internal let rawValue: UInt
         
-        @inline(__always)
-        @inlinable
         internal init(rawValue: UInt) {
             self.rawValue = min(UInt(Int.max) + 1, rawValue)
         }
         
         /// A request for as many values as the publisher can produce.
-        @inline(__always)
-        @inlinable
         public static var unlimited: Demand {
             return Demand(rawValue: .max)
         }
@@ -40,9 +36,9 @@ extension Subscribers {
         /// A request for no elements from the publisher.
         ///
         /// This is equivalent to `Demand.max(0)`.
-        @inline(__always)
-        @inlinable
-        public static var none: Demand { return .max(0) }
+        public static var none: Demand {
+            return .max(0)
+        }
         
         /// Creates a demand for the given maximum number of elements.
         ///
@@ -51,8 +47,6 @@ extension Subscribers {
         ///
         /// - Parameter value: The maximum number of elements. Providing a negative value
         /// for this parameter results in a fatal error.
-        @inline(__always)
-        @inlinable
         public static func max(_ value: Int) -> Demand {
             precondition(value >= 0, "demand cannot be negative")
             return Demand(rawValue: UInt(value))
@@ -68,8 +62,6 @@ extension Subscribers {
         
         /// Returns the result of adding two demands.
         /// When adding any value to `.unlimited`, the result is `.unlimited`.
-        @inline(__always)
-        @inlinable
         public static func + (lhs: Demand, rhs: Demand) -> Demand {
             switch (lhs, rhs) {
             case (.unlimited, _):
@@ -85,8 +77,6 @@ extension Subscribers {
         
         /// Adds two demands, and assigns the result to the first demand.
         /// When adding any value to `.unlimited`, the result is `.unlimited`.
-        @inline(__always)
-        @inlinable
         public static func += (lhs: inout Demand, rhs: Demand) {
             if lhs == .unlimited { return }
             lhs = lhs + rhs
@@ -94,8 +84,6 @@ extension Subscribers {
         
         /// Returns the result of adding an integer to a demand.
         /// When adding any value to` .unlimited`, the result is `.unlimited`.
-        @inline(__always)
-        @inlinable
         public static func + (lhs: Demand, rhs: Int) -> Demand {
             if lhs == .unlimited {
                 return .unlimited
@@ -106,8 +94,6 @@ extension Subscribers {
         
         /// Adds an integer to a demand, and assigns the result to the demand.
         /// When adding any value to `.unlimited`, the result is `.unlimited`.
-        @inline(__always)
-        @inlinable
         public static func += (lhs: inout Demand, rhs: Int) {
             lhs = lhs + rhs
         }
@@ -127,8 +113,6 @@ extension Subscribers {
         /// Multiplies a demand by an integer, and assigns the result to the demand.
         /// When multiplying any value by `.unlimited`, the result is `.unlimited`. If
         /// the multiplication operation overflows, the result is `.unlimited`.
-        @inline(__always)
-        @inlinable
         public static func *= (lhs: inout Demand, rhs: Int) {
             lhs = lhs * rhs
         }
@@ -138,8 +122,6 @@ extension Subscribers {
         /// the result is still `.unlimited`. Subtracting `.unlimited` from any value
         /// (except `.unlimited`) results in `.max(0)`. A negative demand is not possible;
         /// any operation that would result in a negative value is clamped to `.max(0)`.
-        @inline(__always)
-        @inlinable
         public static func - (lhs: Demand, rhs: Demand) -> Demand {
             switch (lhs, rhs) {
             case (.unlimited, _):
@@ -159,8 +141,7 @@ extension Subscribers {
         /// (except `.unlimited`) results in `.max(0)`. A negative demand is not possible;
         /// any operation that would result in a negative value is clamped to `.max(0)`.
         /// but be aware that it is not usable when requesting values in a subscription.
-        @inline(__always)
-        @inlinable
+        
         public static func -= (lhs: inout Demand, rhs: Demand) {
             lhs = lhs - rhs
         }
@@ -170,8 +151,7 @@ extension Subscribers {
         /// `.unlimited`.
         /// A negative demand is not possible; any operation that would result in
         /// a negative value is clamped to `.max(0)`
-        @inline(__always)
-        @inlinable
+        
         public static func - (lhs: Demand, rhs: Int) -> Demand {
             if lhs == .unlimited {
                 return .unlimited
@@ -187,8 +167,7 @@ extension Subscribers {
         /// `.unlimited`.
         /// A negative demand is not possible; any operation that would result in
         /// a negative value is clamped to `.max(0)`
-        @inline(__always)
-        @inlinable
+        
         public static func -= (lhs: inout Demand, rhs: Int) {
             if lhs == .unlimited { return }
             lhs = lhs - rhs
@@ -198,8 +177,7 @@ extension Subscribers {
         /// the given number of elements.
         /// If `lhs` is `.unlimited`, then the result is always `true`.
         /// Otherwise, the operator compares the demand’s `max` value to `rhs`.
-        @inline(__always)
-        @inlinable
+        
         public static func > (lhs: Demand, rhs: Int) -> Bool {
             if lhs == .unlimited {
                 return true
@@ -212,8 +190,7 @@ extension Subscribers {
         /// the same number of elements as the second.
         /// If `lhs` is `.unlimited`, then the result is always `true`.
         /// Otherwise, the operator compares the demand’s `max` value to `rhs`.
-        @inline(__always)
-        @inlinable
+        
         public static func >= (lhs: Demand, rhs: Int) -> Bool {
             if lhs == .unlimited {
                 return true
@@ -226,8 +203,7 @@ extension Subscribers {
         /// the maximum specified by the demand.
         /// If `rhs` is `.unlimited`, then the result is always `false`.
         /// Otherwise, the operator compares the demand’s `max` value to `lhs`.
-        @inline(__always)
-        @inlinable
+        
         public static func > (lhs: Int, rhs: Demand) -> Bool {
             if rhs == .unlimited {
                 return false
@@ -240,8 +216,7 @@ extension Subscribers {
         /// or equal to the maximum specified by the demand.
         /// If `rhs` is `.unlimited`, then the result is always `false`.
         /// Otherwise, the operator compares the demand’s `max` value to `lhs`.
-        @inline(__always)
-        @inlinable
+        
         public static func >= (lhs: Int, rhs: Demand) -> Bool {
             if rhs == .unlimited {
                 return false
@@ -254,8 +229,7 @@ extension Subscribers {
         /// the given number of elements.
         /// If `lhs` is `.unlimited`, then the result is always `false`.
         /// Otherwise, the operator compares the demand’s `max` value to `rhs`.
-        @inline(__always)
-        @inlinable
+        
         public static func < (lhs: Demand, rhs: Int) -> Bool {
             if lhs == .unlimited {
                 return false
@@ -268,8 +242,7 @@ extension Subscribers {
         /// the maximum specified by the demand.
         /// If `rhs` is `.unlimited`, then the result is always `true`.
         /// Otherwise, the operator compares the demand’s `max` value to `lhs`.
-        @inline(__always)
-        @inlinable
+        
         public static func < (lhs: Int, rhs: Demand) -> Bool {
             if rhs == .unlimited {
                 return true
@@ -282,8 +255,7 @@ extension Subscribers {
         /// the same number of elements as the given integer.
         /// If `lhs` is `.unlimited`, then the result is always `false`.
         /// Otherwise, the operator compares the demand’s `max` value to `rhs`.
-        @inline(__always)
-        @inlinable
+        
         public static func <= (lhs: Demand, rhs: Int) -> Bool {
             if lhs == .unlimited {
                 return false
@@ -296,8 +268,7 @@ extension Subscribers {
         /// than or equal the maximum specified by the demand.
         /// If `rhs` is `.unlimited`, then the result is always `true`.
         /// Otherwise, the operator compares the demand’s `max` value to `lhs`.
-        @inline(__always)
-        @inlinable
+        
         public static func <= (lhs: Int, rhs: Demand) -> Bool {
             if rhs == .unlimited {
                 return true
@@ -312,8 +283,7 @@ extension Subscribers {
         /// If `lhs` is `.unlimited`, then the result is always `false`.
         /// If `rhs` is `.unlimited`, then the result is always `true`.
         /// Otherwise, this operator compares the demands’ `max` values.
-        @inline(__always)
-        @inlinable
+        
         public static func < (lhs: Demand, rhs: Demand) -> Bool {
             switch (lhs, rhs) {
             case (.unlimited, _):
@@ -331,8 +301,7 @@ extension Subscribers {
         /// If `lhs` is `.unlimited`, then the result is always `false`.
         /// If `rhs` is `.unlimited` then the result is always `true`.
         /// Otherwise, this operator compares the demands’ `max` values.
-        @inline(__always)
-        @inlinable
+        
         public static func <= (lhs: Demand, rhs: Demand) -> Bool {
             switch (lhs, rhs) {
             case (.unlimited, .unlimited):
@@ -352,8 +321,7 @@ extension Subscribers {
         /// If `lhs` is `.unlimited`, then the result is always `true`.
         /// If rhs is `.unlimited` then the result is always `false`.
         /// Otherwise, this operator compares the demands’ `max` values.
-        @inline(__always)
-        @inlinable
+        
         public static func >= (lhs: Demand, rhs: Demand) -> Bool {
             switch (lhs, rhs) {
             case (.unlimited, .unlimited):
@@ -373,8 +341,7 @@ extension Subscribers {
         /// If `lhs` is `.unlimited`, then the result is always `true`.
         /// If `rhs` is `.unlimited` then the result is always `false`.
         /// Otherwise, this operator compares the demands’ `max` values.
-        @inline(__always)
-        @inlinable
+        
         public static func > (lhs: Demand, rhs: Demand) -> Bool {
             switch (lhs, rhs) {
             case (.unlimited, .unlimited):
@@ -391,8 +358,7 @@ extension Subscribers {
         /// Returns a Boolean value indicating whether a demand requests the given number
         /// of elements.
         /// An `.unlimited` demand doesn’t match any integer.
-        @inline(__always)
-        @inlinable
+        
         public static func == (lhs: Demand, rhs: Int) -> Bool {
             if lhs == .unlimited {
                 return false
@@ -404,7 +370,6 @@ extension Subscribers {
         /// Returns a Boolean value indicating whether a demand is not equal to
         /// an integer.
         /// The `.unlimited` value isn’t equal to any integer.
-        @inlinable
         public static func != (lhs: Demand, rhs: Int) -> Bool {
             if lhs == .unlimited {
                 return true
@@ -416,7 +381,6 @@ extension Subscribers {
         /// Returns a Boolean value indicating whether a given number of elements matches
         /// the request of a given demand.
         /// An `.unlimited` demand doesn’t match any integer.
-        @inlinable
         public static func == (lhs: Int, rhs: Demand) -> Bool {
             if rhs == .unlimited {
                 return false
@@ -428,7 +392,6 @@ extension Subscribers {
         /// Returns a Boolean value indicating whether an integer is not equal to
         /// a demand.
         /// The `.unlimited` value isn’t equal to any integer.
-        @inlinable
         public static func != (lhs: Int, rhs: Demand) -> Bool {
             if rhs == .unlimited {
                 return true
@@ -437,7 +400,6 @@ extension Subscribers {
             }
         }
         
-        @inlinable
         public static func == (lhs: Demand, rhs: Demand) -> Bool {
             return lhs.rawValue == rhs.rawValue
         }
@@ -445,7 +407,7 @@ extension Subscribers {
         /// The number of requested values.
         ///
         /// The value is `nil` if the demand is `Subscribers.Demand.unlimited`.
-        @inlinable public var max: Int? {
+        public var max: Int? {
             if self == .unlimited {
                 return nil
             } else {

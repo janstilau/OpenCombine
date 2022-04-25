@@ -39,7 +39,8 @@ internal final class SubjectSubscriber<Downstream: Subject>
     
     internal func receive(_ input: Downstream.Output) -> Subscribers.Demand {
         lock.lock()
-        guard let subject = downstreamSubject, upstreamSubscription != nil else {
+        guard let subject = downstreamSubject,
+                upstreamSubscription != nil else {
             lock.unlock()
             return .none
         }

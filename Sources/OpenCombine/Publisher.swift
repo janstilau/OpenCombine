@@ -2,14 +2,19 @@
 /// Declares that a type can transmit a sequence of values over time.
 ///
 /// A publisher delivers elements to one or more `Subscriber` instances.
+///
+/// 泛型类型约束. 做类型绑定用.
 /// The subscriber’s `Input` and `Failure` associated types must match the `Output` and
 /// `Failure` types declared by the publisher.
 /// The publisher implements the `receive(subscriber:)`method to accept a subscriber.
 ///
 /// After this, the publisher can call the following methods on the subscriber:
+/// 所谓的注册, 其实就是将 subscriber 保存到 Publisher 里面. 然后, 在 Publisher 的内部, 在合适的时机, 调用对应 subscriber 的方法.
+/// 这里的设计, 和 Rx 有点不一样, Rx 里面, 是 subscribe 直接返回一个 subscription.
 /// - `receive(subscription:)`: Acknowledges the subscribe request and returns
 ///   a `Subscription` instance. The subscriber uses the subscription to demand elements
 ///   from the publisher and can use it to cancel publishing.
+///   Rx 里面的 OnEvent 函数, 分开了.
 /// - `receive(_:)`: Delivers one element from the publisher to the subscriber.
 /// - `receive(completion:)`: Informs the subscriber that publishing has ended,
 ///   either normally or with an error.
@@ -32,9 +37,12 @@
 ///   values on-demand by calling its `send(_:)` method.
 /// - Use a `CurrentValueSubject` to publish whenever you update the subject’s underlying
 ///   value.
+/// Rx 里面, 基本就是 Subject 作为成员变量. 在 Combine 里面, 利用了 PropertyWrapper 技术.
 /// - Add the `@Published` annotation to a property of one of your own types. In doing so,
 ///   the property gains a publisher that emits an event whenever the property’s value
 ///   changes. See the `Published` type for an example of this approach.
+
+
 public protocol Publisher {
     
     /// The kind of values published by this publisher.
@@ -54,6 +62,7 @@ public protocol Publisher {
     ///
     /// - Parameter subscriber: The subscriber to attach to this publisher. After
     ///   attaching, the subscriber can start to receive values.
+    // 增加了, 对于下游节点的类型限制. Error 也有限制. 之前的 Rx Error 其实是一个 Opauge 对象.
     func receive<Subscriber: OpenCombine.Subscriber>(subscriber: Subscriber)
     where Failure == Subscriber.Failure, Output == Subscriber.Input
 }
@@ -70,6 +79,8 @@ extension Publisher {
     /// - Parameters:
     ///     - subscriber: The subscriber to attach to this `Publisher`. After attaching,
     ///       the subscriber can start to receive values.
+    
+    // 相应式实在是太难调试了, 所以, 在基本方法里面, 进行了各种机制埋点. 
     public func subscribe<Subscriber: OpenCombine.Subscriber>(_ subscriber: Subscriber)
     where Failure == Subscriber.Failure, Output == Subscriber.Input
     {

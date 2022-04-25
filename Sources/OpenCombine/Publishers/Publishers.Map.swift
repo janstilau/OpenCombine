@@ -120,6 +120,9 @@ extension Publisher {
 extension Publishers {
     /// A publisher that transforms all elements from the upstream publisher with
     /// a provided closure.
+    
+    // 和 Rx 里面的观念一样, Map 的生成, 仅仅是一些值的记录工作.
+    // 真正的节点的构建, 链条的搭建, 是在 subscribe 的时候.
     public struct Map<Upstream: Publisher, Output>: Publisher {
         
         public typealias Failure = Upstream.Failure
@@ -207,14 +210,17 @@ extension Publishers.Map {
       CustomStringConvertible,
       CustomReflectable,
       CustomPlaygroundDisplayConvertible
-    where Downstream.Input == Output, Downstream.Failure == Upstream.Failure
+    where Downstream.Input == Output,
+          Downstream.Failure == Upstream.Failure
     {
         typealias Input = Upstream.Output
         
         typealias Failure = Upstream.Failure
         
+        // Map 的 Inner 节点, 作为响应联调的一环, 强引用了下游节点.
         private let downstream: Downstream
         
+        // Map 真正的 Transform 的引用.
         private let map: (Input) -> Output
         
         let combineIdentifier = CombineIdentifier()
@@ -224,14 +230,21 @@ extension Publishers.Map {
             self.map = map
         }
         
+        // 这个函数, 是上游节点主动调用的.
+        // Map 直接交给了下游.
+        // 在 Map 里面, 是没有 Demand 的管理的.
+        
+        // 直接, 把上游的 Subscription 交给了下游, 所以下游调用 request, 也是直接使用上游的 Request 方法. 
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
         }
         
+        // Map 没有错误处理, 直接 forward.
         func receive(_ input: Input) -> Subscribers.Demand {
             return downstream.receive(map(input))
         }
         
+        // Map 没有错误处理, 直接 forward.
         func receive(completion: Subscribers.Completion<Failure>) {
             downstream.receive(completion: completion)
         }
@@ -248,6 +261,8 @@ extension Publishers.Map {
 
 extension Publishers.TryMap {
     
+    // TryMap, 是要实现 Subscription 的.
+    // 他要实现 Demand 的管理, 要实现 cancel 的逻辑.
     private final class Inner<Downstream: Subscriber>
     : Subscriber,
       Subscription,
@@ -262,10 +277,13 @@ extension Publishers.TryMap {
         
         typealias Failure = Upstream.Failure
         
+        // 对下游节点, 进行强引用.
         private let downstream: Downstream
         
+        // 对于可能出错的转化函数, 进行强引用.
         private let map: (Input) throws -> Output
         
+        // 对于上游节点, 进行强引用.
         private var status = SubscriptionStatus.awaitingSubscription
         
         private let lock = UnfairLock.allocate()
@@ -289,8 +307,10 @@ extension Publishers.TryMap {
                 subscription.cancel()
                 return
             }
+            // 对于上游节点, 进行强引用.
             status = .subscribed(subscription)
             lock.unlock()
+            // 然后自己作为节点, 传递给后方节点.
             downstream.receive(subscription: self)
         }
         
@@ -314,6 +334,8 @@ extension Publishers.TryMap {
                 lock.unlock()
                 return
             }
+            // 同 Cancel 相比, 不用调用上游节点的 cancel 了.
+            // rx 这里设计的很 tricky, 这样的设计更加的清晰合理.
             status = .terminal
             lock.unlock()
             downstream.receive(completion: completion.eraseError())
@@ -326,6 +348,7 @@ extension Publishers.TryMap {
                 return
             }
             lock.unlock()
+            // TryMap 并没有 demand 管理的职责, 向上抛出去.
             subscription.request(demand)
         }
         
@@ -335,8 +358,10 @@ extension Publishers.TryMap {
                 lock.unlock()
                 return
             }
+            // 上游节点的强引用消除.
             status = .terminal
             lock.unlock()
+            // 调用上游节点的 cancel.
             subscription.cancel()
         }
         

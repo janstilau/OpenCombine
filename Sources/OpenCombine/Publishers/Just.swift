@@ -29,6 +29,8 @@ public struct Just<Output>: Publisher {
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Downstream.Input == Output, Downstream.Failure == Never
     {
+        // 其他的, 都是 存储的 upstream, subscribe 自己生成的 InnerSink.
+        // 这里, 直接是下游, 来 receive(subscription 自己生存的 InnerSink.
         subscriber.receive(subscription: Inner(value: output, downstream: subscriber))
     }
 }
@@ -273,6 +275,7 @@ extension Just {
 }
 
 extension Just {
+    // Just 的 Inner, 不会是一个 Subscriber. 因为, 无法使用 Just 作为中间节点.
     private final class Inner<Downstream: Subscriber>
     : Subscription,
       CustomStringConvertible,
@@ -294,10 +297,12 @@ extension Just {
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             guard let downstream = self.downstream.take() else { return }
+            // 看来, 这个下游节点, 进行 request 是一个必然的操作.
             _ = downstream.receive(value)
             downstream.receive(completion: .finished)
         }
         
+        // cancel 就是解开下游节点的引用.
         func cancel() {
             downstream = nil
         }

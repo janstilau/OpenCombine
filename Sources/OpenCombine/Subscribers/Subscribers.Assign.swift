@@ -24,6 +24,8 @@ extension Subscribers {
         /// The subscriber holds a strong reference to this object until the upstream
         /// publisher calls `Subscriber.receive(completion:)`, at which point
         /// the subscriber sets this property to `nil`.
+        // 存储一下, 要被赋值的对象. 这里必须是强引用.
+        // 只有自己显示的进行 cancel 的情况下, 才应该进行资源的释放 .
         public private(set) var object: Root?
         
         /// The key path that indicates the property to assign.
@@ -72,8 +74,10 @@ extension Subscribers {
                 subscription.cancel()
                 return
             }
+            // 存储一下上游的节点.
             status = .subscribed(subscription)
             lock.unlock()
+            // 无限的 demand.
             subscription.request(.unlimited)
         }
         
@@ -84,6 +88,7 @@ extension Subscribers {
                 return .none
             }
             lock.unlock()
+            // 收到值, 就是一个使用 keypath 的赋值操作.
             object[keyPath: keyPath] = value
             return .none
         }
@@ -104,6 +109,7 @@ extension Subscribers {
                 return
             }
             terminateAndConsumeLock()
+            // 触发上游节点的 cancel 操作.
             subscription.cancel()
         }
         
@@ -111,6 +117,7 @@ extension Subscribers {
 #if DEBUG
             lock.assertOwner()
 #endif
+            // 消除对于上游节点的引用. 打破了循环引用.
             status = .terminal
             
             // We MUST release the object AFTER unlocking the lock,
@@ -120,6 +127,7 @@ extension Subscribers {
             // the lock at that moment can lead to deadlocks.
             
             withExtendedLifetime(object) {
+                // 触发, 存储的 root 对象的释放 .
                 object = nil
                 lock.unlock()
             }
