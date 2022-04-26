@@ -1,3 +1,4 @@
+
 /// A type-erasing cancellable object that executes a provided closure when canceled.
 ///
 /// Subscriber implementations can use this type to provide a “cancellation token” that
@@ -7,8 +8,13 @@
 /// An `AnyCancellable` instance automatically calls `cancel()` when deinitialized.
 
 // 这个和 Rx 的相比, 增加了 deinit 的自动调用的机制. 其他的没有太大的变化.
-
 // AnyCancellable 是一个引用数据类型.
+/*
+ 这种, Any 基本上都有一个同样的实现思路
+ 1. 这是一个引用类型.
+ 2. 里面藏着一个闭包, 当 Any 要符合协议的要求的时候, 就是调用这个闭包
+ 3. 可以直接接口一个原有协议的实现类, 然后闭包赋值 _cancel = canceller.cancel
+ */
 public final class AnyCancellable: Cancellable, Hashable {
     
     private var _cancel: (() -> Void)?
@@ -58,6 +64,7 @@ extension AnyCancellable {
     /// Stores this type-erasing cancellable instance in the specified collection.
     ///
     /// - Parameter collection: The collection in which to store this `AnyCancellable`.
+    // Set<AnyCancellable>, 就当做了 disposeBag 来使用了. 
     public func store(in set: inout Set<AnyCancellable>) {
         set.insert(self)
     }
