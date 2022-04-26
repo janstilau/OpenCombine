@@ -177,6 +177,7 @@ extension Publisher where Failure == Never {
     public func assign<Root>(to keyPath: ReferenceWritableKeyPath<Root, Output>,
                              on object: Root) -> AnyCancellable {
         let subscriber = Subscribers.Assign(object: object, keyPath: keyPath)
+        // 这是, 最后的节点了. 所以要触发整体的 subscribe 操作了.
         subscribe(subscriber)
         return AnyCancellable(subscriber)
     }

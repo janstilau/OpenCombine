@@ -11,11 +11,15 @@ internal final class PublishedSubject<Output>: Subject {
     
     private let lock = UnfairLock.allocate()
     
-    private var downstreams = ConduitList<Output, Failure>.empty
     
     private var currentValue: Output
     
+    // 记录了所有的上游节点.
+    // 在 Rx 里面, 上游节点, 是不用记录的. 因为在 Rx 里面, 循环引用是建立在 sinkDisposer 和 sink 之间的.
     private var upstreamSubscriptions: [Subscription] = []
+    
+    // 记录了所有的下游节点.
+    private var downstreams = ConduitList<Output, Failure>.empty
     
     private var hasAnyDownstreamDemand = false
     
@@ -45,11 +49,14 @@ internal final class PublishedSubject<Output>: Subject {
         }
     }
     
+    // 必须要有当前值.
     internal init(_ value: Output) {
         self.currentValue = value
     }
     
     deinit {
+        // 当, Subject 消亡的时候, 让所有的上游节点 cancel ???
+        // 感觉这里有问题. 不应该这样做.
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
@@ -58,6 +65,7 @@ internal final class PublishedSubject<Output>: Subject {
     
     internal func send(subscription: Subscription) {
         lock.lock()
+        // 存储上游节点.
         upstreamSubscriptions.append(subscription)
         lock.unlock()
         subscription.request(.unlimited)
@@ -68,6 +76,7 @@ internal final class PublishedSubject<Output>: Subject {
     {
         lock.lock()
         let conduit = Conduit(parent: self, downstream: subscriber)
+        // 存储, 下游节点. 增加了一层抽象. Conduit
         downstreams.insert(conduit)
         lock.unlock()
         subscriber.receive(subscription: conduit)
@@ -78,11 +87,14 @@ internal final class PublishedSubject<Output>: Subject {
         let downstreams = self.downstreams
         let changePublisher = self.changePublisher
         lock.unlock()
+        // 通知一下, 当前已经发生了变化.
+        // 这主要是为了通知监听该 Subject 的数据.
         changePublisher?.send()
         downstreams.forEach { conduit in
             conduit.offer(input)
         }
         lock.lock()
+        // 存储一下当前值.
         currentValue = input
         lock.unlock()
     }

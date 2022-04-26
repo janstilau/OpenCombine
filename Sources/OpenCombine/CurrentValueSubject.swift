@@ -1,10 +1,3 @@
-//
-//  CurrentValueSubject.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 11.06.2019.
-//
-
 /// A subject that wraps a single value and publishes a new element whenever the value
 /// changes.
 ///
@@ -13,29 +6,37 @@
 ///
 /// Calling `send(_:)` on a `CurrentValueSubject` also updates the current value, making
 /// it equivalent to updating the `value` directly.
+
 public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     
     private let lock = UnfairLock.allocate()
     
     private var active = true
     
+    // 存储一下结束事件.
     private var completion: Subscribers.Completion<Failure>?
     
+    // 存储一下, 上有节点.
+    private var upstreamSubscriptions: [Subscription] = []
+    
+    // 存储一下, 下游节点.
     private var downstreams = ConduitList<Output, Failure>.empty
     
+    // 缓存一下当前值.
+    // 在 Init 的时候, 必须带一个 Output 的值过来.
     private var currentValue: Output
-    
-    private var upstreamSubscriptions: [Subscription] = []
     
     /// The value wrapped by this subject, published as a new element whenever it changes.
     public var value: Output {
         get {
             lock.lock()
             defer { lock.unlock() }
+            // 取值, 必须在锁的环境
             return currentValue
         }
         set {
             lock.lock()
+            // 赋值, 必须在锁的环境, 并且触发后续的信号发送.
             currentValue = newValue
             sendValueAndConsumeLock(newValue)
         }
@@ -48,7 +49,10 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         self.currentValue = value
     }
     
+    // 和 Rx 不同的是, Combine 里面, 对象的声明周期, 和 cancel 有了强绑定的关系.
     deinit {
+        // 按照 rx 里面的设计理念, 上层节点是 shared, 那么这里的 cancel 其实就是做相关的取消注册的工作.
+        // 如果, 是单独成链, 那么取消上级也合理.
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
@@ -57,8 +61,10 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     
     public func send(subscription: Subscription) {
         lock.lock()
+        // 存储所有的上游节点.
         upstreamSubscriptions.append(subscription)
         lock.unlock()
+        // 然后, 将 demand 管理成为无限.
         subscription.request(.unlimited)
     }
     
@@ -72,6 +78,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
             lock.unlock()
             subscriber.receive(subscription: conduit)
         } else {
+            // 如果, 当前自己已经 cancel 过了, 直接交给后方 stopEvent.
             let completion = self.completion!
             lock.unlock()
             subscriber.receive(subscription: Subscriptions.empty)
@@ -85,9 +92,6 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     }
     
     private func sendValueAndConsumeLock(_ newValue: Output) {
-#if DEBUG
-        lock.assertOwner()
-#endif
         guard active else {
             lock.unlock()
             return
@@ -95,6 +99,9 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         currentValue = newValue
         let downstreams = self.downstreams
         lock.unlock()
+        // 先取出所有的下游节点, 然后就 unlock
+        // 因为给下游节点喂食, 可能会引发各种后续操作, 时间不可控的.
+        // 当, CurrentValue 发生变化的时候, 给所有的下游节点喂食.
         downstreams.forEach { conduit in
             conduit.offer(newValue)
         }
@@ -170,6 +177,7 @@ extension CurrentValueSubject {
             deliveredCurrentValue = true
             lock.unlock()
             downstreamLock.lock()
+            // 给下游节点喂食.
             let newDemand = downstream.receive(output)
             downstreamLock.unlock()
             guard newDemand > 0 else { return }
@@ -192,6 +200,7 @@ extension CurrentValueSubject {
             downstreamLock.unlock()
         }
         
+        // Request, 可以算作是, 下游节点, 触发上游节点逻辑的起点.
         override func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()

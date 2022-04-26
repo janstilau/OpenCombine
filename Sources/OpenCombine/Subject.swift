@@ -20,6 +20,8 @@ public protocol Subject: AnyObject, Publisher {
     /// Sends a value to the subscriber.
     ///
     /// - Parameter value: The value to send.
+    
+    // 这是, 命令式的代码触发信号发送的基础. 
     func send(_ value: Output)
     
     /// Sends a completion signal to the subscriber.
@@ -44,6 +46,7 @@ extension Subject where Output == Void {
     ///
     /// Use `Void` inputs and outputs when you want to signal that an event has occurred,
     /// but don’t need to send the event itself.
+    // 这是一个简便的做法, 如果 Output 是 Void 的话, 那么直接调用 send, 封装一下 send(_ value: Output) 的调用
     public func send() {
         send(())
     }

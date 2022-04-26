@@ -13,6 +13,10 @@ extension Subscribers {
     
     /// A signal that a publisher doesn’t produce additional elements, either due to
     /// normal completion or an error.
+    
+    // 和 Rx 不同的是, Event 没有抽象出来, 而是使用了 Completion 来封装结束数据.
+    // 这里的 Failure, 不仅仅是 Error, 它是一个泛型类型, 是锁了类型的. 在使用的时候, 要写出具体的数据类型出来.
+    // 这也就是 Swift 中, 泛型的类型绑定的作用.
     public enum Completion<Failure: Error> {
         
         /// The publisher finished normally.
@@ -70,6 +74,9 @@ extension Subscribers.Completion {
     /// Erases the `Failure` type to `Swift.Error`. This function exists
     /// because in Swift user-defined generic types are always
     /// [invariant](https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)).
+    // 将, 自己的 Error 类型, 退化成为 Swfit.Error
+    // 从逻辑上看, 数据没有任何的变化, 但是返回值的类型, 标志着泛型类型的具体信息消失了. 后续的节点, 使用的是 opaque 的 Error 了.
+    // public protocol Error : Sendable { } 从 Swfit 的定义来看, Error 就是一个无任何类型信息的抽象类型.
     internal func eraseError() -> Subscribers.Completion<Error> {
         switch self {
         case .finished:

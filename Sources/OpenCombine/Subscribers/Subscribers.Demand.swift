@@ -20,8 +20,7 @@ extension Subscribers {
                           Comparable,
                           Hashable,
                           Codable,
-                          CustomStringConvertible
-    {
+                          CustomStringConvertible {
         internal let rawValue: UInt
         
         internal init(rawValue: UInt) {
@@ -30,6 +29,7 @@ extension Subscribers {
         
         /// A request for as many values as the publisher can produce.
         public static var unlimited: Demand {
+            // 这里是 Int.max
             return Demand(rawValue: .max)
         }
         
