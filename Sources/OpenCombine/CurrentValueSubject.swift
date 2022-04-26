@@ -43,8 +43,6 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     }
     
     /// Creates a current value subject with the given initial value.
-    ///
-    /// - Parameter value: The initial value to publish.
     public init(_ value: Output) {
         self.currentValue = value
     }
@@ -52,19 +50,21 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     // 和 Rx 不同的是, Combine 里面, 对象的声明周期, 和 cancel 有了强绑定的关系.
     deinit {
         // 按照 rx 里面的设计理念, 上层节点是 shared, 那么这里的 cancel 其实就是做相关的取消注册的工作.
-        // 如果, 是单独成链, 那么取消上级也合理.
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
         lock.deallocate()
     }
     
+    /*
+     上游节点, 发送 Subscription 过来, 记录在自己缓存区里面. 这样, 自己和上游节点, 形成了循环引用.
+     */
     public func send(subscription: Subscription) {
         lock.lock()
         // 存储所有的上游节点.
         upstreamSubscriptions.append(subscription)
         lock.unlock()
-        // 然后, 将 demand 管理成为无限.
+        // 各个 Demand 怎么管理, 完全是各个 Subscriber 自己按照自己的业务进行的赋值.
         subscription.request(.unlimited)
     }
     
@@ -73,6 +73,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     {
         lock.lock()
         if active {
+            // 当, 发送了 Completion 事件之后, 才会
             let conduit = Conduit(parent: self, downstream: subscriber)
             downstreams.insert(conduit)
             lock.unlock()
@@ -114,6 +115,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
             return
         }
         active = false
+        // 记录一下 Completion, 之后的 subscriber 可以直接使用.
         self.completion = completion
         let downstreams = self.downstreams.take()
         lock.unlock()

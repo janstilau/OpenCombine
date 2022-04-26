@@ -102,7 +102,8 @@ extension Publisher where Failure == Never {
  */
 
 // 非常重要的一个 PropertyWrapper
-@available(swift, introduced: 5.1)
+
+
 @propertyWrapper
 public struct Published<Value> {
     
@@ -133,7 +134,7 @@ public struct Published<Value> {
     }
     
     @propertyWrapper
-    private final class Box {
+    private final class PublishedBox {
         var wrappedValue: Storage
         
         init(wrappedValue: Storage) {
@@ -141,7 +142,7 @@ public struct Published<Value> {
         }
     }
     
-    @Box private var storage: Storage
+    @PublishedBox private var storage: Storage
     
     internal var objectWillChange: ObservableObjectPublisher? {
         get {
@@ -162,7 +163,7 @@ public struct Published<Value> {
     }
     
     public init(wrappedValue: Value) {
-        _storage = Box(wrappedValue: .value(wrappedValue))
+        _storage = PublishedBox(wrappedValue: .value(wrappedValue))
     }
     
     /// The property for which this instance exposes a publisher.
