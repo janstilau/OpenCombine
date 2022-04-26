@@ -187,6 +187,8 @@ extension Publishers.TryMap {
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Output == Downstream.Input, Downstream.Failure == Error
     {
+        // 生成一个 Inner 节点, 作为上级的 receiver, 继续构建前面的节点.
+        // 在自己的 Inner 节点中, 将 downstream 和自己进行了串联.
         upstream.subscribe(Inner(downstream: subscriber, map: transform))
     }
     
@@ -300,6 +302,28 @@ extension Publishers.TryMap {
             lock.deallocate()
         }
         
+        /*
+         构建, 响应响应者链条, 是生成各个 Publisher 的 Inner 节点.
+         在这个过程中, 各个 Inner 节点, 作为 downstream 添加到上游节点的 next 中.
+         
+         在最后, 起始节点的 Inner 对象, 会把自身作为 Subscription, 调用下级节点的 func receive(subscription: Subscription)
+         下游节点:
+         1. 强引用上游节点. 形成循环引用.
+         2. 可能调用 Subscription 的 request 方法.
+         3. 将自身, 作为下游节点的 Subscription, 再次调用下游节点的 request.
+         
+         如果, 自己本身只是一个中间 forward 节点. 那么 Inner 实现 Subscription 的功能, 来实现
+         func request(_ demand: Subscribers.Demand) 方法.
+         forward 节点的 request(_ demand: Subscribers.Demand) 实现, 也就是转交给存储的 Subscription, 调用对应的 request.
+         
+         整个的响应链路构建过程, 是从后向前的.
+         整个的 Subscription 传递过程, 是从前向后的.
+         然后整个 Subscriber 的 request Demand 的过程, 是从后向前的.
+         
+         真正的信号产生, 是在 request Demand 的方法内部.
+         
+         相比较 rx, 其实只有一个 subscribe 方法, 是响应链路的构建过程. 在最前方的节点, 被构建出来之后, 其实也就执行了信号触发的逻辑了. 
+         */
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = status else {
@@ -310,6 +334,7 @@ extension Publishers.TryMap {
             // 对于上游节点, 进行强引用.
             status = .subscribed(subscription)
             lock.unlock()
+            
             // 然后自己作为节点, 传递给后方节点.
             downstream.receive(subscription: self)
         }

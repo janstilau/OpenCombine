@@ -16,11 +16,10 @@ extension Publishers {
         public typealias Output = Elements.Element
         
         /// The sequence of elements to publish.
+        // 存储, 传递过来的序列. 这是泛型类型, 所以会有类型的绑定.
         public let sequence: Elements
         
         /// Creates a publisher for a sequence of elements.
-        ///
-        /// - Parameter sequence: The sequence of elements to publish.
         public init(sequence: Elements) {
             self.sequence = sequence
         }
@@ -90,6 +89,10 @@ extension Publishers.Sequence {
         
         var playgroundDescription: Any { return description }
         
+        // 相比 rx 所有的逻辑, 都在 subscribe 里面.
+        // Combine 里面, 所有的逻辑, 都在 func request(_ demand: Subscribers.Demand) 函数里面.
+        // Publisher, 都是主动 Push 的. 有的在 func request(_ demand: Subscribers.Demand) 中进行 demand 的数量管理. 然后 Push 的时候, 进行相应的 --
+        // 有的则是, 直接在 func request(_ demand: Subscribers.Demand) 中, 将所需要的数据, 一次性的消耗.
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard downstream != nil else {
@@ -102,7 +105,8 @@ extension Publishers.Sequence {
                 return
             }
             
-            while let downstream = self.downstream, pendingDemand > 0 {
+            while let downstream = self.downstream,
+                  pendingDemand > 0 {
                 if let current = self.next {
                     pendingDemand -= 1
                     
@@ -112,6 +116,7 @@ extension Publishers.Sequence {
                     let next = iterator.next()
                     recursion = true
                     lock.unlock()
+                    
                     let additionalDemand = downstream.receive(current)
                     lock.lock()
                     recursion = false
@@ -430,7 +435,7 @@ extension Publishers.Sequence where Elements: RangeReplaceableCollection {
 }
 
 extension Sequence {
-    
+    // 原来, (1...3).publisher 是到了这里. 生成了一个 Publishers.Sequence<Self, Never> 对象.
     public var publisher: Publishers.Sequence<Self, Never> {
         return .init(sequence: self)
     }

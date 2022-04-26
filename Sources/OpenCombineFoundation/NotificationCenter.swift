@@ -187,6 +187,7 @@ extension Notification {
         private func didReceiveNotification(_ notification: Notification,
                                             downstream: Downstream) {
             lock.lock()
+            // 如果, demand 已经降低到 0 了, 那么就不会给后续发射信号了. 
             guard demand > 0 else {
                 lock.unlock()
                 return
