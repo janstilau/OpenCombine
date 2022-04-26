@@ -236,7 +236,8 @@ extension Publishers.Map {
         // Map 直接交给了下游.
         // 在 Map 里面, 是没有 Demand 的管理的.
         
-        // 直接, 把上游的 Subscription 交给了下游, 所以下游调用 request, 也是直接使用上游的 Request 方法. 
+        // 直接, 把上游的 Subscription 交给了下游, 所以下游调用 request, 也是直接使用上游的 Request 方法.
+        // 这里, 没有 Map 的 Inner 节点的循环引用. 它完全依赖于这个响应者链条.
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
         }
@@ -322,7 +323,7 @@ extension Publishers.TryMap {
          
          真正的信号产生, 是在 request Demand 的方法内部.
          
-         相比较 rx, 其实只有一个 subscribe 方法, 是响应链路的构建过程. 在最前方的节点, 被构建出来之后, 其实也就执行了信号触发的逻辑了. 
+         相比较 rx, 其实只有一个 subscribe 方法, 是响应链路的构建过程. 在最前方的节点, 被构建出来之后, 其实也就执行了信号触发的逻辑了.
          */
         func receive(subscription: Subscription) {
             lock.lock()

@@ -6,6 +6,7 @@
 //
 
 /// A publisher that eventually produces a single value and then finishes or fails.
+/// 就是 Single.
 public final class Future<Output, Failure: Error>: Publisher {
     
     /// A type that represents a closure to invoke in the future, when an element or error
@@ -13,10 +14,13 @@ public final class Future<Output, Failure: Error>: Publisher {
     ///
     /// The promise closure receives one parameter: a `Result` that contains either
     /// a single element published by a `Future`, or an error.
+    
+    // 这里, 绑定了类型. Future 里面的 Promise, 一定要和 Future 里面的 Output, Failure 的类型是一致的.
     public typealias Promise = (Result<Output, Failure>) -> Void
     
     private let lock = UnfairLock.allocate()
     
+    // 存回调. 这里和 Promise 的概念, 就已经完全相同了.
     private var downstreams = ConduitList<Output, Failure>.empty
     
     private var result: Result<Output, Failure>?
@@ -29,6 +33,9 @@ public final class Future<Output, Failure: Error>: Publisher {
     public init(
         _ attemptToFulfill: @escaping (@escaping Promise) -> Void
     ) {
+        // 异步操作的结构, 是触发 Promise 函数.
+        // 在这个函数里面, 记录 Result 的值, 然后将所有记录的后续逻辑, 使用 result 的值进行触发.
+        // 这里是没有问题的, 按照官方文档的定义来说, Future 是 greedy 的. 所以, 只要创建了, 就会触发生成信号的操作. 
         attemptToFulfill(self.promise)
     }
     
@@ -45,6 +52,7 @@ public final class Future<Output, Failure: Error>: Publisher {
         self.result = result
         let downstreams = self.downstreams.take()
         lock.unlock()
+        
         switch result {
         case .success(let output):
             downstreams.forEach { $0.offer(output) }
@@ -58,12 +66,14 @@ public final class Future<Output, Failure: Error>: Publisher {
     {
         let conduit = Conduit(parent: self, downstream: subscriber)
         lock.lock()
+        // 如果, 已经有了 Result 了, 那么直接是使用 result 来进行数据传递.
         if let result = self.result {
             downstreams.insert(conduit)
             lock.unlock()
             subscriber.receive(subscription: conduit)
             conduit.fulfill(result)
         } else {
+            // 否则, 就是记录回调. 等待异步操作的结果.
             downstreams.insert(conduit)
             lock.unlock()
             subscriber.receive(subscription: conduit)
@@ -79,6 +89,11 @@ public final class Future<Output, Failure: Error>: Publisher {
 
 extension Future {
     
+    /*
+     Conduit 管道.
+     
+     每一个 Conduit, 管理一个后续的响应链路.
+     */
     private final class Conduit<Downstream: Subscriber>
     : ConduitBase<Output, Failure>,
       CustomStringConvertible,
@@ -132,6 +147,7 @@ extension Future {
             switch result {
             case .success(let output):
                 _ = downstream.receive(output)
+                // 直接给下游发送 finished 事件.
                 downstream.receive(completion: .finished)
             case .failure(let error):
                 downstream.receive(completion: .failure(error))
@@ -155,6 +171,7 @@ extension Future {
             lockedFulfill(downstream: downstream, result: result)
             let parent = self.parent.take()
             downstreamLock.unlock()
+            // 然后, 上级把自己移除了.
             parent?.disassociate(self)
         }
         
@@ -171,6 +188,7 @@ extension Future {
             }
         }
         
+        // Demand 的值不用管, 必须 > 0 才可以. Demand 仅仅是表示, 后续节点想要多少, 并不是 Publisher 必须提供多少.
         override func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -180,6 +198,7 @@ extension Future {
             }
             state = .active(downstream, hasAnyDemand: true)
             
+            // 如果, 已经有了数据了, 那么后续的 request 的时候, 直接就把数据给他.
             if let parent = parent, let result = parent.result {
                 // If the promise is already resolved, send the result downstream
                 // immediately

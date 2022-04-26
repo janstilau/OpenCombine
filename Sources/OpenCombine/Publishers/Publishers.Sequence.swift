@@ -89,10 +89,11 @@ extension Publishers.Sequence {
         
         var playgroundDescription: Any { return description }
         
-        // 相比 rx 所有的逻辑, 都在 subscribe 里面.
-        // Combine 里面, 所有的逻辑, 都在 func request(_ demand: Subscribers.Demand) 函数里面.
-        // Publisher, 都是主动 Push 的. 有的在 func request(_ demand: Subscribers.Demand) 中进行 demand 的数量管理. 然后 Push 的时候, 进行相应的 --
-        // 有的则是, 直接在 func request(_ demand: Subscribers.Demand) 中, 将所需要的数据, 一次性的消耗.
+        /*
+         和 Rx 比较.
+         rx 是在 Subscribe 函数里面, 触发了对于信号的生产.
+         Combine 是在 Request 里面, 触发了对于信号的生产.
+         */
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard downstream != nil else {
@@ -105,18 +106,18 @@ extension Publishers.Sequence {
                 return
             }
             
-            while let downstream = self.downstream,
-                  pendingDemand > 0 {
+            while let downstream = self.downstream, pendingDemand > 0 {
+                // 一个循环体里面, 进行 Demand 的管理工作.
                 if let current = self.next {
                     pendingDemand -= 1
                     
-                    // Combine calls next() while the lock is held.
-                    // It is possible to engineer a custom Sequence that would cause
-                    // a deadlock here, but it would be something insane.
+                    // 取值.
                     let next = iterator.next()
                     recursion = true
                     lock.unlock()
                     
+                    // 然后让后方节点接受值. 拿到后方节点的 Demand 更新自己.
+                    // 然后继续这个信号产生的循环.
                     let additionalDemand = downstream.receive(current)
                     lock.lock()
                     recursion = false
@@ -125,6 +126,7 @@ extension Publishers.Sequence {
                 }
                 
                 if next == nil {
+                    // 在 Next 为 nil 的时候, 其实这里是调用了 cencel 方法了.
                     self.downstream = nil
                     self.sequence = nil
                     lock.unlock()
@@ -136,6 +138,7 @@ extension Publishers.Sequence {
             lock.unlock()
         }
         
+        // cancel, 放弃了对于后续节点的引用.
         func cancel() {
             lock.lock()
             downstream = nil

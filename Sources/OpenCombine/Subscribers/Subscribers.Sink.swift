@@ -63,6 +63,9 @@ extension Subscribers {
             lock.deallocate()
         }
         
+        // 在实现一个 Subscriber 的实现, 一定要实现 func receive(subscription: Subscription) 这个方法.
+        // 因为, 这才是真正触发响应联调操作的基础.
+        // 在其中, 一定要触发 subscription.request
         public func receive(subscription: Subscription) {
             lock.lock()
             // 自己的状态, 必须是 init 的状态. 
@@ -91,6 +94,7 @@ extension Subscribers {
             return .none
         }
         
+        //  其实, 相当于这里调用了 cancel 了, 不知道为什么, Combine 里面, 在接收到结束事件的时候, 都没调用 cancel.
         public func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             // 这里, 对 Subscription 的强引用解除了.
