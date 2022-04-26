@@ -210,6 +210,7 @@ example(of: "PassthroughSubject") {
     subject.subscribe(subscriber)
     
     // 7
+    // Subject
     let subscription = subject
         .sink(
             receiveCompletion: { completion in
@@ -296,11 +297,11 @@ example(of: "Dynamically adjusting Demand") {
     
     subject.subscribe(subscriber)
     
-    subject.send(1)
-    subject.send(2)
-    subject.send(3)
-    subject.send(4)
-    subject.send(5)
+    subject.send(1) // 3
+    subject.send(2) // 2
+    subject.send(3) // 2
+    subject.send(4) // 1
+    subject.send(5) // 0
     subject.send(6)
 }
 

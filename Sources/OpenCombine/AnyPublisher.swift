@@ -126,6 +126,7 @@ internal class PublisherBoxBase<Output, Failure: Error>: Publisher {
     }
 }
 
+// 这种 Box 常见. 引用值. 掩藏类型. 输出接口抽象类型.
 @usableFromInline
 internal final class PublisherBox<PublisherType: Publisher>
 : PublisherBoxBase<PublisherType.Output, PublisherType.Failure>

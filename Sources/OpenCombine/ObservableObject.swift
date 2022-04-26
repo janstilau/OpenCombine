@@ -95,9 +95,10 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
 #endif
 
 /// A publisher that publishes changes from observable objects.
+// 一个引用值.
 public final class ObservableObjectPublisher: Publisher {
     
-    public typealias Output = Void
+    public typealias Output = Void // 仅仅是, 值发生了改变, 并不告诉当前的值是什么.
     
     public typealias Failure = Never
     
@@ -116,8 +117,7 @@ public final class ObservableObjectPublisher: Publisher {
     }
     
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
-    where Downstream.Input == Void, Downstream.Failure == Never
-    {
+    where Downstream.Input == Void, Downstream.Failure == Never {
         let inner = Inner(downstream: subscriber, parent: self)
         lock.lock()
         connections.insert(inner)
@@ -142,6 +142,7 @@ public final class ObservableObjectPublisher: Publisher {
 }
 
 extension ObservableObjectPublisher {
+    
     private class Conduit: Hashable {
         
         fileprivate func send() {

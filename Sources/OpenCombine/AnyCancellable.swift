@@ -1,10 +1,3 @@
-//
-//  AnyCancellable.swift
-//
-//
-//  Created by Sergej Jaskiewicz on 26.06.2019.
-//
-
 /// A type-erasing cancellable object that executes a provided closure when canceled.
 ///
 /// Subscriber implementations can use this type to provide a “cancellation token” that
@@ -15,6 +8,7 @@
 
 // 这个和 Rx 的相比, 增加了 deinit 的自动调用的机制. 其他的没有太大的变化.
 
+// AnyCancellable 是一个引用数据类型.
 public final class AnyCancellable: Cancellable, Hashable {
     
     private var _cancel: (() -> Void)?

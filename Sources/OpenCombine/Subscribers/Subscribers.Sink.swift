@@ -25,8 +25,7 @@ extension Subscribers {
       Cancellable,
       CustomStringConvertible,
       CustomReflectable,
-      CustomPlaygroundDisplayConvertible
-    {
+      CustomPlaygroundDisplayConvertible {
         
         // 记录了, Next Event 应该触发的闭包.
         public var receiveValue: (Input) -> Void

@@ -121,6 +121,7 @@ extension Publishers.Print {
             lock.deallocate()
         }
         
+        // 在各种事件中, 增加了对应的 Log, 然后保持原有的逻辑不变.
         func receive(subscription: Subscription) {
             log("\(prefix)receive subscription: (\(subscription))")
             lock.lock()

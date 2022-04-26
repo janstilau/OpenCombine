@@ -5,8 +5,6 @@
 //  Created by Евгений Богомолов on 01/09/2019.
 //
 
-#if swift(>=5.1)
-
 extension Publisher where Failure == Never {
     
     /// Republishes elements received from a publisher, by assigning them to a property
@@ -136,12 +134,14 @@ public struct Published<Value> {
     @propertyWrapper
     private final class PublishedBox {
         var wrappedValue: Storage
-        
         init(wrappedValue: Storage) {
             self.wrappedValue = wrappedValue
         }
     }
     
+    // 没太明白, 这里整个 @propertyWrapper 有什么作用. 直接使用 PublishedBox 不得了.
+    // 猜测. 使用的时候, storage 更显式. 但是, 需要一个引用语义的对象在这里.
+    // 所以, 这个 Box 的唯一的作用, 就是让我们使用 Enum 的同时, 保证了引用语义.
     @PublishedBox private var storage: Storage
     
     internal var objectWillChange: ObservableObjectPublisher? {
@@ -187,6 +187,8 @@ public struct Published<Value> {
     internal func getPublisher() -> PublishedPublisher {
         switch storage {
         case .value(let value):
+            // Get 方法里面, 有了副作用.
+            // 进行了 Storage 的切换
             let publisher = PublishedPublisher(value)
             storage = .publisher(publisher)
             return publisher
@@ -227,9 +229,3 @@ public struct Published<Value> {
         }
     }
 }
-#else
-
-@available(swift, introduced: 5.1)
-public typealias Published = Never
-
-#endif // swift(>=5.1)

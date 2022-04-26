@@ -92,6 +92,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         sendValueAndConsumeLock(input)
     }
     
+    // 如果, 已经结束了, 新的 Send 指令一点效果都没有
     private func sendValueAndConsumeLock(_ newValue: Output) {
         guard active else {
             lock.unlock()

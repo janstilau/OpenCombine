@@ -11,13 +11,11 @@ internal final class PublishedSubject<Output>: Subject {
     
     private let lock = UnfairLock.allocate()
     
-    
+    // 当前的值.
     private var currentValue: Output
     
     // 记录了所有的上游节点.
-    // 在 Rx 里面, 上游节点, 是不用记录的. 因为在 Rx 里面, 循环引用是建立在 sinkDisposer 和 sink 之间的.
     private var upstreamSubscriptions: [Subscription] = []
-    
     // 记录了所有的下游节点.
     private var downstreams = ConduitList<Output, Failure>.empty
     
@@ -36,6 +34,7 @@ internal final class PublishedSubject<Output>: Subject {
         }
     }
     
+    // 所以, 这个什么时候会被赋值呢???
     internal var objectWillChange: ObservableObjectPublisher? {
         get {
             lock.lock()
@@ -90,6 +89,7 @@ internal final class PublishedSubject<Output>: Subject {
         // 通知一下, 当前已经发生了变化.
         // 这主要是为了通知监听该 Subject 的数据.
         changePublisher?.send()
+        // 然后, 才是真正的后续监听者, 收到发生改变的值.
         downstreams.forEach { conduit in
             conduit.offer(input)
         }
