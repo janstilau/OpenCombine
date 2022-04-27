@@ -7,15 +7,17 @@
 
 /// A publisher that eventually produces a single value and then finishes or fails.
 /// 就是 Single.
+
+/*
+ 这个类的设计, 和 Promise 很像. 就是, 存储生成的结果, 然后后续的所有节点统一使用.
+ 一个缓存的机制.
+ */
 public final class Future<Output, Failure: Error>: Publisher {
-    
     /// A type that represents a closure to invoke in the future, when an element or error
     /// is available.
     ///
     /// The promise closure receives one parameter: a `Result` that contains either
     /// a single element published by a `Future`, or an error.
-    
-    // 这里, 绑定了类型. Future 里面的 Promise, 一定要和 Future 里面的 Output, Failure 的类型是一致的.
     public typealias Promise = (Result<Output, Failure>) -> Void
     
     private let lock = UnfairLock.allocate()
@@ -191,6 +193,7 @@ extension Future {
         // Demand 的值不用管, 必须 > 0 才可以. Demand 仅仅是表示, 后续节点想要多少, 并不是 Publisher 必须提供多少.
         override func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
+            
             lock.lock()
             guard case .active(let downstream, hasAnyDemand: _) = state else {
                 lock.unlock()

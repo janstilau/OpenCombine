@@ -11,10 +11,11 @@ extension Publishers {
     ///
     /// When the publisher exhausts the elements in the sequence, the next request
     /// causes the publisher to finish.
+    
+    // Combine 里面, 信号的发射, 不仅仅和 Publisher 有关, 也和 Subscriber 的 Request 有关.
+    // 如果, Subscriber 不在没有 Request 的 Demand, 那么其实 Publisher 是应该把自己产生的数据, 发布给后方节点的.
     public struct Sequence<Elements: Swift.Sequence, Failure: Error>: Publisher {
-        
         public typealias Output = Elements.Element
-        
         /// The sequence of elements to publish.
         // 存储, 传递过来的序列. 这是泛型类型, 所以会有类型的绑定.
         public let sequence: Elements
@@ -24,10 +25,17 @@ extension Publishers {
             self.sequence = sequence
         }
         
+        /*
+         Combine 的 Publisher 有着非常明显的处理流程.
+         生成真正在响应链条里面存在的节点, 在节点里面, 存储了 Next 的 Subscriber
+         将节点, 作为 subscription 传递给后续节点. 后续节点里面, 做对于 subscription 的记录.
+         在 Subscriber 里面, 对传递过来的 subscription 调用 Request Demand. 进行真正的信号生成的触发.
+         
+         Producer 生成节点, 构建响应者链条. 真正在联调里面, 发挥作用的, 是各个节点类型.
+         这在 Combine 以及 RxSwfit 里面, 是同样的一个思路.
+         */
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-        where Failure == Downstream.Failure,
-              Elements.Element == Downstream.Input
-        {
+        where Failure == Downstream.Failure, Elements.Element == Downstream.Input {
             let inner = Inner(downstream: subscriber, sequence: sequence)
             if inner.isExhausted {
                 subscriber.receive(subscription: Subscriptions.empty)
@@ -42,23 +50,22 @@ extension Publishers {
 
 extension Publishers.Sequence {
     
+    // Publishers.Sequence 的响应链条节点.
     private final class Inner<Downstream: Subscriber, Elements: Sequence, Failure>
     : Subscription,
       CustomStringConvertible,
       CustomReflectable,
       CustomPlaygroundDisplayConvertible
-    where Downstream.Input == Elements.Element,
-          Downstream.Failure == Failure
-    {
+    where Downstream.Input == Elements.Element, Downstream.Failure == Failure {
         
         typealias Iterator = Elements.Iterator
         typealias Element = Elements.Element
         
-        private var sequence: Elements?
-        private var downstream: Downstream?
+        private var sequence: Elements? // Producer 里面, 记录的序列数据, 被原封不动的搬移到生成的 Node 中
+        private var downstream: Downstream? // Producer 中, 接收到的 Subscriber 数据, 被原封不动的, 搬移到生成的 Node 中.
         private var iterator: Iterator
         private var next: Element?
-        private var pendingDemand = Subscribers.Demand.none
+        private var pendingDemand = Subscribers.Demand.none // 记录后续节点的需求. 对于
         private var recursion = false
         private var lock = UnfairLock.allocate()
         

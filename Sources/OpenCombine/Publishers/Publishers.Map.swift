@@ -374,7 +374,10 @@ extension Publishers.TryMap {
                 return
             }
             lock.unlock()
+            
             // TryMap 并没有 demand 管理的职责, 向上抛出去.
+            // 应该说, 对于大部分的 Operator 来说, 都没有 Demand 管理的能力, 只能是顺着线路, 将 Demand 管理往上抛出.
+            // 应该只有那些, 真正能生产出信号的 Publisher 产生的节点, 才能有 Demand 管理的能力. 
             subscription.request(demand)
         }
         

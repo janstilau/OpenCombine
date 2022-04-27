@@ -130,6 +130,7 @@ extension Publishers {
 }
 
 extension Publishers.Delay {
+    
     private final class Inner<Downstream: Subscriber>
     : Subscriber,
       Subscription
@@ -252,6 +253,7 @@ extension Publishers.Delay {
                 return
             }
             lock.unlock()
+            // 可以看到, Schedule 相关的 Operator, 也是没有管理 Demand 的能力. 仅仅是传递给上级节点. 
             subscription.request(demand)
         }
         
