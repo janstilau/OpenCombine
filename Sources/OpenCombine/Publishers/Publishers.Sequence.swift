@@ -113,7 +113,8 @@ extension Publishers.Sequence {
                 return
             }
             
-            while let downstream = self.downstream, pendingDemand > 0 {
+            while let downstream = self.downstream,
+                    pendingDemand > 0 {
                 // 一个循环体里面, 进行 Demand 的管理工作.
                 if let current = self.next {
                     pendingDemand -= 1

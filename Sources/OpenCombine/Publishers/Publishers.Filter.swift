@@ -1,18 +1,19 @@
-//
-//  Publishers.Filter.swift
-//  
-//
-//  Created by Joseph Spadafora on 7/3/19.
-//
-
 extension Publisher {
     
+    /*
+     添加一个 Operator 有着非常固定的流程.
+     1. Protocol 增加定义方法.
+     2. 增加一个特殊的对象, 在上述的方法里面, 生成这个特殊的对象.
+     3. 确保, 这个特殊的对象, 也符合 Publisher. 这样返回的数据, 可以继续进行 Publisher 对应方法的串联.
+     */
     /// Republishes all elements that match a provided closure.
     ///
     /// OpenCombine’s `filter(_:)` operator performs an operation similar to that of
     /// `filter(_:)` in the Swift Standard Library: it uses a closure to test each element
     /// to determine whether to republish the element to the downstream subscriber.
-    ///
+    // 这里的描述是, republish, 所以其实就是插入了一个节点, 在这个节点之上, 进行过滤的操作.
+    // 后续节点, 收到的各种数据, 都是需要 Filter 节点进行喂食的.
+    
     /// The following example, uses a filter operation that receives an `Int` and only
     /// republishes a value if it’s even.
     ///
@@ -22,13 +23,16 @@ extension Publisher {
     ///         .sink { print("\($0)", terminator: " ") }
     ///
     ///     // Prints: "2 4"
-    ///
+    // 在 Combine 的世界里面, Try 这个单词, 有着很强的暗示, 就是后续可能会引起问题.
+    // 所以, 在使用的时候, 不使用 Try 的地方, 一定是不用考虑 error 的. 这是一个好的设计
+    
     /// - Parameter isIncluded: A closure that takes one element and returns
     ///   a Boolean value indicating whether to republish the element.
     /// - Returns: A publisher that republishes all elements that satisfy the closure.
     public func filter(
         _ isIncluded: @escaping (Output) -> Bool
     ) -> Publishers.Filter<Self> {
+        // 基本上,
         return Publishers.Filter(upstream: self, isIncluded: isIncluded)
     }
     
@@ -101,20 +105,25 @@ extension Publishers.TryFilter {
 
 extension Publishers {
     
+    // 在 Combine 里面, 是没有 Producer 这一个抽象层存在的.
     /// A publisher that republishes all elements that match a provided closure.
     public struct Filter<Upstream: Publisher>: Publisher {
         
+        // 固定格式, Fitler 没有改变上游的 Output, 它仅仅是进行过滤
         /// The kind of values published by this publisher.
         public typealias Output = Upstream.Output
         
+        // 固定格式, Fitler 没有改变上游的 Failure, 它仅仅是进行过滤
         /// The kind of errors this publisher might publish.
-        ///
         /// Use `Never` if this `Publisher` does not publish errors.
         public typealias Failure = Upstream.Failure
         
+        // 固定数据, Publisher 要记录上游 Publisher, 这样才能建立起响应链条.
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
         
+        // 核心的业务代码, 就是在上游节点发送数据过来之后, 根据该值进行过滤.
+        // 注意命名, Block 对象, 就根据业务来命名, 没有 Action, CallBack, Block 这种结尾.
         /// A closure that indicates whether to republish an element.
         public let isIncluded: (Upstream.Output) -> Bool
         
@@ -123,13 +132,10 @@ extension Publishers {
             self.isIncluded = isIncluded
         }
         
+        // 固定写法, 生成 Filter 内部的 Subscription 对象, 然后调用上游的注册.
+        // 完成响应者链条的搭建.
         /// This function is called to attach the specified `Subscriber`
         /// to this `Publisher` by `subscribe(_:)`
-        ///
-        /// - SeeAlso: `subscribe(_:)`
-        /// - Parameters:
-        ///     - subscriber: The subscriber to attach to this `Publisher`.
-        ///                   once attached it can begin to receive values.
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Upstream.Failure == Downstream.Failure,
               Upstream.Output == Downstream.Input
@@ -145,6 +151,8 @@ extension Publishers {
         /// The kind of values published by this publisher.
         public typealias Output = Upstream.Output
         
+        // 对于 Try 这种, Failure 就不是一个具体的类型了.
+        // 因为, Closure 的错误, 和上游的错误, 是没有办法用一种类型融合的.
         /// The kind of errors this publisher might publish.
         ///
         /// Use `Never` if this `Publisher` does not publish errors.
@@ -185,12 +193,16 @@ extension Publishers.Filter {
       CustomStringConvertible,
       CustomReflectable,
       CustomPlaygroundDisplayConvertible
-    where Upstream.Output == Downstream.Input, Upstream.Failure == Downstream.Failure
+    where Upstream.Output == Downstream.Input,
+          Upstream.Failure == Downstream.Failure
     {
         typealias Input = Upstream.Output
         typealias Failure = Upstream.Failure
         
+        // 固定写法, Sink 节点, 应该记录下游节点.
+        // 在完成自己的业务之后, 要把数据传递给下游节点.
         private let downstream: Downstream
+        // 业务相关数据, 从 Producer 中拷贝过来.
         private let filter: (Input) -> Bool
         
         let combineIdentifier = CombineIdentifier()
@@ -226,6 +238,7 @@ extension Publishers.Filter {
 }
 
 extension Publishers.TryFilter {
+    // 子类中进行了类型的绑定, 这是泛型类使用的非常常见的方式 .
     private final class Inner<Downstream: Subscriber>
     : FilterProducer<Downstream,
       Upstream.Output,
@@ -238,6 +251,8 @@ extension Publishers.TryFilter {
             newValue: Upstream.Output
         ) -> PartialCompletion<Upstream.Output?, Error> {
             do {
+                // 没有发生错误, 没过滤掉, 发送给后方, 过滤掉了, 后方什么都不知道.
+                // 然后管理 demand.
                 return try filter(newValue) ? .continue(newValue) : .continue(nil)
             } catch {
                 return .failure(error)
