@@ -100,6 +100,17 @@ extension Publishers.Sequence {
          和 Rx 比较.
          rx 是在 Subscribe 函数里面, 触发了对于信号的生产.
          Combine 是在 Request 里面, 触发了对于信号的生产.
+         
+         真正进行信号生成的 Publisher 的 Inner 节点, 应该在 request(_ demand: Subscribers.Demand) 中, 进行信号发送的管理.
+         当, 收到了新的需求之后, 进行信号产生事件的触发.
+         在这里, 因为这是一个同步行为, 所以直接在 request(_ demand 中, 进行了相应的信号的发送.
+         而如果是一个异步事件, 则是收到 Demand 之后, 触发异步事件, 在异步事件完成之后, 进行对应信号的触发.
+         所有的这些, 都是要触发 Demand 的数量管理.
+         
+         这个机制, 使得我们可以定义一个特殊的 Subscriber. 可以根据业务需求, 主动调用它存储的上游 Subscription 的 RequestDemand 方法, 来触发上游节点的事件的发送.
+         
+         这非常重要. rx 里面, subscribe 方法, 就会触发对应的事件产生逻辑, 而在 Combine 里面, 我们可以通过 Subscription, 来主动地进行上游事件的触发.
+         这也就 Combine 想要达到的 Pull 设计意图.
          */
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
