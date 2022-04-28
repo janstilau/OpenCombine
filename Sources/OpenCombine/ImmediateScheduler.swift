@@ -1,15 +1,10 @@
-//
-//  ImmediateScheduler.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 11.06.2019.
-//
 
 /// A scheduler for performing synchronous actions.
 ///
 /// You can only use this scheduler for immediate actions. If you attempt to schedule
 /// actions after a specific date, this scheduler ignores the date and performs them
 /// immediately.
+// 直接调用, 没有调度的含义存在.
 public struct ImmediateScheduler: Scheduler {
     
     /// The time type used by the immediate scheduler.
@@ -142,6 +137,7 @@ public struct ImmediateScheduler: Scheduler {
     public static let shared = ImmediateScheduler()
     
     /// Performs the action at the next possible opportunity.
+    // 直接调用.
     @inlinable
     public func schedule(options: SchedulerOptions?, _ action: @escaping () -> Void) {
         action()

@@ -28,7 +28,8 @@ internal func __nextCombineIdentifier() -> UInt64 {
 
 
 // 就是一个 Int 值的封装.
-// 使用类型来更好的进行表达. 
+// 使用类型来更好的进行表达.
+
 public struct CombineIdentifier: Hashable, CustomStringConvertible {
     
     private let rawValue: UInt64

@@ -6,7 +6,7 @@
 //
 
 /*
- conduit 管道.
+ 不太明白, 这种 none, single, many 的设计意图是什么. 好多地方看到了这样类似的概念了.
  */
 internal enum ConduitList<Output, Failure: Error> {
     case empty
@@ -14,7 +14,7 @@ internal enum ConduitList<Output, Failure: Error> {
     case many(Set<ConduitBase<Output, Failure>>)
 }
 
-// 
+// take 方法, 返回当前数据的所有数据, 然后将当前数据重置为 Init 的状态.
 extension ConduitList: HasDefaultValue {
     init() {
         self = .empty
@@ -27,6 +27,8 @@ extension ConduitList {
         case .empty:
             self = .single(conduit)
         case .single(conduit):
+            // 这里和下面不一样, 这个 case 是, conduit 和传进来的是一个值.
+            // 有点不太好理解.
             break // This element already exists.
         case .single(let existingConduit):
             self = .many([existingConduit, conduit])

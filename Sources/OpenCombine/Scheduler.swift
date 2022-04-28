@@ -1,11 +1,6 @@
-//
-//  Scheduler.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 11.06.2019.
-//
 
 /// A protocol that provides a scheduler with an expression for relative time.
+// 时间相关的计量单位, 可以根据各个时间单位, 来返回相对应的值.
 public protocol SchedulerTimeIntervalConvertible {
     
     /// Converts the specified number of seconds into an instance of this scheduler time
@@ -29,6 +24,8 @@ public protocol SchedulerTimeIntervalConvertible {
     static func nanoseconds(_ ns: Int) -> Self
 }
 
+// 调度, 只有两种, 调度环境, 一般就是线程.
+// 调度时间, 一般就是延时.
 /// A protocol that defines when and how to execute a closure.
 ///
 /// You can use a scheduler to execute code as soon as possible, or after a future date.
@@ -127,6 +124,7 @@ extension Scheduler {
     public func schedule(after date: SchedulerTimeType,
                          interval: SchedulerTimeType.Stride,
                          _ action: @escaping () -> Void) -> Cancellable {
+        
         return schedule(after: date,
                         interval: interval,
                         tolerance: minimumTolerance,

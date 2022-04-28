@@ -7,6 +7,11 @@
 /// Calling `send(_:)` on a `CurrentValueSubject` also updates the current value, making
 /// it equivalent to updating the `value` directly.
 
+/*
+ Subject 的实现, 和 Rx 差不多.
+ 最重要的是, 这是一个可以缓存多个下游节点的节点.
+ Combine 里面, 增加了 Demand 的管理, 所以 Combine 中的 dispatchNode 要复杂一些.
+ */
 public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     
     private let lock = UnfairLock.allocate()
@@ -14,12 +19,12 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     private var active = true
     
     // 存储一下结束事件.
+    // 在 Subject 接收到上游的结束事件的时候, 会将这个值进行复制. 后续新的 Subscriber 来临的时候, 可以直接收到这个存储的事件.
     private var completion: Subscribers.Completion<Failure>?
     
-    // 存储一下, 上有节点.
+    // 存储一下, 上游节点.
     private var upstreamSubscriptions: [Subscription] = []
-    
-    // 存储一下, 下游节点.
+    // 存储一下, 下游节点. 没有直接存储 Subsriber, 而是一个 Conduit 对象
     private var downstreams = ConduitList<Output, Failure>.empty
     
     // 缓存一下当前值.
@@ -42,14 +47,13 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         }
     }
     
-    /// Creates a current value subject with the given initial value.
+    // CurrentObject, 一定是初始化的时候, 提供值.
     public init(_ value: Output) {
         self.currentValue = value
     }
     
     // 和 Rx 不同的是, Combine 里面, 对象的声明周期, 和 cancel 有了强绑定的关系.
     deinit {
-        // 按照 rx 里面的设计理念, 上层节点是 shared, 那么这里的 cancel 其实就是做相关的取消注册的工作.
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
@@ -57,7 +61,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     }
     
     /*
-     上游节点, 发送 Subscription 过来, 记录在自己缓存区里面. 这样, 自己和上游节点, 形成了循环引用.
+     上游节点, 发送 Subscription 过来, 记录在自己缓存区里面.
      */
     public func send(subscription: Subscription) {
         lock.lock()
@@ -67,7 +71,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         
         // Subject, 对于上游节点的数据, 是来者不拒的.
         // 但是, 他内部会管理所有的后续节点的 Demand 需求.
-        // 当, 上游节点发布数据到 Subject 之后, 会分发到 conduit 里面, 进行 Demand 的管理. 
+        // 当, 上游节点发布数据到 Subject 之后, 会分发到 conduit 里面, 在每个 conduit 里面, 会进行 Demand 的管理.
         subscription.request(.unlimited)
     }
     
@@ -85,6 +89,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
             // 如果, 当前自己已经 cancel 过了, 直接交给后方 stopEvent.
             let completion = self.completion!
             lock.unlock()
+            // 一定要给后续的节点, 发送一个 subscription. 因为并不知道, 后续节点, 会根据这个做什么处理.
             subscriber.receive(subscription: Subscriptions.empty)
             subscriber.receive(completion: completion)
         }
@@ -101,6 +106,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
             lock.unlock()
             return
         }
+        
         currentValue = newValue
         let downstreams = self.downstreams
         lock.unlock()
@@ -118,8 +124,9 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
             lock.unlock()
             return
         }
-        active = false
         // 记录一下 Completion, 之后的 subscriber 可以直接使用.
+        // active 和 completion 是绑定在一起的, 可以使用一个 Enum 来进行管理.
+        active = false
         self.completion = completion
         let downstreams = self.downstreams.take()
         lock.unlock()
@@ -134,6 +141,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
             lock.unlock()
             return
         }
+        // 解除 Subject 和下游节点的关联关系.
         downstreams.remove(conduit)
         lock.unlock()
     }
@@ -151,14 +159,16 @@ extension CurrentValueSubject {
         
         fileprivate var parent: CurrentValueSubject?
         
+        // 在每个 Conduit 里面, 记录下游节点. 当上游节点发送数据过来的时候, 交给各个 Conduit 传递给后续节点上.
         fileprivate var downstream: Downstream?
-        
+        // 记录下游节点, 对于自己的需求.
         fileprivate var demand = Subscribers.Demand.none
         
         private var lock = UnfairLock.allocate()
         
         private var downstreamLock = UnfairRecursiveLock.allocate()
         
+        // 记录, 当前自己是否可以向后传递的状态.
         private var deliveredCurrentValue = false
         
         fileprivate init(parent: CurrentValueSubject,
@@ -172,6 +182,8 @@ extension CurrentValueSubject {
             downstreamLock.deallocate()
         }
         
+        // 上游节点, 发送数据过来之后, 是调用 Offer 函数.
+        // 在这个函数内, 有着 Demand 的管理策略.
         override func offer(_ output: Output) {
             lock.lock()
             guard demand > 0, let downstream = self.downstream else {
@@ -179,6 +191,7 @@ extension CurrentValueSubject {
                 lock.unlock()
                 return
             }
+            // demand 的管理.
             demand -= 1
             deliveredCurrentValue = true
             lock.unlock()
@@ -188,6 +201,7 @@ extension CurrentValueSubject {
             downstreamLock.unlock()
             guard newDemand > 0 else { return }
             lock.lock()
+            // demand 的管理.
             demand += newDemand
             lock.unlock()
         }
@@ -202,6 +216,7 @@ extension CurrentValueSubject {
             lock.unlock()
             parent?.disassociate(self)
             downstreamLock.lock()
+            // 下游节点, 接收到 完成事件.
             downstream.receive(completion: completion)
             downstreamLock.unlock()
         }
@@ -215,6 +230,7 @@ extension CurrentValueSubject {
                 return
             }
             if deliveredCurrentValue {
+                // 管理 Demand 的值.
                 self.demand += demand
                 lock.unlock()
                 return
@@ -228,6 +244,7 @@ extension CurrentValueSubject {
                 self.demand -= 1
                 lock.unlock()
                 downstreamLock.lock()
+                // 如果, 后续节点要值了, 那么主动的发送一下当前的值过去.
                 let newDemand = downstream.receive(currentValue)
                 downstreamLock.unlock()
                 guard newDemand > 0 else { return }

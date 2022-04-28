@@ -1,12 +1,5 @@
-//
-//  Future.swift
-//  
-//
-//  Created by Max Desiatov on 24/11/2019.
-//
 
 /// A publisher that eventually produces a single value and then finishes or fails.
-/// 就是 Single.
 
 /*
  这个类的设计, 和 Promise 很像. 就是, 存储生成的结果, 然后后续的所有节点统一使用.
@@ -16,15 +9,17 @@ public final class Future<Output, Failure: Error>: Publisher {
     /// A type that represents a closure to invoke in the future, when an element or error
     /// is available.
     ///
-    /// The promise closure receives one parameter: a `Result` that contains either
-    /// a single element published by a `Future`, or an error.
+    /// The promise closure receives one parameter:
+    // a `Result` that contains either a single element published by a `Future`, or an error.
     public typealias Promise = (Result<Output, Failure>) -> Void
     
     private let lock = UnfairLock.allocate()
     
     // 存回调. 这里和 Promise 的概念, 就已经完全相同了.
+    // 存储的策略, 和 Subject 里面的也是完全相同的.
     private var downstreams = ConduitList<Output, Failure>.empty
     
+    // 和 Promise 里面概念一样, 当异步事件发生之后, 将该值存储到 result 里面.
     private var result: Result<Output, Failure>?
     
     /// Creates a publisher that invokes a promise closure when the publisher emits
@@ -32,12 +27,11 @@ public final class Future<Output, Failure: Error>: Publisher {
     ///
     /// - Parameter attemptToFulfill: A `Promise` that the publisher invokes when
     ///   the publisher emits an element or terminates with an error.
+    // 这是一个饿汉式的触发场景. 所以在初始化的时候, 就进行了相关闭包的调用.
+    // 因为 Result 的存储机制, 使得 闭包完成之后, 新添加的 Subscriber 也可以收获到正确的值.
     public init(
         _ attemptToFulfill: @escaping (@escaping Promise) -> Void
     ) {
-        // 异步操作的结构, 是触发 Promise 函数.
-        // 在这个函数里面, 记录 Result 的值, 然后将所有记录的后续逻辑, 使用 result 的值进行触发.
-        // 这里是没有问题的, 按照官方文档的定义来说, Future 是 greedy 的. 所以, 只要创建了, 就会触发生成信号的操作. 
         attemptToFulfill(self.promise)
     }
     
@@ -51,10 +45,12 @@ public final class Future<Output, Failure: Error>: Publisher {
             lock.unlock()
             return
         }
+        // 存储, 最终异步闭包得到的结果.
         self.result = result
         let downstreams = self.downstreams.take()
         lock.unlock()
         
+        // 然后, 将结果分发给各个后续节点.
         switch result {
         case .success(let output):
             downstreams.forEach { $0.offer(output) }
@@ -73,6 +69,7 @@ public final class Future<Output, Failure: Error>: Publisher {
             downstreams.insert(conduit)
             lock.unlock()
             subscriber.receive(subscription: conduit)
+            // conduit.fulfill 会做相关的 DispatchTable 的管理工作.
             conduit.fulfill(result)
         } else {
             // 否则, 就是记录回调. 等待异步操作的结果.
@@ -107,6 +104,7 @@ extension Future {
             case active(Downstream, hasAnyDemand: Bool)
             case terminal
             
+            // enum 需要对外提供, 类型是 Optinal 的各种方便的 get 属性. 这已经可以算作是一个惯例了.
             var downstream: Downstream? {
                 switch self {
                 case .active(let downstream, hasAnyDemand: _):
@@ -149,7 +147,6 @@ extension Future {
             switch result {
             case .success(let output):
                 _ = downstream.receive(output)
-                // 直接给下游发送 finished 事件.
                 downstream.receive(completion: .finished)
             case .failure(let error):
                 downstream.receive(completion: .failure(error))
@@ -162,6 +159,7 @@ extension Future {
                 lock.unlock()
                 return
             }
+            // 如果, 后续节点没有 Demand 的需求, 不给后面发送数据.
             if case .success = result, !hasAnyDemand {
                 lock.unlock()
                 return

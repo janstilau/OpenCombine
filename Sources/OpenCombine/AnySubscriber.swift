@@ -1,9 +1,3 @@
-//
-//  AnySubscriber.swift
-//  OpenCombine
-//
-//  Created by Sergej Jaskiewicz on 10.06.2019.
-//
 
 /// A type-erasing subscriber.
 ///
@@ -97,6 +91,7 @@ public struct AnySubscriber<Input, Failure: Error>: Subscriber,
                 receiveValue: ((Input) -> Subscribers.Demand)? = nil,
                 receiveCompletion: ((Subscribers.Completion<Failure>) -> Void)? = nil) {
         
+        // 这里, 就体现了 BoxBase 的价值所在了.
         box = ClosureBasedAnySubscriber(
             receiveSubscription ?? { _ in },
             receiveValue ?? { _ in .none },
@@ -130,6 +125,7 @@ public struct AnySubscriber<Input, Failure: Error>: Subscriber,
 
 /// A type-erasing base class. Its concrete subclass is generic over the underlying
 /// subscriber.
+// Subscriber 中的 Input, Failure 在这里重名了, 这样, 泛型类的类型参数, 和泛型 Protocol 里面的类型参数, 得到了统一.
 @usableFromInline
 internal class AnySubscriberBase<Input, Failure: Error>: Subscriber {
     
@@ -141,6 +137,7 @@ internal class AnySubscriberBase<Input, Failure: Error>: Subscriber {
     @inlinable
     deinit {}
     
+    // 实现了 Subscriber 接口的各种要求.
     @usableFromInline
     internal func receive(subscription: Subscription) {
         abstractMethod()
@@ -161,6 +158,7 @@ internal class AnySubscriberBase<Input, Failure: Error>: Subscriber {
 internal final class AnySubscriberBox<Base: Subscriber>
 : AnySubscriberBase<Base.Input, Base.Failure>
 {
+    // 和 Publisher 一样, 存储一个具体类型的对象. 将所有的对于 Subscriber 的实现, 转交给该对象. 
     @usableFromInline
     internal let base: Base
     
@@ -213,6 +211,7 @@ internal final class ClosureBasedAnySubscriber<Input, Failure: Error>
     @inlinable
     deinit {}
     
+    // 在不同的接口中, 调用存储的各个 Block 对象.
     @inlinable
     override internal func receive(subscription: Subscription) {
         receiveSubscriptionThunk(subscription)

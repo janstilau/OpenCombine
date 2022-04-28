@@ -1,9 +1,3 @@
-//
-//  ObservableObject.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 08/09/2019.
-//
 
 /// A type of object with a publisher that emits before the object has changed.
 ///
@@ -32,6 +26,7 @@
 ///     print(john.haveBirthday())
 ///     // Prints "24 will change"
 ///     // Prints "25"
+
 public protocol ObservableObject: AnyObject {
     
     /// The type of publisher that emits before the object has changed.
