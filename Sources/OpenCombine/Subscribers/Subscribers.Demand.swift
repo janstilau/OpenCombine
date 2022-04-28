@@ -13,9 +13,9 @@ import _Concurrency
 
 extension Subscribers {
     
+    // 其实, 就是对于 Int 值的封装. 使用类型, 来包装基本数据类型, 重构里面的技巧.
     /// A requested number of items, sent to a publisher from a subscriber through
     /// the subscription.
-    // 其实, 就是对于 Int 值的封装. 使用类型, 来包装基本数据类型, 重构里面的技巧.
     public struct Demand: Equatable,
                           Comparable,
                           Hashable,
@@ -60,10 +60,27 @@ extension Subscribers {
             }
         }
         
+        
+        // Demand 其实就是 Int 的封装, 提供了 none, unlimited 和 static func max(_ value: Int) 供外界值的构建.
+        // 下面的都是操作符的定义.
+        // 需要注意的就是, max + Int, 或者 max + max 还是 max.
+         
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         /// Returns the result of adding two demands.
         /// When adding any value to `.unlimited`, the result is `.unlimited`.
         public static func + (lhs: Demand, rhs: Demand) -> Demand {
             switch (lhs, rhs) {
+                // 特殊处理, Max 相加不会引起变化.
             case (.unlimited, _):
                 return .unlimited
             case (_, .unlimited):

@@ -6,23 +6,20 @@
 //
 
 /*
- 和 Rx 不同, Sink 对象, 是一个 Cancellable 对象.
+ 在 Combine 的体系里面, 节点对象
  
  上游节点, 生成一个 Subscription 对象, 存储在 Sink 里面, 而 Subscription 保持了下游的 Sink 对象. 这是一个强引用.
- Subscription 里面, 是上游节点如何接受上上游节点, 操作, 然后输出给下游节点的逻辑.
- Subscription 的 cancel, 就是打破这层逻辑的函数.
- 
- Subscription 和 Sink 之间强引用, cancel 的时候, 强引用打破. 然后调用 Subscription 的 cancel.
- Subscription 的 cancel 打破强引用, 然后调用自己存储的上游 Subscription 的 cancel.
- 如果是这样, 就和 Rx 是一个设计的思路. 
+ Subscription 里面, 是上游节点如何接受上游节点, 操作, 然后输出给下游节点的逻辑.
  */
 extension Subscribers {
-    
     /// A simple subscriber that requests an unlimited number of values upon subscription
-    // 进行了类型的绑定.
+    // unlimited Demand. Demand 的设计, 不是说下游节点需要, 上游节点就要一直给. 而是上游节点不能超过需要的数量, 什么时候, 真正的触发信号的发送, 还是上游节点的责任.
+    // 进行了类型的绑定. 写在泛型参数里面的类型, 不仅仅是一个抽象数据类型的概念, 也有类型绑定的含义在里面.
+    
+    // 这是一个引用类型.
     public final class Sink<Input, Failure: Error>
     : Subscriber,
-      Cancellable,
+      Cancellable, // 因为, SINK 对象就是最后的节点对象了, 不会再次向后方传递. 所以, Sink 对象, 仅仅是 Cancellable 而不是 Subscription
       CustomStringConvertible,
       CustomReflectable,
       CustomPlaygroundDisplayConvertible {
@@ -52,6 +49,7 @@ extension Subscribers {
         
         public var playgroundDescription: Any { return description }
         
+        // 因为, Sink 是最后节点, 所以没有 Subscribe 后方节点的操作, 他是一个 Subscriber, 而不是一个 Publisher
         public init(receiveCompletion: @escaping (Subscribers.Completion<Failure>) -> Void,
                     receiveValue: @escaping ((Input) -> Void)) {
             self.receiveCompletion = receiveCompletion
@@ -62,26 +60,33 @@ extension Subscribers {
             lock.deallocate()
         }
         
-        // 在实现一个 Subscriber 的实现, 一定要实现 func receive(subscription: Subscription) 这个方法.
-        // 因为, 这才是真正触发响应联调操作的基础.
-        // 在其中, 一定要触发 subscription.request
+        // 要实现一个 Subscriber, 就要按照 Subscriber 的抽象来进行
+        // 必须实现 receive(subscription: Subscription), 在里面调用 subscription.request 进行 Demand 的管理.
+        // publisher.subscribe(subscriber) 完成的是, 响应链条的各个节点从后向前的串联.
+        // receive(subscription: Subscription) 要完成的是, 响应链条的各个节点的循环引用的建立
+        // func request(_ demand: Subscribers.Demand) 完成的是, 从后向前 Demand 的管理, 以及真正信号发出逻辑的触发.
         public func receive(subscription: Subscription) {
             lock.lock()
-            // 自己的状态, 必须是 init 的状态. 
+            // Guard 逻辑
             guard case .awaitingSubscription = status else {
                 lock.unlock()
                 subscription.cancel()
                 return
             }
-            // 存储了一下, 当前的 subscription
-            // 这里, 会形成强引用.
+            // 存储了一下, 当前的 subscription, 形成了 Subscription 和 Subscriber 之间的循环引用.
+            // 同时, 这里也管理了下状态. Swift 的 Enum 当做数据盒子, 使得业务数据和状态数据统一, 让逻辑更加清晰.
+            // 在切换状态的时候, 自动进行内存的管理
             status = .subscribed(subscription)
             lock.unlock()
+            
             // 然后, 触发 subscription 的 Demand 管理.
+            // 如果使用 unlimited 进行管理, 那么就是 Rx 没有太大区别了. 也就是这个位置的 Subscriber 不做背压管理. 上游只要事件完成了, 就可以触发下游信号的接受.
+            // 是否给下游节点, 发送信号, 是上游节点控制的. 如果上游节点不尊重下游节点的 RequestDemand 的意图, 就是上游节点的设计有问题.
             subscription.request(.unlimited)
         }
         
-        // Sink 在 receive(subscription: Subscription) 中, 将自己期望的 demand 设置为 max. 所以, 在每次的 receive 的时候, 返回 0, 也不用担心上游次数用尽了. 
+        // 当, 使用 unlimited 进行 Demand 管理之后, 每次 receive 的时候, 其实是不用进行 Demand 的考虑的.
+        // 因为按照 Combine 的设计, Demand 是一个增量设计.
         public func receive(_ value: Input) -> Subscribers.Demand {
             // 在锁里面, 进行数据的读取.
             // 在锁外面, 进行操作的执行.
@@ -89,6 +94,7 @@ extension Subscribers {
             lock.lock()
             let receiveValue = self.receiveValue
             lock.unlock()
+            // Sink 里面, 接收到数据之后, 就是调用存储的闭包, 来处理这个数据.
             receiveValue(value)
             return .none
         }
@@ -96,7 +102,7 @@ extension Subscribers {
         //  其实, 相当于这里调用了 cancel 了, 不知道为什么, Combine 里面, 在接收到结束事件的时候, 都没调用 cancel.
         public func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
-            // 这里, 对 Subscription 的强引用解除了.
+            // 这里, 对 Subscription 的强引用解除了. 同时, 进行了状态的管理.
             status = .terminal
             let receiveCompletion = self.receiveCompletion
             self.receiveCompletion = { _ in }
@@ -107,7 +113,7 @@ extension Subscribers {
             // When closure deallocates, the object's deinit is called, and holding
             // the lock at that moment can lead to deadlocks.
             // See https://github.com/OpenCombine/OpenCombine/issues/208
-            
+            // 这里没太明白, 不重要.
             withExtendedLifetime(receiveValue) {
                 receiveValue = { _ in }
                 lock.unlock()
@@ -116,6 +122,8 @@ extension Subscribers {
             receiveCompletion(completion)
         }
         
+        // Cancel 的责任是, 资源释放, 必要要做的是, 要完成对于上游节点的 cancel 触发.
+        // 这样, 这个链条才能有意义.
         public func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = status else {
@@ -143,8 +151,8 @@ extension Subscribers {
     }
 }
 
-// 最重要的方法, 将响应式转化为命令式.
-// 这是, 不习惯 Combine 的时候, 使用的最广的转化函数.
+// 添加 Operator, 或者 Subscriber, 有着固定的套路. 一定要在 Publisher Protocol 里面, 增加快捷方法, 进行链条构建的串联.
+// 返回的时候, 应该使用 Any 进行类型的隐藏.
 extension Publisher {
     
     /// Attaches a subscriber with closure-based behavior.
@@ -170,9 +178,10 @@ extension Publisher {
     ///     //  value: 3
     ///     //  completion: finished
     ///
-    // requests an unlimited number, 使用这种方式, Demian 是 Max.
     /// This method creates the subscriber and immediately requests an unlimited number
     /// of values, prior to returning the subscriber.
+    
+    // 内存释放和 Cancel 的连动, 是 AnyCancellable 的行为. Sink 的 Deinit 里面, 没有做这件事.
     /// The return value should be held, otherwise the stream will be canceled.
     ///
     /// - parameter receiveComplete: The closure to execute on completion.
@@ -188,7 +197,9 @@ extension Publisher {
             receiveCompletion: receiveCompletion,
             receiveValue: receiveValue
         )
+        // 上游节点, 主动调用 subscribe, 完成整个响应链条的构建工作.
         subscribe(subscriber)
+        // 主动进行类型的隐藏.
         return AnyCancellable(subscriber)
     }
 }
@@ -225,6 +236,8 @@ extension Publisher where Failure == Never {
     public func sink(
         receiveValue: @escaping (Output) -> Void
     ) -> AnyCancellable {
+        // receiveCompletion 必然有值, 因为, Subscribers.Sink 里面这个成员变量并不是 Optional 的.
+        // 坦率的说, 给很多成员变量, 添加一个默认的无效值, 可以大大简化类型的处理逻辑 .
         let subscriber = Subscribers.Sink<Output, Failure>(
             receiveCompletion: { _ in },
             receiveValue: receiveValue
