@@ -98,6 +98,7 @@ extension Publishers {
     /// all received elements pass a given predicate.
     public struct AllSatisfy<Upstream: Publisher>: Publisher {
         
+        // Output 变为了 Bool. 这是合理的, 因为这个业务逻辑, 就应该是 Bool 的输出值. 
         public typealias Output = Bool
         
         public typealias Failure = Upstream.Failure

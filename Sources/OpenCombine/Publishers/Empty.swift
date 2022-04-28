@@ -9,6 +9,8 @@
 ///
 /// You can create a ”Never” publisher — one which never sends values and never
 /// finishes or fails — with the initializer `Empty(completeImmediately: false)`.
+
+// Rx 里面的 Never, 通过 Empty 进行了合二为一.
 public struct Empty<Output, Failure: Error>: Publisher, Equatable {
     
     /// Creates an empty publisher.
@@ -24,7 +26,7 @@ public struct Empty<Output, Failure: Error>: Publisher, Equatable {
     ///
     /// Use this initializer to connect the empty publisher to subscribers or other
     /// publishers that have specific output and failure types.
-    /// 
+    ///
     /// - Parameters:
     ///   - completeImmediately: A Boolean value that indicates whether the publisher
     ///     should immediately finish.
@@ -46,6 +48,7 @@ public struct Empty<Output, Failure: Error>: Publisher, Equatable {
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Output == Downstream.Input, Failure == Downstream.Failure
     {
+        // 这里没有真正的生成节点对象. 
         subscriber.receive(subscription: Subscriptions.empty)
         if completeImmediately {
             subscriber.receive(completion: .finished)

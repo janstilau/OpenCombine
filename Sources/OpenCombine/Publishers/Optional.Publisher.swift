@@ -35,7 +35,8 @@ extension Optional {
         /// The type of a Combine publisher that publishes the value of a Swift optional
         /// instance to each subscriber exactly once, if the instance has any value at
         /// all.
-        ///
+        
+        // 如果, 是 nil. 直接发送 Completion. 否则, 是发送 Value + Completion.
         /// In contrast with the `Just` publisher, which always produces a single value,
         /// this publisher might not send any values and instead finish normally,
         /// if `output` is `nil`.
@@ -67,6 +68,8 @@ extension Optional {
             /// normally if it doesn’t.
             ///
             /// - Parameter subscriber: The subscriber to add.
+            // 当, 收到下游节点的时候, 如果 Optinal 有值, 发送 next 事件和 Completion 事件
+            // 否则, 直接发送 Finsihed 事件. 
             public func receive<Downstream: Subscriber>(subscriber: Downstream)
             where Output == Downstream.Input, Failure == Downstream.Failure
             {
@@ -74,6 +77,7 @@ extension Optional {
                     subscriber.receive(subscription: Inner(value: output,
                                                            downstream: subscriber))
                 } else {
+                    // 还是要先发送一个 Subscriptions 对象过去, 可能下游节点, 需要 receive(subscription 的调用, 来进行状态的管理.
                     subscriber.receive(subscription: Subscriptions.empty)
                     subscriber.receive(completion: .finished)
                 }
@@ -102,6 +106,7 @@ extension Optional {
 }
 
 extension Optional.OCombine {
+    
     private final class Inner<Downstream: Subscriber>
     : Subscription,
       CustomStringConvertible,
@@ -109,9 +114,7 @@ extension Optional.OCombine {
       CustomPlaygroundDisplayConvertible
     where Downstream.Input == Wrapped
     {
-        // NOTE: this class has been audited for thread safety.
-        // Combine doesn't use any locking here.
-        
+        // 真正的下游节点.
         private var downstream: Downstream?
         private let output: Wrapped
         
@@ -123,6 +126,7 @@ extension Optional.OCombine {
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             guard let downstream = self.downstream.take() else { return }
+            // 当, 下游真正的 Request Demand 的时候, 上游节点才会触发生成信号的事件. 
             _ = downstream.receive(output)
             downstream.receive(completion: .finished)
         }

@@ -1,20 +1,16 @@
-//
-//  Just.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 16.06.2019.
-//
 
 /// A publisher that emits an output to each subscriber just once, and then finishes.
 ///
-/// You can use a `Just` publisher to start a chain of publishers. A `Just` publisher is
-/// also useful when replacing a value with `Publishers.Catch`.
-///
+/// You can use a `Just` publisher to start a chain of publishers.
+///  A `Just` publisher is also useful when replacing a value with `Publishers.Catch`.
+// 这里说的很明显了, Just 就可以当做单值进行处理.
+
 /// In contrast with `Result.Publisher`, a `Just` publisher can’t fail with an error.
 /// And unlike `Optional.Publisher`, a `Just` publisher always produces a value.
+
 public struct Just<Output>: Publisher {
     
-    public typealias Failure = Never
+    public typealias Failure = Never // 不会有错误.
     
     /// The one element that the publisher emits.
     public let output: Output
@@ -26,11 +22,11 @@ public struct Just<Output>: Publisher {
         self.output = output
     }
     
+    // 同惯例一样, 在 receive(subscriber 中, 生成了这个 Operator 对应的节点对象, 然后交给下游, 当做是 Subscription 来进行使用.
+    // 因为, Just 一般就是响应链路的头结点, 所以, 在生成 Inner 的过程中, 不会有 upstream 相关的逻辑.
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Downstream.Input == Output, Downstream.Failure == Never
     {
-        // 其他的, 都是 存储的 upstream, subscribe 自己生成的 InnerSink.
-        // 这里, 直接是下游, 来 receive(subscription 自己生存的 InnerSink.
         subscriber.receive(subscription: Inner(value: output, downstream: subscriber))
     }
 }
@@ -60,7 +56,6 @@ extension Just where Output: Equatable {
 }
 
 extension Just {
-    
     public func allSatisfy(_ predicate: (Output) -> Bool) -> Just<Bool> {
         return .init(predicate(output))
     }
@@ -275,7 +270,8 @@ extension Just {
 }
 
 extension Just {
-    // Just 的 Inner, 不会是一个 Subscriber. 因为, 无法使用 Just 作为中间节点.
+    // 因为, just 一定是头结点, 所以不会作为 Subscriber 存在. 不会承担上游的数据
+    // 因为, Just 是其他节点的上游节点, 所以要成为 Subscription, 接受下游节点的 Demand 请求, 和 cancel 操作.
     private final class Inner<Downstream: Subscriber>
     : Subscription,
       CustomStringConvertible,
@@ -283,10 +279,9 @@ extension Just {
       CustomPlaygroundDisplayConvertible
     where Downstream.Input == Output
     {
-        // NOTE: this class has been audited for thread safety.
-        // Combine doesn't use any locking here.
-        
+        // 记录下游节点
         private var downstream: Downstream?
+        // 记录自己要发送的数据.
         private let value: Output
         
         fileprivate init(value: Output, downstream: Downstream) {
@@ -294,11 +289,14 @@ extension Just {
             self.value = value
         }
         
+        // 当, 下游节点, 调用上游节点, 也就是他接收到的 Subscription 的 Request Demand 的时候, 才会真正的触发上游节点的信号发送的工作.
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             guard let downstream = self.downstream.take() else { return }
-            // 看来, 这个下游节点, 进行 request 是一个必然的操作.
+            
+            // 真正的, 进行下游节点接受数据的操作.
             _ = downstream.receive(value)
+            // Just 的业务含义, 就是
             downstream.receive(completion: .finished)
         }
         

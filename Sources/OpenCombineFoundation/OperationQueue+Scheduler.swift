@@ -154,8 +154,8 @@ extension OperationQueue {
         }
         
         /// Options that affect the operation of the operation queue scheduler.
-        public struct SchedulerOptions {
-        }
+        // 这个卵用没有啊.
+        public struct SchedulerOptions { }
         
         private final class DelayReadyOperation: Operation, Cancellable {
             

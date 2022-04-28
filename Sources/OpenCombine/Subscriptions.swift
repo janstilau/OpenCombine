@@ -14,11 +14,13 @@ extension Subscriptions {
     ///
     /// Use the empty subscription when you need a `Subscription` that ignores requests
     /// and cancellation.
-    // 所有的, 都是返回一个抽象数据类型. 实际的数据类型, 是一个内部的隐藏类. 
+    
+    // 所有的, 都是返回一个抽象数据类型. 实际的数据类型, 是一个内部的隐藏类.
+    // 当, 没有真正的生成一个 Sink 节点的时候, 向后方节点, 传递该值. 
     public static let empty: Subscription = _EmptySubscription.singleton
 }
 
-// 类似于, Rx 里面的 FakeCancel 的概念.
+// 所有的, 都是一个空操作, 不会影响到整个响应链路的运转.
 extension Subscriptions {
     private struct _EmptySubscription: Subscription,
                                        CustomStringConvertible,

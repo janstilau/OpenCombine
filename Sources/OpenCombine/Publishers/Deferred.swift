@@ -1,9 +1,3 @@
-//
-//  Deferred.swift
-//  
-//
-//  Created by Joseph Spadafora on 7/7/19.
-//
 
 /// A publisher that awaits subscription before running the supplied closure
 /// to create a publisher for the new subscriber.
@@ -21,6 +15,7 @@ public struct Deferred<DeferredPublisher: Publisher>: Publisher {
     ///
     /// The publisher returned by this closure immediately
     /// receives the incoming subscription.
+    // 真正的, 生成 Publisher 的闭包, 这要在创建的时候, 进行存储.
     public let createPublisher: () -> DeferredPublisher
     
     /// Creates a deferred publisher.
