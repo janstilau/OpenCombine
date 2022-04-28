@@ -16,7 +16,10 @@ extension Subscribers {
     // unlimited Demand. Demand 的设计, 不是说下游节点需要, 上游节点就要一直给. 而是上游节点不能超过需要的数量, 什么时候, 真正的触发信号的发送, 还是上游节点的责任.
     // 进行了类型的绑定. 写在泛型参数里面的类型, 不仅仅是一个抽象数据类型的概念, 也有类型绑定的含义在里面.
     
-    // 这是一个引用类型.
+    /*
+     我们想让 MySink 满足 Cancellable，因此需要持有 subscription，才能在未来取消这个订阅。在语义上来说，我们也不希望发生复制，所以使用 class 来声明 MySink。这也是实现自定义 Subscriber 的一般做法。
+     喵神的博客. 可以看到, Cancellable 一般都是进行了上游节点的引用. 并且, 真正在相应链条中的, 一般都是引用类型.
+     */
     public final class Sink<Input, Failure: Error>
     : Subscriber,
       Cancellable, // 因为, SINK 对象就是最后的节点对象了, 不会再次向后方传递. 所以, Sink 对象, 仅仅是 Cancellable 而不是 Subscription
@@ -35,7 +38,9 @@ extension Subscribers {
          case subscribed(Subscription)
          case pendingTerminal(Subscription)
          case terminal
-         记录了, 当前自己的状态值.
+         记录了, 当前自己的状态值. 同时, 在其中存储了 Subscription
+         存储 Subscription, 可以进行 Demand 的动态管理. 不过, 在 Sink 中没有使用该技巧.
+         还可以进行 Subscription 的 cancel 操作. 这是 Cancellable 应该做的事情, 在做完自己的资源释放之后, 要触发上游的 cancel
          */
         private var status = SubscriptionStatus.awaitingSubscription
         
@@ -103,6 +108,8 @@ extension Subscribers {
         public func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             // 这里, 对 Subscription 的强引用解除了. 同时, 进行了状态的管理.
+            
+            // 当, 一个节点认为自己该结束了, 一般
             status = .terminal
             let receiveCompletion = self.receiveCompletion
             self.receiveCompletion = { _ in }

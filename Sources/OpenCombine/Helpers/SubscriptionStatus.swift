@@ -22,6 +22,9 @@ extension SubscriptionStatus {
         }
     }
     
+    // 在枚举中, 定义属性进行关联类型的读取, 是一个非常非常常规的操作.
+    // 这种 get property 能够大大简化代码逻辑, 让代码更加清晰.
+    // 基本思路就是, switch case 判断, 在对应的状态下, 返回抽取出来的数据. 不在对应的状态下, 返回 nil.
     internal var subscription: Subscription? {
         switch self {
         case .awaitingSubscription, .terminal:

@@ -348,6 +348,9 @@ extension Publishers.TryMap {
                 let subscription = status.subscription
                 status = .terminal
                 lock.unlock()
+                // 当, 一个节点发现整个处理链条应该结束了之后, 要做两件事.
+                // 1. 上游节点的 cancel 操作. 一般来说, 存储的 subscription 对象, 就是上游节点对象
+                // 2. 下游节点的 completion 的发送.
                 subscription?.cancel()
                 downstream.receive(completion: .failure(error))
                 return .none
@@ -360,8 +363,9 @@ extension Publishers.TryMap {
                 lock.unlock()
                 return
             }
-            // 同 Cancel 相比, 不用调用上游节点的 cancel 了.
-            // rx 这里设计的很 tricky, 这样的设计更加的清晰合理.
+            // 收到了完成事件, 只会在上游节点, 已经完成了 cancel 操作的情况下才会执行.
+            // 所以, 这里不会触发上游节点的 cancel 操作.
+            // 在完成了自己的资源释放之后, 触发下游节点的 completion 事件的接收.
             status = .terminal
             lock.unlock()
             downstream.receive(completion: completion.eraseError())
