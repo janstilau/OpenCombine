@@ -170,6 +170,8 @@ extension Publishers {
             lazySubject.subscribe(Inner(parent: self, downstream: subscriber))
         }
         
+        // 后续的节点, 都 Attach 到 Subject 上.
+        // 前方的节点, 一直不进行真正的 subscribe 操作, 直到 connect 的时候, 才真正的完成线路的搭建. 
         public func connect() -> Cancellable {
             return upstream.subscribe(lazySubject)
         }

@@ -1,9 +1,3 @@
-//
-//  ConnectablePublisher.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 14.06.2019.
-//
 
 /// A publisher that provides an explicit means of connecting and canceling publication.
 ///

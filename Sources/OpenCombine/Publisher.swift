@@ -127,6 +127,7 @@ extension Publisher {
     /// Attaches the specified subject to this publisher.
     ///
     /// - Parameter subject: The subject to attach to this publisher.
+    // 在 Combine 里面, Subejct 不自动是 Subscriber. 
     public func subscribe<Subject: OpenCombine.Subject>(
         _ subject: Subject
     ) -> AnyCancellable

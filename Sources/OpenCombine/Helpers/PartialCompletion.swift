@@ -7,6 +7,8 @@
 
 /// A value of this type is returned by the overridden `receive(newValue:)` method
 /// of the `ReduceProducer` and `FilterProducer` classes.
+
+// 每次, 在 Receive Value 之后, 根据该值来决定后面的逻辑.
 internal enum PartialCompletion<Value, Failure: Error> {
     
     /// Indicate that we should continue accepting the upstream's output.

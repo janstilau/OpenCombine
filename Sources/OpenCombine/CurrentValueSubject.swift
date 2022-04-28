@@ -64,7 +64,10 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         // 存储所有的上游节点.
         upstreamSubscriptions.append(subscription)
         lock.unlock()
-        // 各个 Demand 怎么管理, 完全是各个 Subscriber 自己按照自己的业务进行的赋值.
+        
+        // Subject, 对于上游节点的数据, 是来者不拒的.
+        // 但是, 他内部会管理所有的后续节点的 Demand 需求.
+        // 当, 上游节点发布数据到 Subject 之后, 会分发到 conduit 里面, 进行 Demand 的管理. 
         subscription.request(.unlimited)
     }
     

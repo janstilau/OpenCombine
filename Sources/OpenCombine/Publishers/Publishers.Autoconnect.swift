@@ -9,10 +9,9 @@ extension ConnectablePublisher {
     
     /// Automates the process of connecting or disconnecting from this connectable
     /// publisher.
-    ///
     /// Use `autoconnect()` to simplify working with `ConnectablePublisher` instances,
     /// such as `TimerPublisher` in `OpenCombineFoundation`.
-    ///
+    
     /// In the following example, the `Timer.publish()` operator creates
     /// a `TimerPublisher`, which is a `ConnectablePublisher`. As a result, subscribers
     /// don’t receive any values until after a call to `connect()`.
@@ -53,6 +52,7 @@ extension Publishers {
         
         private let lock = UnfairLock.allocate()
         
+        // 这个 Producer, 不仅仅是存值那么简单了. 他有状态管理了
         private var state = State.disconnected
         
         public init(upstream: Upstream) {
@@ -74,6 +74,8 @@ extension Publishers {
                 lock.unlock()
                 upstream.subscribe(inner)
             case .disconnected:
+                // 如果, 还没有链接, 那么就建立链接, 同时触发上游的 connect 操作.
+                // 将次数和 cancel 存储到这个状态里面.
                 lock.unlock()
                 upstream.subscribe(inner)
                 let connection = upstream.connect()
@@ -118,7 +120,7 @@ extension Publishers.Autoconnect {
         fileprivate let combineIdentifier = CombineIdentifier()
         
         private let parent: Publishers.Autoconnect<Upstream>
-        
+        // 存储, 下游节点.
         private let downstream: Downstream
         
         fileprivate init(parent: Publishers.Autoconnect<Upstream>,

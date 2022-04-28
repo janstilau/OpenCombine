@@ -9,12 +9,15 @@ extension Publisher {
     
     /// Raises a fatal error when its upstream publisher fails, and otherwise republishes
     /// all received input.
-    ///
+    // 如果上游出错了, 直接崩. 如果没有, 直接 forward 上游的任何事件.
+    
     /// Use `assertNoFailure()` for internal sanity checks that are active during testing.
     /// However, it is important to note that, like its Swift counterpart
+    
     /// `fatalError(_:)`, the `assertNoFailure()` operator asserts a fatal exception when
     /// triggered in both development/testing _and_ shipping versions of code.
-    ///
+    
+    
     /// In the example below, a `CurrentValueSubject` publishes the initial and second
     /// values successfully. The third value, containing a `genericSubjectError`, causes
     /// the `assertNoFailure()` operator to assert a fatal exception stopping the process:
@@ -32,7 +35,8 @@ extension Publisher {
     ///
     ///     subject.send("second value")
     ///     subject.send(completion: .failure(SubjectError.genericSubjectError))
-    ///
+    
+    
     ///     // Prints:
     ///     //  value: initial value.
     ///     //  value: second value.
@@ -84,6 +88,7 @@ extension Publishers {
             self.line = line
         }
         
+        // 通用的设计思路.
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Downstream.Input == Output, Downstream.Failure == Never
         {
@@ -124,6 +129,9 @@ extension Publishers.AssertNoFailure {
             self.line = line
         }
         
+        // 全部, 都是移交动作.
+        // 没有必要作为 Subscription, 因为这里直接将 Subscription 移交给了下游节点
+        // 作为 Operator,
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
         }
@@ -137,6 +145,8 @@ extension Publishers.AssertNoFailure {
             case .finished:
                 downstream.receive(completion: .finished)
             case .failure(let error):
+                // 如果, 接收到的是 Error, 直接就崩了.
+                // 通过这种机制, 使得下游节点可以确定, 上游节点是没有 Error 的.
                 let prefix = self.prefix.isEmpty ? "" : self.prefix + ": "
                 fatalError("\(prefix)\(error)", file: file, line: line)
             }

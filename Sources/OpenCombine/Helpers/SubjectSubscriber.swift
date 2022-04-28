@@ -5,6 +5,7 @@
 //  Created by Sergej Jaskiewicz on 16/09/2019.
 //
 
+// 专门, 找了一个类型, 来包装 Subject. Subject 并不天然是 Subscriber, 所以不能直接被 Publisher 进行 Subscribe.
 internal final class SubjectSubscriber<Downstream: Subject>
 : Subscriber,
   CustomStringConvertible,
@@ -13,7 +14,9 @@ internal final class SubjectSubscriber<Downstream: Subject>
   Subscription
 {
     private let lock = UnfairLock.allocate()
+    // 记录下游 Subject 节点.
     private weak var downstreamSubject: Downstream?
+    // 记录上游 Subscription 节点.
     private var upstreamSubscription: Subscription?
     
     private var isCancelled: Bool { return downstreamSubject == nil }
@@ -32,8 +35,10 @@ internal final class SubjectSubscriber<Downstream: Subject>
             lock.unlock()
             return
         }
+        // 记录上游节点.
         upstreamSubscription = subscription
         lock.unlock()
+        // 然后把自己, 当做 Subject 的上游节点.
         subject.send(subscription: self)
     }
     
@@ -45,6 +50,7 @@ internal final class SubjectSubscriber<Downstream: Subject>
             return .none
         }
         lock.unlock()
+        // 交给 Subject 进行分发.
         subject.send(input)
         return .none
     }
@@ -89,6 +95,7 @@ internal final class SubjectSubscriber<Downstream: Subject>
             lock.unlock()
             return
         }
+        // 上下游资源的释放.
         upstreamSubscription = nil
         downstreamSubject = nil
         lock.unlock()
