@@ -1,26 +1,21 @@
-//
-//  Published.swift
-//  OpenCombine
-//
-//  Created by Евгений Богомолов on 01/09/2019.
-//
 
 extension Publisher where Failure == Never {
     
     /// Republishes elements received from a publisher, by assigning them to a property
     /// marked as a publisher.
-    ///
+    
+    // the life cycle of the subscription, 是通过 weak 指针做的管理.
     /// Use this operator when you want to receive elements from a publisher and republish
     /// them through a property marked with the `@Published` attribute. The `assign(to:)`
     /// operator manages the life cycle of the subscription, canceling the subscription
     /// automatically when the `Published` instance deinitializes. Because of this,
     /// the `assign(to:)` operator doesn't return an `AnyCancellable` that you're
     /// responsible for like `assign(to:on:)` does.
-    ///
+    
     /// The example below shows a model class that receives elements from an internal
     /// `Timer.TimerPublisher`, and assigns them to a `@Published` property called
     /// `lastUpdated`:
-    ///
+    
     ///     class MyModel: ObservableObject {
     ///             @Published var lastUpdated: Date = Date()
     ///             init() {
@@ -29,7 +24,7 @@ extension Publisher where Failure == Never {
     ///                      .assign(to: $lastUpdated)
     ///             }
     ///         }
-    ///
+    
     /// If you instead implemented `MyModel` with `assign(to: lastUpdated, on: self)`,
     /// storing the returned `AnyCancellable` instance could cause a reference cycle,
     /// because the `Subscribers.Assign` subscriber would hold a strong reference
@@ -37,7 +32,12 @@ extension Publisher where Failure == Never {
     ///
     /// - Parameter published: A property marked with the `@Published` attribute, which
     ///   receives and republishes all elements received from the upstream publisher.
+    
+    // 上游触发的操作, 可以直接影响到 PublishedPublisher 对象.
+    // 这是一个响应链条的终点.
+    // 而这个终点之后的触发, 和之前的链条, 没有太大的关系.
     public func assign(to published: inout Published<Output>.PublishedPublisher) {
+        // Subject 在
         subscribe(PublishedSubscriber(published.subject))
     }
 }
@@ -112,7 +112,7 @@ public struct Published<Value> {
         
         public typealias Failure = Never
         
-        // 实际上, 被 @Published 修饰的属性. 是需要 PublishedSubject 来进行真正实现的.
+        // @Published 的真正信号发送, 要依靠内部的一个 PublishedSubject 对象来实现.
         fileprivate let subject: PublishedSubject<Value>
         
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
@@ -122,13 +122,14 @@ public struct Published<Value> {
         }
         
         fileprivate init(_ output: Output) {
+            // 这种写法, 在第三方类库里面, 非常常见.
             subject = .init(output)
         }
     }
     
     private enum Storage {
         case value(Value)
-        case publisher(PublishedPublisher)
+        case publisher(PublishedPublisher) //  PublishedPublisher 是引用语义的.
     }
     
     @propertyWrapper
@@ -185,6 +186,7 @@ public struct Published<Value> {
     
     /// Note: This method can mutate `storage`
     internal func getPublisher() -> PublishedPublisher {
+        
         switch storage {
         case .value(let value):
             // Get 方法里面, 有了副作用.

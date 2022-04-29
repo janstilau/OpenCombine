@@ -102,7 +102,7 @@ extension Publisher {
     ///     - subscriber: The subscriber to attach to this `Publisher`. After attaching,
     ///       the subscriber can start to receive values.
     
-    // 相应式实在是太难调试了, 所以, 在基本方法里面, 进行了各种机制埋点. 
+    // 响应式实在是太难调试了, 所以, 在基本方法里面, 进行了各种机制埋点.
     public func subscribe<Subscriber: OpenCombine.Subscriber>(_ subscriber: Subscriber)
     where Failure == Subscriber.Failure, Output == Subscriber.Input
     {

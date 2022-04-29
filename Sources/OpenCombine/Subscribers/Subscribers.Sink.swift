@@ -207,6 +207,7 @@ extension Publisher {
         // 上游节点, 主动调用 subscribe, 完成整个响应链条的构建工作.
         subscribe(subscriber)
         // 主动进行类型的隐藏.
+        // 实际上, subscribe 并不返回 cancel 对象. 如果返回了一个 cancel 对象, 是要在各个方法内专门进行声明的.
         return AnyCancellable(subscriber)
     }
 }

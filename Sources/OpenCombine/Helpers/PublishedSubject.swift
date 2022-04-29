@@ -5,6 +5,7 @@
 //  Created by Sergej Jaskiewicz on 29.10.2020.
 //
 
+// 这是一个引用类型. 
 internal final class PublishedSubject<Output>: Subject {
     
     internal typealias Failure = Never
@@ -19,8 +20,6 @@ internal final class PublishedSubject<Output>: Subject {
     // 记录了所有的下游节点.
     private var downstreams = ConduitList<Output, Failure>.empty
     
-    private var hasAnyDownstreamDemand = false
-    
     private var changePublisher: ObservableObjectPublisher?
     
     internal var value: Output {
@@ -34,7 +33,6 @@ internal final class PublishedSubject<Output>: Subject {
         }
     }
     
-    // 所以, 这个什么时候会被赋值呢???
     internal var objectWillChange: ObservableObjectPublisher? {
         get {
             lock.lock()
@@ -54,8 +52,7 @@ internal final class PublishedSubject<Output>: Subject {
     }
     
     deinit {
-        // 当, Subject 消亡的时候, 让所有的上游节点 cancel ???
-        // 感觉这里有问题. 不应该这样做.
+        // 存储, upstreamSubscriptions 主要就是为了, 在 deinit 的时候, 调用 cancel
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
@@ -78,6 +75,7 @@ internal final class PublishedSubject<Output>: Subject {
         // 存储, 下游节点. 增加了一层抽象. Conduit
         downstreams.insert(conduit)
         lock.unlock()
+        // 下游, 是接收 Conduit 作为上游节点.
         subscriber.receive(subscription: conduit)
     }
     
@@ -143,6 +141,7 @@ extension PublishedSubject {
             downstreamLock.deallocate()
         }
         
+        // 在 Conduit 里面, 做了 Demand 的管理.
         override func offer(_ output: Output) {
             lock.lock()
             guard demand > 0, let downstream = self.downstream else {
@@ -154,9 +153,11 @@ extension PublishedSubject {
             deliveredCurrentValue = true
             lock.unlock()
             downstreamLock.lock()
+            // 真正的向下游节点, 发送数据信息.
             let newDemand = downstream.receive(output)
             downstreamLock.unlock()
             guard newDemand > 0 else { return }
+            
             lock.lock()
             demand += newDemand
             lock.unlock()
@@ -183,6 +184,7 @@ extension PublishedSubject {
                 self.demand -= 1
                 lock.unlock()
                 downstreamLock.lock()
+                // 在, Request 里面, 也会触发相关的行为. 
                 let newDemand = downstream.receive(currentValue)
                 downstreamLock.unlock()
                 guard newDemand > 0 else { return }

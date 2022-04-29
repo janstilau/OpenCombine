@@ -1,9 +1,3 @@
-//
-//  ConduitBase.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 25.06.2020.
-//
 
 internal class ConduitBase<Output, Failure: Error>: Subscription {
     
