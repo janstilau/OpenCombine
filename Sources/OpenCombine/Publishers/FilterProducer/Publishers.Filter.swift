@@ -1,17 +1,16 @@
+/*
+ 添加一个 Operator 有着非常固定的流程.
+ 1. Protocol 增加定义方法.
+ 2. 增加一个特殊的对象, 在上述的方法里面, 生成这个特殊的对象.
+ 3. 确保, 这个特殊的对象, 也符合 Publisher. 这样返回的数据, 可以继续进行 Publisher 对应方法的串联.
+ */
 extension Publisher {
-    /*
-     添加一个 Operator 有着非常固定的流程.
-     1. Protocol 增加定义方法.
-     2. 增加一个特殊的对象, 在上述的方法里面, 生成这个特殊的对象.
-     3. 确保, 这个特殊的对象, 也符合 Publisher. 这样返回的数据, 可以继续进行 Publisher 对应方法的串联.
-     */
+    
     /// Republishes all elements that match a provided closure.
-    ///
+    
     /// OpenCombine’s `filter(_:)` operator performs an operation similar to that of
     /// `filter(_:)` in the Swift Standard Library: it uses a closure to test each element
     /// to determine whether to republish the element to the downstream subscriber.
-    // 这里的描述是, republish, 所以其实就是插入了一个节点, 在这个节点之上, 进行过滤的操作.
-    // 后续节点, 收到的各种数据, 都是需要 Filter 节点进行喂食的.
     
     /// The following example, uses a filter operation that receives an `Int` and only
     /// republishes a value if it’s even.
@@ -28,10 +27,11 @@ extension Publisher {
     /// - Parameter isIncluded: A closure that takes one element and returns
     ///   a Boolean value indicating whether to republish the element.
     /// - Returns: A publisher that republishes all elements that satisfy the closure.
+    
     public func filter(
         _ isIncluded: @escaping (Output) -> Bool
     ) -> Publishers.Filter<Self> {
-        // 基本上,
+        // 生成一个 Publisher 对象.
         return Publishers.Filter(upstream: self, isIncluded: isIncluded)
     }
     
@@ -104,7 +104,6 @@ extension Publishers.TryFilter {
 
 extension Publishers {
     
-    // 在 Combine 里面, 是没有 Producer 这一个抽象层存在的.
     /// A publisher that republishes all elements that match a provided closure.
     public struct Filter<Upstream: Publisher>: Publisher {
         
@@ -187,6 +186,8 @@ extension Publishers {
 
 extension Publishers.Filter {
     
+    // Filter 真正的在响应链中的节点.
+    // 不需要作为 Subscription, 因为, 直接把 Subscription 交给了下游, 所以下游节点可以直接和上游节点交互.
     private struct Inner<Downstream: Subscriber>
     : Subscriber,
       CustomStringConvertible,
@@ -215,6 +216,8 @@ extension Publishers.Filter {
             downstream.receive(subscription: subscription)
         }
         
+        // 核心, 就是在收到上级节点之后, 进行了 filter 的相关逻辑.
+        // 如果真的 Filter 了, 就再要一个. 
         func receive(_ input: Input) -> Subscribers.Demand {
             if filter(input) {
                 return downstream.receive(input)

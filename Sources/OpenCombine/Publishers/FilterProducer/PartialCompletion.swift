@@ -1,9 +1,3 @@
-//
-//  PartialCompletion.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 22.09.2019.
-//
 
 /// A value of this type is returned by the overridden `receive(newValue:)` method
 /// of the `ReduceProducer` and `FilterProducer` classes.

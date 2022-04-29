@@ -410,6 +410,7 @@
 		06BF8A16281BF20100EC104F /* FilterProducer */ = {
 			isa = PBXGroup;
 			children = (
+				4483B8A8652CBFC1457A41870CF426B4 /* PartialCompletion.swift */,
 				4EA3C8D32EE03D41AC1DD60DB331813C /* FilterProducer.swift */,
 				CA530CD094C2ADAC858FAA9F62C568EA /* Publishers.CompactMap.swift */,
 				A45691F6976DD9D1588B34ADA1EB79AA /* Publishers.Filter.swift */,
@@ -434,7 +435,6 @@
 				7BB7AE355E688C9677DC5EDDAE15E5D8 /* ConduitList.swift */,
 				CA8D709CD53F50E2D1D5CC8EA7726659 /* DebugHook.swift */,
 				661C2D673951206C5183B00423D77A71 /* Locking.swift */,
-				4483B8A8652CBFC1457A41870CF426B4 /* PartialCompletion.swift */,
 				072697DFCD950B7F62A4521C13FAA255 /* PublishedSubject.swift */,
 				E0217593E5689D6996C141B21D24F020 /* PublishedSubscriber.swift */,
 				55FE584375A2692DCB12E12A3C1878D9 /* SubjectSubscriber.swift */,

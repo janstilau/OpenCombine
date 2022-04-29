@@ -2,11 +2,11 @@
 extension Publisher where Output: Equatable {
     
     /// Publishes only elements that don’t match the previous element.
-    ///
+    
     /// Use `removeDuplicates()` to remove repeating elements from an upstream publisher.
     /// This operator has a two-element memory: the operator uses the current and
     /// previously published elements as the basis for its comparison.
-    ///
+    
     /// In the example below, `removeDuplicates()` triggers on the doubled, tripled, and
     /// quadrupled occurrences of `1`, `3`, and `4` respectively. Because the two-element
     /// memory considers only the current element and the previous element, the operator
@@ -114,6 +114,7 @@ extension Publisher {
 
 extension Publishers {
     
+    // Producer 惯例实现.
     /// A publisher that publishes only elements that don’t match the previous element.
     public struct RemoveDuplicates<Upstream: Publisher>: Publisher {
         
@@ -190,12 +191,13 @@ extension Publishers {
 extension Publishers.RemoveDuplicates {
     private final class Inner<Downstream: Subscriber>
     : FilterProducer<Downstream,
-      Upstream.Output,
-      Upstream.Output,
-      Upstream.Failure,
-      (Output, Output) -> Bool>
+      Upstream.Output, // Input
+      Upstream.Output, // Output
+      Upstream.Failure, // Failure
+      (Output, Output) -> Bool> // FilterBlock
     where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
     {
+        // 业务存储, 要记录上一个数据的值. 
         private var last: Upstream.Output?
         
         override func receive(
@@ -236,6 +238,8 @@ extension Publishers.TryRemoveDuplicates {
         ) -> PartialCompletion<Upstream.Output?, Downstream.Failure> {
             let last = self.last
             self.last = newValue
+            // 使用了 Optianl 的 map 方法. 这个自己用的很少.
+            // 和上面的相比, 增加了对于 error 的处理
             return last.map {
                 do {
                     return try filter($0, newValue)

@@ -1,20 +1,14 @@
-//
-//  Publishers.CompactMap.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 11.07.2019.
-//
 
 extension Publisher {
     
     /// Calls a closure with each received element and publishes any returned optional
     /// that has a value.
-    ///
+    
     /// OpenCombine’s `compactMap(_:)` operator performs a function similar to that of
     /// `compactMap(_:)` in the Swift standard library: the `compactMap(_:)` operator in
     /// OpenCombine removes `nil` elements in a publisher’s stream and republishes
     /// non-`nil` elements to the downstream subscriber.
-    ///
+    
     /// The example below uses a range of numbers as the source for a collection based
     /// publisher. The `compactMap(_:)` operator consumes each element from the `numbers`
     /// publisher attempting to access the dictionary using the element as the key.
@@ -30,10 +24,12 @@ extension Publisher {
     ///         .sink { print("\($0)", terminator: " ") }
     ///
     ///     // Prints: "I II III V"
-    ///
+    
     /// - Parameter transform: A closure that receives a value and returns an optional
     ///   value.
     /// - Returns: Any non-`nil` optional results of the calling the supplied closure.
+    
+    // 泛型, 接收到上游节点的输出, 然后产生自己的输出. 这个产生的过程, 有可能失败.
     public func compactMap<ElementOfResult>(
         _ transform: @escaping (Output) -> ElementOfResult?
     ) -> Publishers.CompactMap<Self, ElementOfResult> {
@@ -87,6 +83,11 @@ extension Publisher {
     }
 }
 
+/*
+ 这里, 专门为 CompactMap 增加 compactMap, map 的适配, 主要是为了减少节点的生成次数.
+ 使用 { self.transform($0).flatMap(transform) } 对闭包进行了融合.
+ 这样, 两个 compactMap.compactMap 只会有一个节点生成. 
+ */
 extension Publishers.CompactMap {
     
     public func compactMap<ElementOfResult>(
@@ -115,18 +116,18 @@ extension Publishers.TryCompactMap {
 }
 
 extension Publishers {
+    /// A publisher that republishes all non-`nil` results of calling a closure with each received element.
     
-    /// A publisher that republishes all non-`nil` results of calling a closure
-    /// with each received element.
     public struct CompactMap<Upstream: Publisher, Output>: Publisher {
         
         public typealias Failure = Upstream.Failure
         
         /// The publisher from which this publisher receives elements.
+        // 惯例, Producer 要记录上游节点的 Producer.
         public let upstream: Upstream
         
-        /// A closure that receives values from the upstream publisher
-        /// and returns optional values.
+        /// A closure that receives values from the upstream publisher and returns optional values.
+        // 存储 Producer 的业务相关数据.
         public let transform: (Upstream.Output) -> Output?
         
         public init(upstream: Upstream,
@@ -172,6 +173,7 @@ extension Publishers {
 }
 
 extension Publishers.CompactMap {
+    // CompactMap 的真正 Inner 节点.
     private struct Inner<Downstream: Subscriber>
     : Subscriber,
       CustomStringConvertible,
@@ -182,6 +184,7 @@ extension Publishers.CompactMap {
         typealias Input = Upstream.Output
         typealias Failure = Upstream.Failure
         
+        // 将, 下游节点, 业务闭包, 全部从 Producer 中复制过来.
         private let downstream: Downstream
         private let filter: (Input) -> Downstream.Input?
         
@@ -192,14 +195,17 @@ extension Publishers.CompactMap {
             self.filter = filter
         }
         
+        // 惯例, 不会产生错误的节点, 直接把上游节点传递给下游节点, 当做下游节点的 Subscription
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
         }
         
+        // 接收到了上游节点, filter 处理完之后, 交给下游节点. 这也是 Map 的主要存在的价值.
         func receive(_ input: Input) -> Subscribers.Demand {
             if let output = filter(input) {
                 return downstream.receive(output)
             }
+            // 过滤掉了, 向上游再要一个.
             return .max(1)
         }
         
@@ -218,6 +224,7 @@ extension Publishers.CompactMap {
 }
 
 extension Publishers.TryCompactMap {
+    // TryCompactMap 的 Inner 节点, 是一个 FilterProducer
     private final class Inner<Downstream: Subscriber>
     : FilterProducer<Downstream,
       Upstream.Output,
@@ -226,6 +233,7 @@ extension Publishers.TryCompactMap {
       (Upstream.Output) throws -> Output?>
     where Downstream.Failure == Error, Downstream.Input == Output
     {
+        // 自定义了 receive( newValue 的逻辑.
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Output?, Error> {
