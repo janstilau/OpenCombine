@@ -131,6 +131,7 @@ extension URLSession {
 }
 
 extension URLSession.OCombine.DataTaskPublisher {
+    // DataTask 的相应链条的头结点.
     private class Inner<Downstream: Subscriber>
     : Subscription,
       CustomStringConvertible,
@@ -159,6 +160,7 @@ extension URLSession.OCombine.DataTaskPublisher {
             lock.deallocate()
         }
         
+        // 当, 下游节点进行 demand 的 request 的时候, 进行真正的网络请求的发送.
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -178,6 +180,9 @@ extension URLSession.OCombine.DataTaskPublisher {
         
         private func handleResponse(data: Data?, response: URLResponse?, error: Error?) {
             lock.lock()
+            // 在 DataTask 的回调里面, 根据收到的信息, 向后方节点发送对应的数据.
+            // 也可能失败.
+            // 和自己想象中的不太一样, 本以为是应 subject 完成的这件事.
             guard demand > 0, parent != nil, let downstream = self.downstream else {
                 lock.unlock()
                 return

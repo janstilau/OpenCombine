@@ -1,5 +1,4 @@
 extension Publisher {
-    
     /*
      添加一个 Operator 有着非常固定的流程.
      1. Protocol 增加定义方法.
