@@ -394,6 +394,31 @@
 			name = "Development Pods";
 			sourceTree = "<group>";
 		};
+		06BF8A15281BF16800EC104F /* ReduceProducer */ = {
+			isa = PBXGroup;
+			children = (
+				463A9C3EC68D103B8E10C5B520529ABE /* ReduceProducer.swift */,
+				DE339741AE5295995AA8A7D1197BC944 /* Publishers.Reduce.swift */,
+				64EF5F2DA8C10393233D8EAE52756B7E /* Publishers.Contains.swift */,
+				56ED841436CE6664C6FAFDEFC8A18451 /* Publishers.Count.swift */,
+				16294730729394C72C3D16D4C09D4BA4 /* Publishers.First.swift */,
+				6B4A8145698F833D0C9FC2A71AF00166 /* Publishers.AllSatisfy.swift */,
+			);
+			path = ReduceProducer;
+			sourceTree = "<group>";
+		};
+		06BF8A16281BF20100EC104F /* FilterProducer */ = {
+			isa = PBXGroup;
+			children = (
+				4EA3C8D32EE03D41AC1DD60DB331813C /* FilterProducer.swift */,
+				CA530CD094C2ADAC858FAA9F62C568EA /* Publishers.CompactMap.swift */,
+				A45691F6976DD9D1588B34ADA1EB79AA /* Publishers.Filter.swift */,
+				DA2B4050A8263BFB797A1E99E7668F38 /* Publishers.PrefixWhile.swift */,
+				1D5FCDBCE3F68F789FEC70100CD71FC4 /* Publishers.RemoveDuplicates.swift */,
+			);
+			path = FilterProducer;
+			sourceTree = "<group>";
+		};
 		139A69C4F16D2B1C554646A1302816E8 /* Pod */ = {
 			isa = PBXGroup;
 			children = (
@@ -408,12 +433,10 @@
 				E3E446E8C89FF5CB8CACD252BB02A9A7 /* ConduitBase.swift */,
 				7BB7AE355E688C9677DC5EDDAE15E5D8 /* ConduitList.swift */,
 				CA8D709CD53F50E2D1D5CC8EA7726659 /* DebugHook.swift */,
-				4EA3C8D32EE03D41AC1DD60DB331813C /* FilterProducer.swift */,
 				661C2D673951206C5183B00423D77A71 /* Locking.swift */,
 				4483B8A8652CBFC1457A41870CF426B4 /* PartialCompletion.swift */,
 				072697DFCD950B7F62A4521C13FAA255 /* PublishedSubject.swift */,
 				E0217593E5689D6996C141B21D24F020 /* PublishedSubscriber.swift */,
-				463A9C3EC68D103B8E10C5B520529ABE /* ReduceProducer.swift */,
 				55FE584375A2692DCB12E12A3C1878D9 /* SubjectSubscriber.swift */,
 				CD188B6B88C9C6B3BEF6DA0076A6E31E /* SubscriberTap.swift */,
 				DA0586D9907069CF01AC119BB5C45196 /* SubscriptionStatus.swift */,
@@ -480,31 +503,27 @@
 		60FF703767BFEF3398FE67DC94BA010C /* Publishers */ = {
 			isa = PBXGroup;
 			children = (
+				06BF8A16281BF20100EC104F /* FilterProducer */,
+				06BF8A15281BF16800EC104F /* ReduceProducer */,
 				767B386D5CAD78DBAE053BBEDFE07764 /* Deferred.swift */,
 				8C47FC6CC5D3C5AE4B106E78147EDCDD /* Empty.swift */,
 				C38793349C0492869FAC2AA61E101AC8 /* Fail.swift */,
 				146BC2518ABC43F27C292FD42D335C5B /* Just.swift */,
 				940887C5A899A54FD6FF06D801D80257 /* Optional.Publisher.swift */,
 				DD3E3D623AC3A5A0E1C0593956B81CF9 /* Publishers.swift */,
-				6B4A8145698F833D0C9FC2A71AF00166 /* Publishers.AllSatisfy.swift */,
 				50312722B78BD67827F65E522ECB6B14 /* Publishers.AssertNoFailure.swift */,
 				D6B6E54BD4BAC02FC17B8803619C968D /* Publishers.Autoconnect.swift */,
 				6FE65CC12ACBE950901C7432ECC31F91 /* Publishers.Breakpoint.swift */,
 				C99A16BFC13ADC7050A536C088A131CB /* Publishers.Buffer.swift */,
 				E1EC8ABF84BD4BFDB7F7590C99DE222F /* Publishers.Collect.swift */,
 				FFFF091913F941A83F99B3B4253AC547 /* Publishers.CollectByCount.swift */,
-				CA530CD094C2ADAC858FAA9F62C568EA /* Publishers.CompactMap.swift */,
 				399DAE748E872691213B78F22B57BA09 /* Publishers.Comparison.swift */,
 				7C616636032EE4F2146567D47F705294 /* Publishers.Concatenate.swift */,
-				64EF5F2DA8C10393233D8EAE52756B7E /* Publishers.Contains.swift */,
-				56ED841436CE6664C6FAFDEFC8A18451 /* Publishers.Count.swift */,
 				FE749B70A9729C87F417F2D2FC772B78 /* Publishers.Debounce.swift */,
 				98D6C41C97526889AAA4360DB1ACC5D0 /* Publishers.Delay.swift */,
 				3C015B6FD7B2013C7ED3C5C02DC5647E /* Publishers.Drop.swift */,
 				9F7D286A57EEEED5596EB138AA81F815 /* Publishers.DropUntilOutput.swift */,
 				65FCB08DB12FCF8803495B18A94CDC33 /* Publishers.DropWhile.swift */,
-				A45691F6976DD9D1588B34ADA1EB79AA /* Publishers.Filter.swift */,
-				16294730729394C72C3D16D4C09D4BA4 /* Publishers.First.swift */,
 				5E529A6A42EF0C26C7DCB339D2AF1DD6 /* Publishers.FlatMap.swift */,
 				01FEA434F950C0A10318AE2980C109A1 /* Publishers.HandleEvents.swift */,
 				514E7BB5D2BC786648EE84036EAAB151 /* Publishers.IgnoreOutput.swift */,
@@ -516,11 +535,8 @@
 				9A9B649CC84BE0F03390C0D93DF7D602 /* Publishers.Multicast.swift */,
 				5DF72F0A537C3DB4BB0E01432C6AE482 /* Publishers.Output.swift */,
 				655C9BA03A212C85BA09D2DBB0CCBDDC /* Publishers.PrefixUntilOutput.swift */,
-				DA2B4050A8263BFB797A1E99E7668F38 /* Publishers.PrefixWhile.swift */,
 				E40FC70AC2D2299EC2FC35DA2E4A3FE6 /* Publishers.Print.swift */,
 				E910A0E7C0702807546CD273DC821FAB /* Publishers.ReceiveOn.swift */,
-				DE339741AE5295995AA8A7D1197BC944 /* Publishers.Reduce.swift */,
-				1D5FCDBCE3F68F789FEC70100CD71FC4 /* Publishers.RemoveDuplicates.swift */,
 				2D7108EC988EFCCA7C2295FDC7B0D8A4 /* Publishers.ReplaceEmpty.swift */,
 				00561A7BE8AB92E0C8CEBD29E2C30621 /* Publishers.ReplaceError.swift */,
 				C9D10D32A51C6521D3EC1E417A0AD338 /* Publishers.Retry.swift */,
