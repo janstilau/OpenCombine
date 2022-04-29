@@ -3,7 +3,8 @@
 ///
 /// Unlike `PassthroughSubject`, `CurrentValueSubject` maintains a buffer of the most
 /// recently published element.
-///
+
+// 对于 CurrentValueSubject 来说, send 和 赋值操作, 是一个操作后果.
 /// Calling `send(_:)` on a `CurrentValueSubject` also updates the current value, making
 /// it equivalent to updating the `value` directly.
 
@@ -22,8 +23,10 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     // 在 Subject 接收到上游的结束事件的时候, 会将这个值进行复制. 后续新的 Subscriber 来临的时候, 可以直接收到这个存储的事件.
     private var completion: Subscribers.Completion<Failure>?
     
-    // 存储一下, 上游节点.
+    // 存储一下, 上游节点. 上游节点, 只会在 Deinit 的时候, 对于所有的上游节点进行 cancel.
     private var upstreamSubscriptions: [Subscription] = []
+    
+    // 所以, 实际上, Subject 是天然的分发器.
     // 存储一下, 下游节点. 没有直接存储 Subsriber, 而是一个 Conduit 对象
     private var downstreams = ConduitList<Output, Failure>.empty
     

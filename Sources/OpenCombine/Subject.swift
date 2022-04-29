@@ -18,7 +18,7 @@ public protocol Subject: AnyObject, Publisher {
     ///
     /// - Parameter value: The value to send.
     
-    // 这是, 命令式的代码触发信号发送的基础. 
+    // 这是, 命令式的代码触发信号发送的基础.
     func send(_ value: Output)
     
     /// Sends a completion signal to the subscriber.
