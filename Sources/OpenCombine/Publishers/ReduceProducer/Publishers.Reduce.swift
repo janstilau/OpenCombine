@@ -1,9 +1,3 @@
-//
-//  Publishers.Reduce.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 09.10.2019.
-//
 
 extension Publisher {
     

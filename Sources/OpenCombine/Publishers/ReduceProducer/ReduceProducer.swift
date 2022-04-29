@@ -18,8 +18,8 @@ internal class ReduceProducer<Downstream: Subscriber,
                               Input,
                               Output,
                               UpstreamFailure: Error,
-                              // Reducer 是一个闭包.
                               Reducer>
+// Reducer 是一个闭包. 这个闭包, 不是一个固定的类型, 应该有 SubClass 进行制定.
 : CustomStringConvertible,
   CustomReflectable
 where Downstream.Input == Output
@@ -28,13 +28,13 @@ where Downstream.Input == Output
     
     // MARK: - State
     
-    // 结束值.
-    internal final var result: Output?
-    
     // 起始值.
     private let initial: Output?
     
-    // 闭包.
+    // 结束值.
+    internal final var result: Output?
+    
+    // 闭包. 使用这个闭包, 在每次获取 input 之后, 更新 result 的值 
     internal final let reduce: Reducer
     
     // 这个状态, 在所有的 Subscriber 里面, 都会有.
@@ -148,19 +148,26 @@ extension ReduceProducer: Subscriber {
     
     internal func receive(subscription: Subscription) {
         lock.lock()
+        // 防卫式的判断.
         guard case .awaitingSubscription = status else {
             lock.unlock()
             subscription.cancel()
             return
         }
+        // 存储, 上方传递过来的 subscription 对象 .
         status = .subscribed(subscription)
         lock.unlock()
         // 自己, 作为 subscription, 接受下游节点的 RequestDemand, Cancel 请求.
         downstream.receive(subscription: self)
         // 自己, 作为 Subscriber, 要求上游节点发送数据, 尽量多发.
+        // 这是没有问题的. 因为, Reduce 节点, 是需要上游节点 completion 之后, 才可以向后发送数据的.
+        // 所以, 应该尽量向上进行数据的索取.
         subscription.request(.unlimited)
     }
     
+    // 之所以, 需要存储 subscription, 就是在 Receive 的时候.
+    // 在 Reduce 的节点里面, 可能会在接受到上游节点的数据之后, 直接进行上游的取消, 下游的取消.
+    // 这个时候, 就得保存上游的节点, 才能完成这样的操作.
     internal func receive(_ input: Input) -> Subscribers.Demand {
         lock.lock()
         guard case let .subscribed(subscription) = status else {
@@ -169,16 +176,15 @@ extension ReduceProducer: Subscriber {
         }
         lock.unlock()
         
-        // Combine doesn't hold the lock when calling `receive(newValue:)`.
-        //
-        // This can lead to data races if the contract is violated
-        // (like when we receive input from multiple threads simultaneously).
-        
-        // 根据, 子类的 receive(newValue 的实现, 来影响 receive(_ input: Input) -> Subscribers.Demand 的实现.
+        // 在子类的 receive(newValue 中, 根据 Reduce Block, 现有的 Result, 新来的 Input 值, 对 Result 进行更新.
+        // 并且, 输出是否结束的返回值.
+        // 外界根据输出的返回值, 来判断是否使得当前的响应链进行 cancel.
         switch self.receive(newValue: input) {
         case .continue:
+            // newValue 的值没问题, 但是还没达到结束的状态. 还应该收集上游节点的数据.
             break
         case .finished:
+            // 正常结束了. 该输出 result 的值给下游节点了.
             lock.lock()
             upstreamCompleted = true
             let downstreamRequested = self.downstreamRequested
@@ -190,10 +196,11 @@ extension ReduceProducer: Subscriber {
             status = .terminal
             let result = self.result
             lock.unlock()
-            // 取消对于上游节点的注册.
+            // 触发上游节点的取消动作.
             subscription.cancel()
             guard downstreamRequested else { break }
-            // 验证, 如果可以给下游节点发送消息, 发送存储的 Result 的值.
+            
+            // 这里体现了 Combine 的 Demand 管理的思想. 上游已经发送结束了, 但是如果下游还没有明确的表示, 自己想要这个数据, 那么还是不应该将 Result 的值, 发送给下游的节点.
             sendResultAndFinish(result)
         case let .failure(error):
             lock.lock()
@@ -201,8 +208,9 @@ extension ReduceProducer: Subscriber {
             completed = true
             status = .terminal
             lock.unlock()
-            // 发生了错误, 直接给后续节点, 发送事件.
+            // 触发上游节点的取消动作.
             subscription.cancel()
+            // 如果, 发生了错误, 是不受下游的 Demand 管理的, 直接将错误发送给下游节点.
             downstream.receive(completion: .failure(error))
         }
         
@@ -234,13 +242,15 @@ extension ReduceProducer: Subscription {
             lock.unlock()
             return
         }
+        // 监听下游节点的 Demand 请求,
+        // 如果下游节点有需求, 那么应该记录状态.
+        // 当, 上游结束, 下游有需求的时候, 触发 sendResultAndFinish 的操作.
         downstreamRequested = true
         
         guard upstreamCompleted else  {
             lock.unlock()
             return
         }
-        // 如果, upstreamCompleted && downstreamRequested, 就将自己的 Request 值, 发送给后方节点, 发送给后方节点的 Complete 事件.
         completed = true
         let result = self.result
         lock.unlock()
