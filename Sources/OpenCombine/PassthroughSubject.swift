@@ -9,6 +9,9 @@
 /// A `PassthroughSubject` drops values if there are no subscribers, or its current demand
 /// is zero.
 
+/*
+ PassthroughSubject  和 CurrentValueSubject 没有太大的区别.
+ */
 public final class PassthroughSubject<Output, Failure: Error>: Subject {
     
     private let lock = UnfairLock.allocate()

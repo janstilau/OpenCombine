@@ -1,9 +1,3 @@
-//
-//  Published.swift
-//  OpenCombine
-//
-//  Created by Евгений Богомолов on 01/09/2019.
-//
 
 extension Publisher where Failure == Never {
     

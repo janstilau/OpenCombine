@@ -1,10 +1,3 @@
-//
-//  Subject.swift
-//  OpenCombine
-//
-//  Created by Sergej Jaskiewicz on 10.06.2019.
-//
-
 /// A publisher that exposes a method for outside callers to publish elements.
 // 一个, 外界可以通过 API 来手动进行信号发送的 ObjectPublisher. 这个类型, 在 Combine 中使用的很广.
 // 在 Combine 里面, 没有提供 Create 函数来自定义 Publisher, 而是, 通过 Subject 对象, 来完成相应的指令代码触发信号的操作.
@@ -25,7 +18,7 @@ public protocol Subject: AnyObject, Publisher {
     ///
     /// - Parameter value: The value to send.
     
-    // 这是, 命令式的代码触发信号发送的基础. 
+    // 这是, 命令式的代码触发信号发送的基础.
     func send(_ value: Output)
     
     /// Sends a completion signal to the subscriber.

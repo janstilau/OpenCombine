@@ -1,20 +1,18 @@
-//
-//  SubjectSubscriber.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 16/09/2019.
-//
 
-// 专门, 找了一个类型, 来包装 Subject. Subject 并不天然是 Subscriber, 所以不能直接被 Publisher 进行 Subscribe.
+// 专门, 找了一个类型, 来包装 Subject.
+// Subject 并不天然是 Subscriber, 所以不能直接被 Publisher 进行 Subscribe.
+
+// 所以, 实际上, 是在 Subject 前增加了一个节点, 使用这个节点, 来触发 Subject 的操作.
 internal final class SubjectSubscriber<Downstream: Subject>
 : Subscriber,
+  Subscription,
   CustomStringConvertible,
   CustomReflectable,
-  CustomPlaygroundDisplayConvertible,
-  Subscription
-{
+  CustomPlaygroundDisplayConvertible {
+    
     private let lock = UnfairLock.allocate()
     // 记录下游 Subject 节点.
+    // 这是一个弱引用. 所以, Subject 的 Deinit, 其实是自动进行响应链条上.
     private weak var downstreamSubject: Downstream?
     // 记录上游 Subscription 节点.
     private var upstreamSubscription: Subscription?
@@ -35,7 +33,7 @@ internal final class SubjectSubscriber<Downstream: Subject>
             lock.unlock()
             return
         }
-        // 记录上游节点.
+        // 记录上游节点. 这里会有循环引用.
         upstreamSubscription = subscription
         lock.unlock()
         // 然后把自己, 当做 Subject 的上游节点.
@@ -44,11 +42,10 @@ internal final class SubjectSubscriber<Downstream: Subject>
     
     internal func receive(_ input: Downstream.Output) -> Subscribers.Demand {
         lock.lock()
-        guard let subject = downstreamSubject,
-                upstreamSubscription != nil else {
-            lock.unlock()
-            return .none
-        }
+        guard let subject = downstreamSubject, upstreamSubscription != nil else {
+                  lock.unlock()
+                  return .none
+              }
         lock.unlock()
         // 交给 Subject 进行分发.
         subject.send(input)
