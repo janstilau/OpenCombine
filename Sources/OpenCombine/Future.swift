@@ -8,7 +8,7 @@
 public final class Future<Output, Failure: Error>: Publisher {
     /// A type that represents a closure to invoke in the future, when an element or error
     /// is available.
-    ///
+    
     /// The promise closure receives one parameter:
     // a `Result` that contains either a single element published by a `Future`, or an error.
     public typealias Promise = (Result<Output, Failure>) -> Void

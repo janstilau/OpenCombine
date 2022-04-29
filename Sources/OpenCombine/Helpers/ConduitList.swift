@@ -1,10 +1,3 @@
-//
-//  ConduitList.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 25.06.2020.
-//
-
 /*
  不太明白, 这种 none, single, many 的设计意图是什么. 好多地方看到了这样类似的概念了.
  */
@@ -25,12 +18,16 @@ extension ConduitList {
     internal mutating func insert(_ conduit: ConduitBase<Output, Failure>) {
         switch self {
         case .empty:
+            // 如果, 之前没有值, 做状态改变到 一个值.
             self = .single(conduit)
         case .single(conduit):
-            // 这里和下面不一样, 这个 case 是, conduit 和传进来的是一个值.
+            // ConduitBase 是一个引用类型, 所以是引用判等
+            // 这里和下面 single(let existingConduit) 不一样, 这个 case 是判断,
+            // conduit 和传进来的是一个值.
             // 有点不太好理解.
             break // This element already exists.
         case .single(let existingConduit):
+            // Single 变 Set. Enum 的状态变化, 会有取值,赋值的操作.
             self = .many([existingConduit, conduit])
         case .many(var set):
             set.insert(conduit)
@@ -38,6 +35,7 @@ extension ConduitList {
         }
     }
     
+    // Enum 应该提供了更加编译的方法, 给外界使用. 让外界在进行一次提取实在是类太难用了.
     internal func forEach(
         _ body: (ConduitBase<Output, Failure>) throws -> Void
     ) rethrows {

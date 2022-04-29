@@ -26,6 +26,7 @@ extension OperationQueue {
     /// You can omit this whenever Combine is not available (e. g. on Linux).
     public struct OCombine: Scheduler {
         
+        // 使用. OperationQueue 来完成调度相关的程序.
         public let queue: OperationQueue
         
         public init(_ queue: OperationQueue) {
@@ -299,6 +300,8 @@ extension OperationQueue {
             }
         }
         
+        
+        // 调度. 都是异步操作. 各种调度类, 如果不是 Imdiate, 都会变为一个异步程序的.
         public func schedule(options: SchedulerOptions?,
                              _ action: @escaping () -> Void) {
             let op = BlockOperation(block: action)

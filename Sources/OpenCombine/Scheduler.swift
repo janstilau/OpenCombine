@@ -1,5 +1,5 @@
 
-/// A protocol that provides a scheduler with an expression for relative time.
+/// A protocol that provides to a scheduler with an expression for relative time.
 // 时间相关的计量单位, 可以根据各个时间单位, 来返回相对应的值.
 public protocol SchedulerTimeIntervalConvertible {
     
@@ -26,14 +26,20 @@ public protocol SchedulerTimeIntervalConvertible {
 
 // 调度, 只有两种, 调度环境, 一般就是线程.
 // 调度时间, 一般就是延时.
+
 /// A protocol that defines when and how to execute a closure.
-///
+// When 就是延时, How 就是线程环境. 目前没想到更多的场景.
+
 /// You can use a scheduler to execute code as soon as possible, or after a future date.
-/// Individual scheduler implementations use whatever time-keeping system makes sense
-/// for them. Schedulers express this as their `SchedulerTimeType`. Since this type
+/// Individual scheduler implementations use whatever time-keeping system makes sense for them
+// 这里说的很明白, 还是使用系统的各种功能, 来实现调度这件事.
+
+/// Schedulers express this as their `SchedulerTimeType`. Since this type
 /// conforms to `SchedulerTimeIntervalConvertible`, you can always express these times
-/// with the convenience functions like `.milliseconds(500)`. Schedulers can accept
-/// options to control how they execute the actions passed to them. These options may
+/// with the convenience functions like `.milliseconds(500)`.
+
+// 这个 Option 是泛型的, 每个不同的 SchedulerImp 可以指定自己的 Options
+/// Schedulers can accept options to control how they execute the actions passed to them. These options may
 /// control factors like which threads or dispatch queues execute the actions.
 public protocol Scheduler {
     
@@ -48,6 +54,7 @@ public protocol Scheduler {
     associatedtype SchedulerOptions
     
     /// This scheduler’s definition of the current moment in time.
+    // 每个, 对于 Scheduler, 在实现的时候, 都要定义自己的 time 类型.
     var now: SchedulerTimeType { get }
     
     /// The minimum tolerance allowed by the scheduler.
@@ -76,7 +83,7 @@ extension Scheduler {
     
     /// Performs the action at some time after the specified date, using the scheduler’s
     /// minimum tolerance.
-    ///
+    
     /// The immediate scheduler ignores `date` and performs the action immediately.
     @inlinable
     public func schedule(after date: SchedulerTimeType,

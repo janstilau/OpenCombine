@@ -1,5 +1,4 @@
 /// A helper class that acts like both subscriber and subscription.
-///
 /// Filter-like operators send an instance of their `Inner` class that is subclass
 /// of this class to the upstream publisher (as subscriber) and
 /// to the downstream subscriber (as subscription).
@@ -8,6 +7,7 @@
 /// `Publishers.RemoveDuplicates`, `Publishers.PrefixWhile` and more.
 ///
 /// Subclasses must override the `receive(newValue:)` and `description`.
+
 internal class FilterProducer<Downstream: Subscriber,
                               Input,
                               Output,
@@ -25,6 +25,7 @@ where Downstream.Input == Output
         case completed
     }
     
+    // 这是一个闭包的类型. 
     internal final let filter: Filter
     
     internal final let downstream: Downstream
@@ -63,6 +64,7 @@ where Downstream.Input == Output
     }
 }
 
+// 成为 Subscriber, 就是能够作为
 extension FilterProducer: Subscriber {
     
     internal func receive(subscription: Subscription) {
@@ -176,7 +178,7 @@ extension FilterProducer: Subscription {
             lock.unlock()
             return
         }
-        // 状态管理. 
+        // 状态管理.
         state = .completed
         lock.unlock()
         // 通知上游进行 cancel

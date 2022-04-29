@@ -271,6 +271,8 @@ extension DispatchQueue {
         }
         
         /// Options that affect the operation of the dispatch queue scheduler.
+        // 每个 Scheduler 都有自己的 SchedulerOptions 对象.
+        // 这个对象, 到底有什么数值, 是各自指定的, 如何使用, 也是各自的 Schedule 方法里面使用的.
         public struct SchedulerOptions {
             
             /// The dispatch queue quality of service.
@@ -299,6 +301,10 @@ extension DispatchQueue {
             return .init(.now())
         }
         
+        // 各种 func schedule 方法, 是提供抽象.
+        // 而抽象的真正实现, 是通过内置的功能类实现的.
+        
+        // schedule
         public func schedule(options: SchedulerOptions?,
                              _ action: @escaping () -> Void) {
             let options = options ?? .init()
@@ -327,6 +333,7 @@ extension DispatchQueue {
                              options: SchedulerOptions?,
                              _ action: @escaping () -> Void) -> Cancellable {
             let options = options ?? .init()
+            // 使用了 DispatchSource, 来完成定时的操作.
             let timer = DispatchSource.makeTimerSource(queue: queue)
             timer.setEventHandler(qos: options.qos,
                                   flags: options.flags,

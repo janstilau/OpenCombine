@@ -184,6 +184,8 @@ extension RunLoop {
                               block: { _ in action() })
             timer.tolerance = tolerance.timeInterval
             runLoop.add(timer, forMode: .default)
+            // cancel, 直接使用 invalidate
+            // AnyCancellable 提供闭包进行初始化, 在这里真正的进行了使用.
             return AnyCancellable { timer.invalidate() }
         }
         

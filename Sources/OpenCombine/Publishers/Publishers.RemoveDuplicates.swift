@@ -1,9 +1,3 @@
-//
-//  Publishers.RemoveDuplicates.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 24.10.2019.
-//
 
 extension Publisher where Output: Equatable {
     
@@ -27,6 +21,8 @@ extension Publisher where Output: Equatable {
     ///
     /// - Returns: A publisher that consumes — rather than publishes — duplicate elements.
     public func removeDuplicates() -> Publishers.RemoveDuplicates<Self> {
+        // 直接, 使用的 Filter 来实现这块的逻辑.
+        // 传入的闭包, 就是进行相等性判断. 如果相等, 那么就过滤掉.
         return removeDuplicates(by: ==)
     }
 }

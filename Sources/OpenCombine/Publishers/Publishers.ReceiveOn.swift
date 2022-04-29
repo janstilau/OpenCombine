@@ -166,6 +166,7 @@ extension Publishers.ReceiveOn {
                 return .none
             }
             lock.unlock()
+            // 调度这回事, 就是在相应的环境里面, 进行后方节点接受事件的触发.
             scheduler.schedule(options: options) {
                 self.scheduledReceive(input)
             }

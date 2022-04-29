@@ -7,6 +7,8 @@
 // 直接调用, 没有调度的含义存在.
 public struct ImmediateScheduler: Scheduler {
     
+    // 基本上, 每个 Scheduler 的实现类, 都会定义自己的 SchedulerTimeType 类型.
+    // ImmediateScheduler 的 SchedulerTimeType 没有任何的意义. 提供这个类型, 仅仅是为了编译.
     /// The time type used by the immediate scheduler.
     public struct SchedulerTimeType: Strideable {
         
@@ -128,16 +130,19 @@ public struct ImmediateScheduler: Scheduler {
     }
     
     /// A type that defines options accepted by the immediate scheduler.
+    // 对于 ImmediateScheduler 来说, 它是不需要 SchedulerOptions 的. 对于这种, 不需要的, 使用 Never 就好了.
     public typealias SchedulerOptions = Never
     
     /// The shared instance of the immediate scheduler.
     ///
     /// You cannot create instances of the immediate scheduler yourself. Use only
     /// the shared instance.
+    // ImmediateScheduler 没有任何的调度行为, 所以, 这里限制了, 不能自己创建.
+    // 不太明白, 这个万一有啥用. 因为自然就是 Immediate
     public static let shared = ImmediateScheduler()
     
     /// Performs the action at the next possible opportunity.
-    // 直接调用.
+    // 各种操作, 都是直接调用.
     @inlinable
     public func schedule(options: SchedulerOptions?, _ action: @escaping () -> Void) {
         action()
@@ -150,8 +155,8 @@ public struct ImmediateScheduler: Scheduler {
     public var minimumTolerance: SchedulerTimeType.Stride { return 0 }
     
     /// Performs the action at some time after the specified date.
-    ///
     /// The immediate scheduler ignores `date` and performs the action immediately.
+    // 各种, 延后的操作, 都是直接调用.
     public func schedule(after date: SchedulerTimeType,
                          tolerance: SchedulerTimeType.Stride,
                          options: SchedulerOptions?,
@@ -161,7 +166,6 @@ public struct ImmediateScheduler: Scheduler {
     
     /// Performs the action at some time after the specified date, at the specified
     /// frequency, optionally taking into account tolerance if possible.
-    ///
     /// The immediate scheduler ignores `date` and performs the action immediately.
     public func schedule(after date: SchedulerTimeType,
                          interval: SchedulerTimeType.Stride,
