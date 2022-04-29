@@ -503,6 +503,7 @@
 		60FF703767BFEF3398FE67DC94BA010C /* Publishers */ = {
 			isa = PBXGroup;
 			children = (
+				DD3E3D623AC3A5A0E1C0593956B81CF9 /* Publishers.swift */,
 				06BF8A16281BF20100EC104F /* FilterProducer */,
 				06BF8A15281BF16800EC104F /* ReduceProducer */,
 				767B386D5CAD78DBAE053BBEDFE07764 /* Deferred.swift */,
@@ -510,7 +511,6 @@
 				C38793349C0492869FAC2AA61E101AC8 /* Fail.swift */,
 				146BC2518ABC43F27C292FD42D335C5B /* Just.swift */,
 				940887C5A899A54FD6FF06D801D80257 /* Optional.Publisher.swift */,
-				DD3E3D623AC3A5A0E1C0593956B81CF9 /* Publishers.swift */,
 				50312722B78BD67827F65E522ECB6B14 /* Publishers.AssertNoFailure.swift */,
 				D6B6E54BD4BAC02FC17B8803619C968D /* Publishers.Autoconnect.swift */,
 				6FE65CC12ACBE950901C7432ECC31F91 /* Publishers.Breakpoint.swift */,

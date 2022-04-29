@@ -27,6 +27,7 @@ public struct Fail<Output, Failure: Error>: Publisher {
     /// The failure to send when terminating the publisher.
     public let error: Failure
     
+    // 因为, Completion 事件, 是不受 Demand 控制的. 所以, 在 attach 后方节点的时候, 直接发送了 error 事件.
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Output == Downstream.Input, Failure == Downstream.Failure
     {

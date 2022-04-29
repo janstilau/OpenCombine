@@ -1,10 +1,3 @@
-//
-//  Empty.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 16.06.2019.
-//
-
 /// A publisher that never publishes any values, and optionally finishes immediately.
 ///
 /// You can create a ”Never” publisher — one which never sends values and never
@@ -45,10 +38,11 @@ public struct Empty<Output, Failure: Error>: Publisher, Equatable {
     /// to the subscriber. If `false`, it never completes.
     public let completeImmediately: Bool
     
+    // 因为, Completion 的事件, 其实不受 Demand 控制的. 所以, 在接收到后方节点之后, 直接发送了相关的事件.
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Output == Downstream.Input, Failure == Downstream.Failure
     {
-        // 这里没有真正的生成节点对象. 
+        // 这里没有真正的生成节点对象.
         subscriber.receive(subscription: Subscriptions.empty)
         if completeImmediately {
             subscriber.receive(completion: .finished)

@@ -8,6 +8,7 @@
 /// In contrast with `Result.Publisher`, a `Just` publisher can’t fail with an error.
 /// And unlike `Optional.Publisher`, a `Just` publisher always produces a value.
 
+// Optional 是, 当 Optinal 有值的时候, 发射信号. 没有值的时候, 直接 Completion.
 public struct Just<Output>: Publisher {
     
     public typealias Failure = Never // 不会有错误.
@@ -27,12 +28,16 @@ public struct Just<Output>: Publisher {
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Downstream.Input == Output, Downstream.Failure == Never
     {
+        // 因为, Just 发送的是 Value. 而 Value 事件, 是受到 Demand 控制的.
+        // 所以, 这里不像 Empty,Fail 一样, 直接可以向后方节点发送事件
+        // 而是生成了一个真正的节点对象, 在这个节点对象里面, 要处理后方节点的 Demand 管理.
         subscriber.receive(subscription: Inner(value: output, downstream: subscriber))
     }
 }
 
 extension Just: Equatable where Output: Equatable {}
-
+// 这些, 都是为了减少建立 Publisher 而做的优化
+// 如果直接使用方法, 那么相当于会是在 Just 后, 新创建一个节点, 来处理各个业务. 但是 Just 是一个很简单的数据, 可以减少这个没有必要的节点的创建. 将响应链进行简化.
 extension Just where Output: Comparable {
     
     public func min() -> Just<Output> {
@@ -43,6 +48,7 @@ extension Just where Output: Comparable {
         return self
     }
 }
+
 
 extension Just where Output: Equatable {
     
@@ -289,14 +295,19 @@ extension Just {
             self.value = value
         }
         
-        // 当, 下游节点, 调用上游节点, 也就是他接收到的 Subscription 的 Request Demand 的时候, 才会真正的触发上游节点的信号发送的工作.
+        // Combine 里面, 信号产生的逻辑的触发, 不是在 Receive Subscriber 中.
+        // 因为 Combine 是一个 Pull 的逻辑, 为了尊重这个逻辑, 应该在每个节点的 request(_ demand 中, 进行真正的生成逻辑的触发.
+        // 这个方法, 是各个下游节点, 主动调用存储的 subscription 触发的. 
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
+            // 并不是 Downstream 可以调用 take. 这里是 Optional 调用的 Take.
+            // 也就是, 把值取出来之后, 对 optinal 进行 nil 的赋值.
+            // 这是非常优秀的一个写法 
             guard let downstream = self.downstream.take() else { return }
             
             // 真正的, 进行下游节点接受数据的操作.
             _ = downstream.receive(value)
-            // Just 的业务含义, 就是
+            // 因为是 Just, 所以在下游节点, 在接到数据之后, 紧接着就是一个 Completion Event
             downstream.receive(completion: .finished)
         }
         
