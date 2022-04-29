@@ -55,6 +55,7 @@ where Downstream.Input == Output
     
     private var completed = false
     
+    // 这些赋值, 都是必须的. 
     internal init(downstream: Downstream, initial: Output?, reduce: Reducer) {
         self.downstream = downstream
         self.initial = initial

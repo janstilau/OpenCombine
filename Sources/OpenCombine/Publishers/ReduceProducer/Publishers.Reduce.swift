@@ -3,10 +3,11 @@ extension Publisher {
     
     /// Applies a closure that collects each element of a stream and publishes a final
     /// result upon completion.
-    ///
+
     /// Use `reduce(_:_:)` to collect a stream of elements and produce an accumulated
     /// value based on a closure you provide.
-    ///
+    
+    
     /// In the following example, the `reduce(_:_:)` operator collects all the integer
     /// values it receives from its upstream publisher:
     ///
@@ -22,6 +23,7 @@ extension Publisher {
     ///   - nextPartialResult: A closure that produces a new value by taking
     ///     the previously-accumulated value and the next element it receives from
     ///     the upstream publisher.
+    
     /// - Returns: A publisher that applies the closure to all received elements and
     ///   produces an accumulated value when the upstream publisher finishes.
     ///   If `reduce(_:_:)` receives an error from the upstream publisher, the operator
@@ -82,6 +84,7 @@ extension Publishers {
     
     /// A publisher that applies a closure to all received elements and produces
     /// an accumulated value when the upstream publisher finishes.
+    // 一个惯例实现的 Producer 类.
     public struct Reduce<Upstream: Publisher, Output>: Publisher {
         
         public typealias Failure = Upstream.Failure
@@ -162,6 +165,7 @@ extension Publishers.Reduce {
       (Output, Upstream.Output) -> Output>
     where Downstream.Input == Output, Upstream.Failure == Downstream.Failure
     {
+        // 按照, reduce(result!, newValue) 不断的更新 Result 的值.
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {
@@ -182,6 +186,7 @@ extension Publishers.TryReduce {
       (Output, Upstream.Output) throws -> Output>
     where Downstream.Input == Output, Downstream.Failure == Error
     {
+        // 相比较上面的实现, 增加了 Error 的处理. 
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {

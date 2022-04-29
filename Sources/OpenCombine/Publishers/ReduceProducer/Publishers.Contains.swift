@@ -217,6 +217,8 @@ extension Publishers {
 extension Publishers.Contains {
     // Contains 的相关的节点.
     private final class Inner<Downstream: Subscriber>
+    // Reduce 的类型是 Void. 在父类中, 进行了存储, 一个 () 对象.
+    // 在子类中, 根本没有用到相关的逻辑.
     : ReduceProducer<Downstream, Upstream.Output, Bool, Upstream.Failure, Void>
     where Upstream.Failure == Downstream.Failure, Downstream.Input == Bool
     {
@@ -257,13 +259,14 @@ extension Publishers.ContainsWhere {
     {
         fileprivate init(downstream: Downstream,
                          predicate: @escaping (Upstream.Output) -> Bool) {
+            // initial 的初始值, 必然是 false.
             super.init(downstream: downstream, initial: false, reduce: predicate)
         }
         
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {
-            // 明确的使用闭包, 来做判断.
+            // 使用闭包来判断, 修改 Result 的值.
             if reduce(newValue) {
                 result = true
                 return .finished
