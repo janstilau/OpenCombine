@@ -1,9 +1,3 @@
-//
-//  Publishers.Autoconnect.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 18/09/2019.
-//
 
 extension ConnectablePublisher {
     

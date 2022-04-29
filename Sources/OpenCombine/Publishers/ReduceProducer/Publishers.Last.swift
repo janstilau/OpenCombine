@@ -1,9 +1,3 @@
-//
-//  Publishers.Last.swift
-//  
-//
-//  Created by Joseph Spadafora on 7/9/19.
-//
 
 extension Publisher {
     
@@ -11,7 +5,7 @@ extension Publisher {
     ///
     /// Use `last()` when you need to emit only the last element from an upstream
     /// publisher.
-    ///
+    
     /// In the example below, the range publisher only emits the last element from
     /// the sequence publisher, `10`, then finishes normally.
     ///
@@ -90,10 +84,9 @@ extension Publisher {
     }
 }
 
+// 都是标准的 Publisher 实现.
 extension Publishers {
-    
-    /// A publisher that only publishes the last element of a stream,
-    /// after the stream finishes.
+    /// A publisher that only publishes the last element of a stream, after the stream finishes.
     public struct Last<Upstream: Publisher>: Publisher {
         
         public typealias Output = Upstream.Output
@@ -182,6 +175,7 @@ extension Publishers.Last {
             super.init(downstream: downstream, initial: nil, reduce: ())
         }
         
+        // Reduce 更新 Result 的逻辑, 就是不断的更新.
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {
@@ -210,6 +204,7 @@ extension Publishers.LastWhere {
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {
+            // Reduce 更新 Result 的逻辑, 就是只要符合 Check 就更新.
             if reduce(newValue) {
                 result = newValue
             }
@@ -237,6 +232,7 @@ extension Publishers.TryLastWhere {
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {
+            // 增加了对于 Throw Error 的处理. 
             do {
                 if try reduce(newValue) {
                     result = newValue

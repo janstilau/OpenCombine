@@ -1,18 +1,12 @@
-//
-//  Publishers.Comparison.swift
-//  OpenCombine
-//
-//  Created by Ilija Puaca on 22/7/19.
-//
 
 extension Publisher where Output: Comparable {
-    
     /// Publishes the minimum value received from the upstream publisher, after it
     /// finishes.
-    ///
+    
     /// Use `min()` to find the minimum value in a stream of elements from
     /// an upstream publisher.
-    ///
+    // 从这里的描述来看, Comparison 里面的各个 Publisher, 必然就是需要 exhaust 上级节点的一些 Publisher.
+    
     /// In the example below, the `min()` operator emits a value when the publisher
     /// finishes, that value is the minimum of the values received from upstream, which
     /// is `-1`.
@@ -23,10 +17,11 @@ extension Publisher where Output: Comparable {
     ///         .sink { print("\($0)") }
     ///
     ///     // Prints: "-1"
-    ///
+    
+    // 从描述来看, 这种 exhaust 的行为, 就是需要上级的 unlimited demand.
     /// After this publisher receives a request for more than 0 items, it requests
     /// unlimited items from its upstream publisher.
-    ///
+    
     /// - Returns: A publisher that publishes the minimum value received from the upstream
     ///   publisher, after the upstream publisher finishes.
     public func min() -> Publishers.Comparison<Self> {
@@ -225,6 +220,7 @@ extension Publisher {
     }
 }
 
+// 通用管理的 Produer, 真正的不同在于 Inner 节点部分.
 extension Publishers {
     
     /// A publisher that republishes items from another publisher only if each new item is

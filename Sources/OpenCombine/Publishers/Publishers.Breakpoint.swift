@@ -1,9 +1,3 @@
-//
-//  Publishers.Breakpoint.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 03.12.2019.
-//
 
 #if !WASI
 
@@ -15,7 +9,7 @@ extension Publisher {
     
     /// Raises a debugger signal when a provided closure needs to stop the process in
     /// the debugger.
-    ///
+    
     /// Use `breakpoint(receiveSubscription:receiveOutput:receiveCompletion:)` to examine
     /// one or more stages of the subscribe/publish/completion process and stop in
     /// the debugger, based on conditions you specify. When any of the provided closures
@@ -39,7 +33,7 @@ extension Publisher {
     ///     // Prints: "error: Execution was interrupted, reason: signal SIGTRAP."
     ///     // Depending on your specific environment, the console messages may
     ///     // also include stack trace information, which is not shown here.
-    ///
+    
     /// - Parameters:
     ///   - receiveSubscription: A closure that executes when when the publisher receives
     ///     a subscription. Return `true` from this closure to raise `SIGTRAP`, or `false`
@@ -64,7 +58,7 @@ extension Publisher {
     }
     
     /// Raises a debugger signal upon receiving a failure.
-    ///
+    
     /// When the upstream publisher fails with an error, this publisher raises
     /// the `SIGTRAP` signal, which stops the process in the debugger. Otherwise, this
     /// publisher passes through values and completions as-is.
@@ -166,6 +160,7 @@ extension Publishers {
             self.receiveCompletion = receiveCompletion
         }
         
+        // 虽然这个 Publisher 很新颖, 但还是一个惯例的 Publisher.
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Upstream.Failure == Downstream.Failure,
               Upstream.Output == Downstream.Input
@@ -176,6 +171,7 @@ extension Publishers {
 }
 
 extension Publishers.Breakpoint {
+    
     private struct Inner<Downstream: Subscriber>
     : Subscriber,
       CustomStringConvertible,
@@ -197,6 +193,7 @@ extension Publishers.Breakpoint {
             self.breakpoint = breakpoint
         }
         
+        // 在 Subscriber 的各种事件里面, 如果触发了 Check 逻辑, 就主动抛出断点. 
         func receive(subscription: Subscription) {
             if breakpoint.receiveSubscription?(subscription) == true {
                 __stopInDebugger()

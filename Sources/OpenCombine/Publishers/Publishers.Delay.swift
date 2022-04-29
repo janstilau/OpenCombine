@@ -9,10 +9,10 @@ extension Publisher {
     
     /// Delays delivery of all output to the downstream receiver by a specified amount of
     /// time on a particular scheduler.
-    ///
+    
     /// Use `delay(for:tolerance:scheduler:options:)` when you need to delay the delivery
     /// of elements to a downstream by a specified amount of time.
-    ///
+    
     /// In this example, a `Timer` publishes an event every second.
     /// The `delay(for:tolerance:scheduler:options:)` operator holds the delivery of
     /// the initial element for 3 seconds (±0.5 seconds), after which each element is
@@ -80,6 +80,7 @@ extension Publisher {
 
 extension Publishers {
     
+    // 惯例的 Publisher. 收集数据, 生成 Inner 节点. 
     /// A publisher that delays delivery of elements and completion
     /// to the downstream receiver.
     public struct Delay<Upstream: Publisher, Context: Scheduler>: Publisher {
@@ -194,6 +195,7 @@ extension Publishers.Delay {
                 return .none
             }
             lock.unlock()
+            // 每次, 收到上游节点之后, 进行调度. 在调度完的环境, 进行下游节点数据的接受.
             schedule {
                 self.scheduledReceive(input)
             }

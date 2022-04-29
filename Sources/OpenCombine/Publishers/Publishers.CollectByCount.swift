@@ -1,15 +1,9 @@
-//
-//  Publishers.CollectByCount.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 24.12.2019.
-//
 
 extension Publisher {
     
     /// Collects up to the specified number of elements, and then emits a single array of
     /// the collection.
-    ///
+    
     /// Use `collect(_:)` to emit arrays of at most `count` elements from an upstream
     /// publisher. If the upstream publisher finishes before collecting the specified
     /// number of elements, the publisher sends an array of only the items it received
@@ -17,7 +11,7 @@ extension Publisher {
     ///
     /// If the upstream publisher fails with an error, this publisher forwards the error
     /// to the downstream receiver instead of sending its output.
-    ///
+    
     /// In the example below, the `collect(_:)` operator emits one partial and two full
     /// arrays based on the requested collection size of `5`:
     ///
@@ -41,7 +35,7 @@ extension Publisher {
 }
 
 extension Publishers {
-    
+    // 惯例 Publisher.
     /// A publisher that buffers a maximum number of items.
     public struct CollectByCount<Upstream: Publisher>: Publisher {
         
@@ -126,6 +120,7 @@ extension Publishers.CollectByCount {
             buffer.append(input)
             guard buffer.count == count else {
                 lock.unlock()
+                // 这里返回 .none, 是因为下面, 或者 request demand 的时候, 已经 request 了足够的 demand 了.
                 return .none
             }
             let output = self.buffer.take()
@@ -167,6 +162,7 @@ extension Publishers.CollectByCount {
         func cancel() {
             lock.lock()
             if let subscription = self.subscription.take() {
+                // 资源释放, 所有缓存的数据释放.
                 buffer = []
                 finished = true
                 lock.unlock()

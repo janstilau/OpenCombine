@@ -51,7 +51,7 @@ extension Publishers {
         /// The kind of errors this publisher might publish.
         ///
         /// Use `Never` if this `Publisher` does not publish errors.
-        public typealias Failure = Never
+        public typealias Failure = Never // 因为已经替换了, 所以不会 Error 就是 NEVER.
         
         /// The element with which to replace errors from the upstream publisher.
         public let output: Upstream.Output

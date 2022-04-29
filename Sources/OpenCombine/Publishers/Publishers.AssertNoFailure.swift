@@ -1,4 +1,5 @@
 
+// 消除错误的. 专门的一个 Publisher, 使得上游节点的 Failure 类型变为 Never.
 extension Publisher {
     
     /// Raises a fatal error when its upstream publisher fails, and otherwise republishes
@@ -36,11 +37,6 @@ extension Publisher {
     ///     //  value: second value.
     ///     // The process then terminates in the debugger as the assertNoFailure
     ///     // operator catches the genericSubjectError.
-    ///
-    /// - Parameters:
-    ///   - prefix: A string used at the beginning of the fatal error message.
-    ///   - file: A filename used in the error message. This defaults to `#file`.
-    ///   - line: A line number used in the error message. This defaults to `#line`.
     /// - Returns: A publisher that raises a fatal error when its upstream publisher
     ///   fails.
     public func assertNoFailure(_ prefix: String = "",
@@ -51,12 +47,8 @@ extension Publisher {
 }
 
 extension Publishers {
-    
-    /// A publisher that raises a fatal error upon receiving any failure, and otherwise
-    /// republishes all received input.
-    ///
-    /// Use this function for internal sanity checks that are active during testing but
-    /// do not impact performance of shipping code.
+    /// A publisher that raises a fatal error upon receiving any failure, and otherwise republishes all received input.
+    /// Use this function for internal sanity checks that are active during testing but do not impact performance of shipping code.
     public struct AssertNoFailure<Upstream: Publisher>: Publisher {
         
         public typealias Output = Upstream.Output
@@ -82,7 +74,7 @@ extension Publishers {
             self.line = line
         }
         
-        // 通用的设计思路.
+        // 通用的设计思路. 实际上, 还是中间插入了一个节点. 因为有这个节点在, 将上游的 Error 抹除到 Never 类型.
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Downstream.Input == Output, Downstream.Failure == Never
         {
@@ -124,8 +116,6 @@ extension Publishers.AssertNoFailure {
         }
         
         // 全部, 都是移交动作.
-        // 没有必要作为 Subscription, 因为这里直接将 Subscription 移交给了下游节点
-        // 作为 Operator,
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
         }
@@ -134,6 +124,7 @@ extension Publishers.AssertNoFailure {
             return downstream.receive(input)
         }
         
+        // 这个节点, 真正需要处理的就是 Completion 事件. 如果上游节点发生了错误, 就报错. 
         func receive(completion: Subscribers.Completion<Failure>) {
             switch completion {
             case .finished:

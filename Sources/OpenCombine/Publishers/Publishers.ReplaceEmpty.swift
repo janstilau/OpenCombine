@@ -1,9 +1,3 @@
-//
-//  Publishers.ReplaceEmpty.swift
-//  OpenCombine
-//
-//  Created by Joe Spadafora on 12/10/19.
-//
 
 extension Publisher {
     
@@ -119,9 +113,11 @@ extension Publishers.ReplaceEmpty {
             status = .subscribed(subscription)
             lock.unlock()
             downstream.receive(subscription: self)
+            // 这是一个需要 exhaust 上游节点, 才能触发发送下游节点数据的操作. 所以应该 unlimited.
             subscription.request(.unlimited)
         }
         
+        // 如果上游有值, 直接上游的数据.
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = status else {
@@ -147,6 +143,7 @@ extension Publishers.ReplaceEmpty {
             }
             switch completion {
             case .finished:
+                // 如果结束了, 还没有接受过上游的数据, 并且下游请求过 demand. 就把默认的传递过去.
                 if downstreamRequested {
                     lock.unlock()
                     _ = downstream.receive(output)
@@ -167,6 +164,7 @@ extension Publishers.ReplaceEmpty {
             downstreamRequested = true
             if finishedWithoutUpstream {
                 lock.unlock()
+                // 如果结束了, 还没有接受过上游的数据, 并且下游请求过 demand. 就把默认的传递过去. 
                 _ = downstream.receive(output)
                 downstream.receive(completion: .finished)
                 return

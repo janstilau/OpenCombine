@@ -45,13 +45,13 @@ extension Publishers {
         /// This strategy starts by making a demand equal to the buffer’s size from
         /// the upstream when the subscriber first connects. Afterwards, it continues
         /// to demand elements from the upstream to try to keep the buffer full.
-        case keepFull
+        case keepFull // 提前获取
         
         /// A strategy that avoids prefetching and instead performs requests on demand.
         ///
         /// This strategy just forwards the downstream’s requests to the upstream
         /// publisher.
-        case byRequest
+        case byRequest // 当下游节点 request 的才获取.
     }
     
     /// A strategy that handles exhaustion of a buffer’s capacity.
@@ -68,6 +68,7 @@ extension Publishers {
     }
     
     /// A publisher that buffers elements received from an upstream publisher.
+    // 惯例节点. 收集信息, 创建 Inner 对象
     public struct Buffer<Upstream: Publisher>: Publisher {
         
         public typealias Output = Upstream.Output
@@ -176,6 +177,7 @@ extension Publishers.Buffer {
                 subscription.cancel()
                 return
             }
+            // 状态管理, 强引用上级节点.
             state = .subscribed(subscription)
             lock.unlock()
             
@@ -184,6 +186,7 @@ extension Publishers.Buffer {
             case .keepFull:
                 upstreamDemand = .max(size)
             case .byRequest:
+                // 这里是不是有问题. byRequest 不应该是 none 吗.
                 upstreamDemand = .unlimited
             }
             subscription.request(upstreamDemand)
@@ -198,6 +201,7 @@ extension Publishers.Buffer {
             }
             switch terminal {
             case nil, .finished?:
+                // 如果, 还没有结束, 或者已经结束了.
                 if values.count >= size {
                     switch whenFull {
                     case .dropNewest:
