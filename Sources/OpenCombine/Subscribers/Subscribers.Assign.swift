@@ -1,14 +1,6 @@
-//
-//  Subscribers.Assign.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 15.06.2019.
-//
 
 extension Subscribers {
-    
-    /// A simple subscriber that assigns received elements to a property indicated by
-    /// a key path.
+    /// A simple subscriber that assigns received elements to a property indicated by a key path.
     public final class Assign<Root, Input>: Subscriber,
                                             Cancellable,
                                             CustomStringConvertible,

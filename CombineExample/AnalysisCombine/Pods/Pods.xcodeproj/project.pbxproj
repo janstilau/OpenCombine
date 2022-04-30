@@ -650,9 +650,9 @@
 			children = (
 				BF557F019E6E0A2F09F43391FF8E722E /* Subscribers.swift */,
 				D144103AEB0D6833A44F2A8C2BC2D9C5 /* Subscribers.Assign.swift */,
+				0CC0951849343ECE4F4E23317DEEAC28 /* Subscribers.Sink.swift */,
 				CC9BD74F6A34434916BC5E17FE3D7059 /* Subscribers.Completion.swift */,
 				ADAE0513A94C5D174FEB8C6DC713216D /* Subscribers.Demand.swift */,
-				0CC0951849343ECE4F4E23317DEEAC28 /* Subscribers.Sink.swift */,
 			);
 			path = Subscribers;
 			sourceTree = "<group>";
