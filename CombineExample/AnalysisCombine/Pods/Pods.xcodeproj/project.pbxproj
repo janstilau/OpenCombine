@@ -429,6 +429,8 @@
 				5F825EE73CD3FBC7813EDC75C025348A /* ConnectablePublisher.swift */,
 				D6B6E54BD4BAC02FC17B8803619C968D /* Publishers.Autoconnect.swift */,
 				B80E427E76E33DC3E3C90A887D4D65EF /* Publishers.MakeConnectable.swift */,
+				9A9B649CC84BE0F03390C0D93DF7D602 /* Publishers.Multicast.swift */,
+				13D1AFC2B093B87BA9317772DC7158F9 /* Publishers.Share.swift */,
 			);
 			path = Connect;
 			sourceTree = "<group>";
@@ -545,14 +547,12 @@
 				5E529A6A42EF0C26C7DCB339D2AF1DD6 /* Publishers.FlatMap.swift */,
 				514E7BB5D2BC786648EE84036EAAB151 /* Publishers.IgnoreOutput.swift */,
 				5E27EB67044A894AE5123D306125C3B2 /* Publishers.MeasureInterval.swift */,
-				9A9B649CC84BE0F03390C0D93DF7D602 /* Publishers.Multicast.swift */,
 				5DF72F0A537C3DB4BB0E01432C6AE482 /* Publishers.Output.swift */,
 				655C9BA03A212C85BA09D2DBB0CCBDDC /* Publishers.PrefixUntilOutput.swift */,
 				C9D10D32A51C6521D3EC1E417A0AD338 /* Publishers.Retry.swift */,
 				F76B8D6FDAF2A5DE9FD1CC19C5B3E210 /* Publishers.Scan.swift */,
 				39AAD09EA24A614EB8A8E131B4F94426 /* Publishers.Sequence.swift */,
 				261A8D6F272479BBCA6115D44F1CA572 /* Publishers.SetFailureType.swift */,
-				13D1AFC2B093B87BA9317772DC7158F9 /* Publishers.Share.swift */,
 				1CB1D91040CCA4973CC6B09F5CBAEDBE /* Publishers.SubscribeOn.swift */,
 				A6A48E568C864F057FF0FD0CD6931441 /* Publishers.SwitchToLatest.swift */,
 				A3DF65DBAC940D9560D44D654C6BF5AD /* Publishers.Throttle.swift */,

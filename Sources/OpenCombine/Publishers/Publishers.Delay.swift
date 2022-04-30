@@ -202,6 +202,9 @@ extension Publishers.Delay {
             return .none
         }
         
+        // 当一个节点, 需要实现 Subscription 的时候, 是因为这个节点
+        // 1. 可以提前退出, 所以需要在 Receive Input 的时候, 在适当的时机 调用 保存的 Subscription 的 cancel 方法
+        // 2. 当下游节点调用 request demand 的方法的时候, 需要进行控制. 
         private func scheduledReceive(_ input: Input) {
             lock.lock()
             guard state.subscription != nil else {

@@ -1,19 +1,16 @@
-//
-//  Publishers.Multicast.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 14.06.2019.
-//
-
 extension Publisher {
     
     /// Applies a closure to create a subject that delivers elements to subscribers.
-    ///
+    
     /// Use a multicast publisher when you have multiple downstream subscribers, but you
     /// want upstream publishers to only process one `receive(_:)` call per event.
     /// This is useful when upstream publishers are doing expensive work you don’t want
     /// to duplicate, like performing network requests.
-    ///
+    // 默认是, 每一次 Subscriber 注册, 都是一个响应链条.
+    // 为了避免上游节点多次触发产生信号的操作, 添加一个中间节点作为分发节点.
+    // 上游节点的信号到达之后, 分发节点后触发各个子链条的处理过程.
+    // 内部是通过 Subject 来实现的. 因为, Subject 天然就是一个分发节点.
+    
     /// In contrast with `multicast(subject:)`, this method produces a publisher that
     /// creates a separate `Subject` for each subscriber.
     ///
@@ -33,8 +30,11 @@ extension Publisher {
     ///        .sink { print ("Stream 1 received: \($0)")}
     ///     cancellable2 = pub
     ///        .sink { print ("Stream 2 received: \($0)")}
+    // 上面的两个 Sink, 是将 Sink生成的节点, Attach 到 PassthroughSubject 的 ConduitList中
+    // 只有下面的 connect 调用了之后, 才是将 Subject 对象, 和 Upstream 进行 attach.
+    // Subject 是 Unlimited 拉取上游节点的数据. 然后, 在根据各自下游的 Demand 将接收到的数据下发给各个子响应链条.
     ///     pub.connect()
-    ///
+    
     ///     // Prints:
     ///     // Random: receive value: (("First", 9))
     ///     // Stream 2 received: ("First", 9)
@@ -99,8 +99,9 @@ extension Publisher {
     ///
     /// In this example, the output shows that the `print(_:to:)` operator receives each
     /// random value only one time, and then sends the value to both subscribers.
-    ///
+    
     /// - Parameter subject: A subject to deliver elements to downstream subscribers.
+    
     public func multicast<SubjectType: Subject>(
         subject: SubjectType
     ) -> Publishers.Multicast<Self, SubjectType>
@@ -134,17 +135,18 @@ extension Publishers {
         
         private let lock = UnfairLock.allocate()
         
-        private var subject: SubjectType?
+        private var generatedSubject: SubjectType?
         
+        // 懒加载.
         private var lazySubject: SubjectType {
             lock.lock()
-            if let subject = subject {
+            if let subject = generatedSubject {
                 lock.unlock()
                 return subject
             }
             
             let subject = createSubject()
-            self.subject = subject
+            self.generatedSubject = subject
             lock.unlock()
             return subject
         }
@@ -163,6 +165,7 @@ extension Publishers {
             lock.deallocate()
         }
         
+        // 当, 后方节点要 Attach 的时候, 生成 Inner 节点, attach 到 Subject 对象上.
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where SubjectType.Failure == Downstream.Failure,
               SubjectType.Output == Downstream.Input
@@ -171,7 +174,7 @@ extension Publishers {
         }
         
         // 后续的节点, 都 Attach 到 Subject 上.
-        // 前方的节点, 一直不进行真正的 subscribe 操作, 直到 connect 的时候, 才真正的完成线路的搭建. 
+        // 前方的节点, 一直不进行真正的 subscribe 操作, 直到 connect 的时候, 才真正的完成线路的搭建.
         public func connect() -> Cancellable {
             return upstream.subscribe(lazySubject)
         }
@@ -180,6 +183,7 @@ extension Publishers {
 
 extension Publishers.Multicast {
     
+    // 不太明白, 这个节点的意义何在. 
     private final class Inner<Downstream: Subscriber>
     : Subscriber,
       Subscription,
@@ -223,6 +227,7 @@ extension Publishers.Multicast {
         
         fileprivate var playgroundDescription: Any { return description }
         
+        // 这个 Subscription, 是 Subejct.Conduit 对象.
         func receive(subscription: Subscription) {
             lock.lock()
             guard case let .ready(upstream, downstream) = state else {
@@ -269,6 +274,7 @@ extension Publishers.Multicast {
                 return
             }
             lock.unlock()
+            // 这里的 subjectSubscription 是 Subject 里面的 Conduit 对象. 
             subjectSubscription.request(demand)
         }
         

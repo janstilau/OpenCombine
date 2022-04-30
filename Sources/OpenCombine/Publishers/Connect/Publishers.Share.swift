@@ -1,9 +1,3 @@
-//
-//  Publishers.Share
-//  
-//
-//  Created by Sergej Jaskiewicz on 18/09/2019.
-//
 
 extension Publisher {
     
@@ -87,6 +81,8 @@ extension Publishers {
         public let upstream: Upstream
         
         public init(upstream: Upstream) {
+            // 和惯例的不通过. 这个 Inner 是提前生成的. 这个 Inner 就是一个分发器.
+            // 上有节点, 连接到这个 Inner, Inner 连接到后续节点. 
             self.inner = upstream.multicast(subject: .init()).autoconnect()
             self.upstream = upstream
         }

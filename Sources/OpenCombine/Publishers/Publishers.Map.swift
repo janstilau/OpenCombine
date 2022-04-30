@@ -205,6 +205,16 @@ extension Publishers.TryMap {
     }
 }
 
+/*
+ 节点, 一定是 Subscriber, 这是毋庸置疑的.
+ 
+ 是不是 Subscrption, 有两点考虑
+ 1. 作为头结点, 如果需要发送 Next 事件给后方, 一定要是 Subscrption. 来记录是否下游节点进行了 Request Demand 的请求. 只有下游节点请求过, 才应该触发下游接受的事件
+ 2. 作为 Subscriber, 在 Subscriber 的 ReceiveInput 中, 是否会触发整个响应链路的终止. 如果会, 比如各个 try Operator, 那么应该保存 Subscrption, 触发上游节点的 cancel 操作. 如果保存了 Subscrption, 那么这个节点就需要是 Subscrption. 来中转下游节点的 cancel, requestDemand 操作.
+ 
+ 如果, 以上都不需要, 那么 Operator 的 Inner 节点不用是 Subscrption. 直接把上游的 Subscrption 交给下游就可以了.
+ 这个节点, 挂靠到上游节点就好了, 不需要循环引用. 
+ */
 extension Publishers.Map {
     
     private struct Inner<Downstream: Subscriber>

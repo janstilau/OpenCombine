@@ -1,9 +1,3 @@
-//
-//  Publishers.MakeConnectable.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 18/09/2019.
-//
 
 extension Publisher where Failure == Never {
     
