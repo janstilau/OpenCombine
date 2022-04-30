@@ -1,17 +1,12 @@
-//
-//  Publishers.PrefixUntilOutput.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 08.11.2020.
-//
 
 extension Publisher {
-    
     /// Republishes elements until another publisher emits an element.
-    ///
+    //
+    
     /// After the second publisher publishes an element, the publisher returned by this
     /// method finishes.
-    ///
+    //
+    
     /// - Parameter publisher: A second publisher.
     /// - Returns: A publisher that republishes elements until the second publisher
     ///   publishes an element.
@@ -58,6 +53,7 @@ extension Publishers.PrefixUntilOutput {
         
         typealias Failure = Upstream.Failure
         
+        // 并且, 这是注册到了 Inner 的内部.
         private struct Termination: Subscriber {
             
             let inner: Inner
@@ -66,6 +62,7 @@ extension Publishers.PrefixUntilOutput {
                 return inner.combineIdentifier
             }
             
+            // 非常好的命名方式
             func receive(subscription: Subscription) {
                 inner.terminationReceive(subscription: subscription)
             }
@@ -88,6 +85,8 @@ extension Publishers.PrefixUntilOutput {
         
         init(downstream: Downstream, trigger: Other) {
             self.downstream = downstream
+            // 在一开始, 就进行了 Termination 相关的 attach
+            // 所以, 有可能 Termination 的信号先触发的.
             let termination = Termination(inner: self)
             self.termination = termination
             trigger.subscribe(termination)
@@ -104,11 +103,14 @@ extension Publishers.PrefixUntilOutput {
                 subscription.cancel()
                 return
             }
+            // 有可能, Ternimate 先触发了. 所以这里要判断 triggered 的状态的.
             prefixState = triggered ? .terminal : .subscribed(subscription)
             lock.unlock()
             downstream.receive(subscription: self)
         }
         
+        // 只要收到上游数据, 就下发
+        // 当 terminate 了, 会直接取消上游的.
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = prefixState else {

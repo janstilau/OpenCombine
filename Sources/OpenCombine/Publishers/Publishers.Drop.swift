@@ -1,13 +1,7 @@
-//
-//  Publishers.Drop.swift
-//
-//
-//  Created by Sven Weidauer on 03.10.2019.
-//
 
 extension Publisher {
     /// Omits the specified number of elements before republishing subsequent elements.
-    ///
+    
     /// Use `dropFirst(_:)` when you want to drop the first `n` elements from the upstream
     /// publisher, and republish the remaining elements.
     ///
@@ -109,6 +103,7 @@ extension Publishers.Drop {
             }
         }
         
+        // 在内部记录已经消耗的熟练, 没有完全消耗完成, 不进行后续的 forward 处理.
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             // Combine doesn't lock here!
             if count > 0 {

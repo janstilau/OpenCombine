@@ -1,15 +1,8 @@
-//
-//  Publishers.DropUntilOutput.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 24.12.2019.
-//
-
 extension Publisher {
     
     /// Ignores elements from the upstream publisher until it receives an element from
     /// a second publisher.
-    ///
+    
     /// Use `drop(untilOutputFrom:)` to ignore elements from the upstream publisher until
     /// another, second, publisher delivers its first element.
     /// This publisher requests a single value from the second publisher, and it ignores
@@ -17,7 +10,7 @@ extension Publisher {
     /// produces a value. After the second publisher produces an element,
     /// `drop(untilOutputFrom:)` cancels its subscription to the second publisher, and
     /// allows events from the upstream publisher to pass through.
-    ///
+    
     /// After this publisher receives a subscription from the upstream publisher, it
     /// passes through backpressure requests from downstream to the upstream publisher.
     /// If the upstream publisher acts on those requests before the other publisher
@@ -85,6 +78,7 @@ extension Publishers {
         {
             let inner = Inner(downstream: subscriber)
             subscriber.receive(subscription: inner)
+            // Other 后面 attach 一个 OtherSubscriber. 这个节点的主要工作, 就是将 Other 的数据, 转交给 Inner, 来触发 Inner 的 可以 Forward 的逻辑.
             other.subscribe(Inner.OtherSubscriber(inner: inner))
             upstream.subscribe(inner)
         }
@@ -152,6 +146,7 @@ extension Publishers.DropUntilOutput {
         
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
+            // 还没有触发, 还是会消耗 demand 的值.
             if !triggered || cancelled {
                 pendingDemand -= 1
                 lock.unlock()
@@ -184,12 +179,16 @@ extension Publishers.DropUntilOutput {
                 return
             }
             otherSubscription = subscription
+            // 就要做一个值
+            // Ohter 应该尊重 Demand, 仅仅就发送一个数据过来.
             subscription.request(.max(1))
         }
         
         private func receiveOther(_ input: Other.Output) -> Subscribers.Demand {
             lock.lock()
+            // 在, 接受到外界值之后, 立马修改 triggered 的状态.
             triggered = true
+            // 释放引用.
             otherSubscription = nil
             lock.unlock()
             return .none
@@ -206,6 +205,8 @@ extension Publishers.DropUntilOutput {
             otherFinished = true
             if let upstreamSubscription = self.upstreamSubscription.take() {
                 lock.unlock()
+                // 如果, Ohter 没有发送过数据过来, 又 Completion 了.
+                // 那么上层节点进行进行 cancel. 不然, 这个响应链就永远不会结束了.
                 upstreamSubscription.cancel()
             } else {
                 lock.unlock()

@@ -1,18 +1,13 @@
-//
-//  Publishers.DropWhile.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 16.06.2019.
-//
 
 extension Publisher {
     
     /// Omits elements from the upstream publisher until a given closure returns false,
     /// before republishing all remaining elements.
-    ///
+    // 一旦后面的 Predicate 验证失效之后, 后面的都会进行 Publisher
+    
     /// Use `drop(while:)` to omit elements from an upstream publisher until the element
     /// received meets a condition you specify.
-    ///
+    
     /// In the example below, the operator omits all elements in the stream until
     /// the first element arrives that’s a positive integer, after which the operator
     /// publishes all remaining elements:
@@ -80,6 +75,7 @@ extension Publisher {
     }
 }
 
+// 惯例式实现.
 extension Publishers {
     
     /// A publisher that omits elements from an upstream publisher until a given closure
@@ -181,6 +177,7 @@ extension Publishers.DropWhile {
             downstream.receive(subscription: self)
         }
         
+        // 没太明白, 这个节点实现 Subscription 的原因如何.
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = status, let shouldDrop = predicate else {
@@ -191,6 +188,7 @@ extension Publishers.DropWhile {
             lock.unlock()
             
             if dropping {
+                // 继续忽略.
                 if shouldDrop(input) {
                     return .max(1)
                 } else {
@@ -200,6 +198,7 @@ extension Publishers.DropWhile {
                 }
             }
             
+            // 忽略条件结束, forward 到后续的节点.
             return downstream.receive(input)
         }
         
@@ -320,6 +319,7 @@ extension Publishers.TryDropWhile {
                     predicate = nil
                     finished = true
                     lock.unlock()
+                    // 如果, 发生了错误, 使用保存的 subscription 对上游进行 cancel 
                     subscription.cancel()
                     downstream.receive(completion: .failure(error))
                     return .none
