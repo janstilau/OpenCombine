@@ -1,9 +1,3 @@
-//
-//  Publishers.Timeout.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 14.06.2020.
-//
 
 extension Publisher {
     

@@ -1,17 +1,11 @@
-//
-//  Publishers.Output.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 24.10.2019.
-//
 
 extension Publisher {
     
     /// Republishes elements up to the specified maximum count.
-    ///
+    
     /// Use `prefix(_:)` to limit the number of elements republished to the downstream
     /// subscriber.
-    ///
+    
     /// In the example below, the `prefix(_:)` operator limits its output to the first
     /// two elements before finishing normally:
     ///
@@ -34,12 +28,12 @@ extension Publisher {
     
     /// Publishes a specific element, indicated by its index in the sequence of published
     /// elements.
-    ///
+    
     /// Use `output(at:)` when you need to republish a specific element specified by
     /// its position in the stream. If the publisher completes normally or with an error
     /// before publishing the specified element, then the publisher doesn’t produce any
     /// elements.
-    ///
+    
     /// In the example below, the array publisher emits the fifth element in the sequence
     /// of published elements:
     ///
@@ -57,12 +51,12 @@ extension Publisher {
     }
     
     /// Publishes elements specified by their range in the sequence of published elements.
-    ///
+    
     /// Use `output(in:)` to republish a range indices you specify in the published
     /// stream. After publishing all elements, the publisher finishes normally.
     /// If the publisher completes normally or with an error before producing all
     /// the elements in the range, it doesn’t publish the remaining elements.
-    ///
+    
     /// In the example below, an array publisher emits the subset of elements at
     /// the indices in the specified range:
     ///
@@ -104,8 +98,6 @@ extension Publishers {
         ///   - upstream: The publisher that this publisher receives elements from.
         ///   - range: The range of elements to publish.
         public init(upstream: Upstream, range: CountableRange<Int>) {
-            precondition(range.lowerBound >= 0, "lowerBound must not be negative")
-            precondition(range.upperBound >= 0, "upperBound must not be negative")
             self.upstream = upstream
             self.range = range
         }

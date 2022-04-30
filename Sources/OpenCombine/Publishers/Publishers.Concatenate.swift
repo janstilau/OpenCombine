@@ -1,17 +1,12 @@
-//
-//  Publishers.Concatenate.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 24.10.2019.
-//
 
+// Publishers.Concatenate 接受两个 Publisher, 一个 Prefix, 一个 Suffix
 extension Publisher {
     
     /// Prefixes a publisher’s output with the specified values.
-    ///
+    
     /// Use `prepend(_:)` when you need to prepend specific elements before the output
     /// of a publisher.
-    ///
+    
     /// In the example below, the `prepend(_:)` operator publishes the provided elements
     /// before republishing all elements from `dataElements`:
     ///
@@ -177,7 +172,9 @@ extension Publishers {
     
     /// A publisher that emits all of one publisher’s elements before those from another
     /// publisher.
-    public struct Concatenate<Prefix: Publisher, Suffix: Publisher>: Publisher
+    public struct Concatenate<Prefix: Publisher,
+                              Suffix: Publisher>: Publisher
+    // 泛型限制, 类型必须得一样.
     where Prefix.Failure == Suffix.Failure, Prefix.Output == Suffix.Output
     {
         public typealias Output = Suffix.Output
@@ -197,7 +194,8 @@ extension Publishers {
         }
         
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-        where Suffix.Failure == Downstream.Failure, Suffix.Output == Downstream.Input
+        where Suffix.Failure == Downstream.Failure,
+              Suffix.Output == Downstream.Input
         {
             let inner = Inner(downstream: subscriber, suffix: suffix)
             prefix.subscribe(Inner<Downstream>.PrefixSubscriber(inner: inner))
@@ -208,6 +206,7 @@ extension Publishers {
 extension Publishers.Concatenate: Equatable where Prefix: Equatable, Suffix: Equatable {}
 
 extension Publishers.Concatenate {
+    // 这个不是 Subscriber.
     fileprivate final class Inner<Downstream: Subscriber>
     : Subscription,
       CustomStringConvertible,
@@ -227,6 +226,7 @@ extension Publishers.Concatenate {
             let inner: Inner<Downstream>
         }
         
+        // 记录了 downstream.
         private let downstream: Downstream
         
         private var prefixState = SubscriptionStatus.awaitingSubscription
@@ -251,7 +251,8 @@ extension Publishers.Concatenate {
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             pending += demand
-            guard let subscription = prefixState.subscription ?? suffixState.subscription
+            guard let subscription =
+                    prefixState.subscription ?? suffixState.subscription
             else {
                 lock.unlock()
                 return
@@ -310,6 +311,7 @@ extension Publishers.Concatenate {
             }
             pending -= 1
             lock.unlock()
+            // 给后续节点下发数据.
             let newDemand = downstream.receive(input)
             if newDemand == .none {
                 return .none
@@ -330,6 +332,8 @@ extension Publishers.Concatenate {
             lock.unlock()
             switch completion {
             case .finished:
+                // Prefix 结束之后, 才会注册 suffix 的.
+                // 所以, 如果 Suffix 提前发送了信号, 后续是接不到的 .
                 suffix?.subscribe(SuffixSubscriber(inner: self))
             case .failure:
                 downstream.receive(completion: completion)
@@ -370,13 +374,15 @@ extension Publishers.Concatenate {
             prefixState = .terminal
             suffixState = .terminal
             lock.unlock()
+            // 只有当 Suffix 结束之后, 才是真正的结束. 
             downstream.receive(completion: completion)
         }
     }
 }
 
-// MARK: - PrefixSubscriber conformances
+// MARK: - PrefixSuffix_Subscriber conformances
 
+// 这是个真正 attach 到 PrefixPublisher 的节点.
 extension Publishers.Concatenate.Inner.PrefixSubscriber: Subscriber {
     
     fileprivate typealias Input = Suffix.Output
@@ -397,6 +403,29 @@ extension Publishers.Concatenate.Inner.PrefixSubscriber: Subscriber {
     
     fileprivate func receive(completion: Subscribers.Completion<Failure>) {
         inner.prefixReceive(completion: completion)
+    }
+}
+
+extension Publishers.Concatenate.Inner.SuffixSubscriber: Subscriber {
+    
+    fileprivate typealias Input = Suffix.Output
+    
+    fileprivate typealias Failure = Suffix.Failure
+    
+    fileprivate var combineIdentifier: CombineIdentifier {
+        return inner.combineIdentifier
+    }
+    
+    fileprivate func receive(subscription: Subscription) {
+        inner.suffixReceive(subscription: subscription)
+    }
+    
+    fileprivate func receive(_ input: Input) -> Subscribers.Demand {
+        return inner.suffixReceive(input)
+    }
+    
+    fileprivate func receive(completion: Subscribers.Completion<Failure>) {
+        inner.suffixReceive(completion: completion)
     }
 }
 
@@ -421,31 +450,6 @@ extension Publishers.Concatenate.Inner.PrefixSubscriber
 {
     fileprivate var playgroundDescription: Any {
         return inner.playgroundDescription
-    }
-}
-
-// MARK: - SuffixSubscriber conformances
-
-extension Publishers.Concatenate.Inner.SuffixSubscriber: Subscriber {
-    
-    fileprivate typealias Input = Suffix.Output
-    
-    fileprivate typealias Failure = Suffix.Failure
-    
-    fileprivate var combineIdentifier: CombineIdentifier {
-        return inner.combineIdentifier
-    }
-    
-    fileprivate func receive(subscription: Subscription) {
-        inner.suffixReceive(subscription: subscription)
-    }
-    
-    fileprivate func receive(_ input: Input) -> Subscribers.Demand {
-        return inner.suffixReceive(input)
-    }
-    
-    fileprivate func receive(completion: Subscribers.Completion<Failure>) {
-        inner.suffixReceive(completion: completion)
     }
 }
 

@@ -1,19 +1,11 @@
-//
-//  Publishers.Sequence.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 19.06.2019.
-//
 
 extension Publishers {
     
     /// A publisher that publishes a given sequence of elements.
-    ///
+    
     /// When the publisher exhausts the elements in the sequence, the next request
     /// causes the publisher to finish.
     
-    // Combine 里面, 信号的发射, 不仅仅和 Publisher 有关, 也和 Subscriber 的 Request 有关.
-    // 如果, Subscriber 不在没有 Request 的 Demand, 那么其实 Publisher 是应该把自己产生的数据, 发布给后方节点的.
     public struct Sequence<Elements: Swift.Sequence, Failure: Error>: Publisher {
         public typealias Output = Elements.Element
         /// The sequence of elements to publish.
@@ -25,15 +17,6 @@ extension Publishers {
             self.sequence = sequence
         }
         
-        /*
-         Combine 的 Publisher 有着非常明显的处理流程.
-         生成真正在响应链条里面存在的节点, 在节点里面, 存储了 Next 的 Subscriber
-         将节点, 作为 subscription 传递给后续节点. 后续节点里面, 做对于 subscription 的记录.
-         在 Subscriber 里面, 对传递过来的 subscription 调用 Request Demand. 进行真正的信号生成的触发.
-         
-         Producer 生成节点, 构建响应者链条. 真正在联调里面, 发挥作用的, 是各个节点类型.
-         这在 Combine 以及 RxSwfit 里面, 是同样的一个思路.
-         */
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Failure == Downstream.Failure, Elements.Element == Downstream.Input {
             let inner = Inner(downstream: subscriber, sequence: sequence)
@@ -63,6 +46,7 @@ extension Publishers.Sequence {
         
         private var sequence: Elements? // Producer 里面, 记录的序列数据, 被原封不动的搬移到生成的 Node 中
         private var downstream: Downstream? // Producer 中, 接收到的 Subscriber 数据, 被原封不动的, 搬移到生成的 Node 中.
+        
         private var iterator: Iterator
         private var next: Element?
         private var pendingDemand = Subscribers.Demand.none // 记录后续节点的需求. 对于
@@ -96,22 +80,6 @@ extension Publishers.Sequence {
         
         var playgroundDescription: Any { return description }
         
-        /*
-         和 Rx 比较.
-         rx 是在 Subscribe 函数里面, 触发了对于信号的生产.
-         Combine 是在 Request 里面, 触发了对于信号的生产.
-         
-         真正进行信号生成的 Publisher 的 Inner 节点, 应该在 request(_ demand: Subscribers.Demand) 中, 进行信号发送的管理.
-         当, 收到了新的需求之后, 进行信号产生事件的触发.
-         在这里, 因为这是一个同步行为, 所以直接在 request(_ demand 中, 进行了相应的信号的发送.
-         而如果是一个异步事件, 则是收到 Demand 之后, 触发异步事件, 在异步事件完成之后, 进行对应信号的触发.
-         所有的这些, 都是要触发 Demand 的数量管理.
-         
-         这个机制, 使得我们可以定义一个特殊的 Subscriber. 可以根据业务需求, 主动调用它存储的上游 Subscription 的 RequestDemand 方法, 来触发上游节点的事件的发送.
-         
-         这非常重要. rx 里面, subscribe 方法, 就会触发对应的事件产生逻辑, 而在 Combine 里面, 我们可以通过 Subscription, 来主动地进行上游事件的触发.
-         这也就 Combine 想要达到的 Pull 设计意图.
-         */
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard downstream != nil else {
@@ -169,6 +137,7 @@ extension Publishers.Sequence {
 
 extension Publishers.Sequence: Equatable where Elements: Equatable {}
 
+// 融合. 
 extension Publishers.Sequence where Failure == Never {
     
     public func min(
