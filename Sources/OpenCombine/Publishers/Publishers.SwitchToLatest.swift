@@ -1,19 +1,12 @@
-//
-//  Publishers.SwitchToLatest.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 07.01.2020.
-//
-
 extension Publisher where Output: Publisher, Output.Failure == Failure {
     
     /// Republishes elements sent by the most recently received publisher.
-    ///
+    
     /// This operator works with an upstream publisher of publishers, flattening
     /// the stream of elements to appear as if they were coming from a single stream of
     /// elements. It switches the inner publisher as new ones arrive but keeps the outer
     /// publisher constant for downstream subscribers.
-    ///
+    
     /// For example, given the type `AnyPublisher<URLSession.DataTaskPublisher, NSError>`,
     /// calling `switchToLatest()` results in the type
     /// `SwitchToLatest<(Data, URLResponse), URLError>`.
@@ -176,6 +169,7 @@ extension Publishers {
 }
 
 extension Publishers.SwitchToLatest {
+    
     fileprivate final class Outer<Downstream: Subscriber>
     : Subscriber,
       Subscription,
@@ -223,6 +217,7 @@ extension Publishers.SwitchToLatest {
             subscription.request(.unlimited)
         }
         
+        // Input 会是一个 Publsher 类型.
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             if cancelled || finished {
@@ -230,8 +225,10 @@ extension Publishers.SwitchToLatest {
                 return .none
             }
             
+            // 当, 收到一个新的 Publisher 之后, 就立取消之前的.
             if let currentInnerSubscription = self.currentInnerSubscription.take()  {
                 lock.unlock()
+                // 取消原来的注册.
                 currentInnerSubscription.cancel()
                 lock.lock()
             }
@@ -312,7 +309,8 @@ extension Publishers.SwitchToLatest {
         
         var playgroundDescription: Any { return description }
         
-        private func receiveInner(subscription: Subscription, _ index: UInt64) {
+        private func receiveInner(subscription: Subscription,
+                                  _ index: UInt64) {
             lock.lock()
             guard currentInnerIndex == index &&
                     !cancelled &&
@@ -322,6 +320,7 @@ extension Publishers.SwitchToLatest {
                         return
                     }
             
+            // 记录 Inner 的上层节点.
             currentInnerSubscription = subscription
             awaitingInnerSubscription = false
             let downstreamDemand = self.downstreamDemand
@@ -345,6 +344,7 @@ extension Publishers.SwitchToLatest {
             
             lock.unlock()
             downstreamLock.lock()
+            // Inner 的 Subscription, 所发射的信号, 才是真正的到达了 downstream
             let newDemand = downstream.receive(input)
             downstreamLock.unlock()
             if newDemand > 0 {
@@ -395,6 +395,7 @@ extension Publishers.SwitchToLatest {
 }
 
 extension Publishers.SwitchToLatest.Outer {
+    
     private struct Side
     : Subscriber,
       CustomStringConvertible,

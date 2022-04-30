@@ -1,22 +1,16 @@
-//
-//  Publishers.MeasureInterval.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 03.12.2019.
-//
 
 extension Publisher {
     
     /// Measures and emits the time interval between events received from an upstream
     /// publisher.
-    ///
+    
     /// Use `measureInterval(using:options:)` to measure the time between events delivered
     /// from an upstream publisher.
-    ///
+    
     /// In the example below, a 1-second `Timer` is used as the data source for an event
     /// publisher; the `measureInterval(using:options:)` operator reports the elapsed time
     /// between the reception of events on the main run loop:
-    ///
+    
     ///     cancellable = Timer.publish(every: 1, on: .main, in: .default)
     ///         .autoconnect()
     ///         .measureInterval(using: RunLoop.main)
@@ -134,9 +128,11 @@ extension Publishers.MeasureInterval {
                       lock.unlock()
                       return .none
                   }
+            
             let now = scheduler.now
             last = now
             lock.unlock()
+            // 后续节点, 接收到的是, 两个 next 事件的时间差.
             let newDemand = downstream.receive(previousTime.distance(to: now))
             if newDemand > 0 {
                 subscription.request(newDemand)

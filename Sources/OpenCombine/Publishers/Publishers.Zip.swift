@@ -1,8 +1,3 @@
-//
-//  Publishers.Zip.swift
-//
-//  Created by Eric Patey on 29.08.2019.
-//
 
 #if canImport(COpenCombineHelpers)
 import COpenCombineHelpers

@@ -3,16 +3,17 @@ extension Publisher {
     
     /// Terminates publishing if the upstream publisher exceeds the specified time
     /// interval without producing an element.
-    ///
+    // 不过, 不能在时间范围内发射新的信号, 这个 Publisher 就 cancel 掉了
+    
     /// Use `timeout(_:scheduler:options:customError:)` to terminate a publisher if
     /// an element isn’t delivered within a timeout interval you specify.
-    ///
+    
     /// In the example below, a `PassthroughSubject` publishes `String` elements and is
     /// configured to time out if no new elements are received within its `TIME_OUT`
     /// window of 5 seconds. A single value is published after the specified 2-second
     /// `WAIT_TIME`, after which no more elements are available; the publisher then times
     /// out and completes normally.
-    ///
+    
     ///     var WAIT_TIME : Int = 2
     ///     var TIMEOUT_TIME : Int = 5
     ///
@@ -111,14 +112,14 @@ extension Publishers {
 }
 
 extension Publishers.Timeout {
+    
     private final class Inner<Downstream: Subscriber>
     : Subscriber,
       Subscription,
       CustomStringConvertible,
       CustomReflectable,
       CustomPlaygroundDisplayConvertible
-    where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
-    {
+    where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure {
         typealias Input = Upstream.Output
         
         typealias Failure = Upstream.Failure
@@ -169,6 +170,7 @@ extension Publishers.Timeout {
                 subscription.cancel()
                 return
             }
+            
             state = .subscribed(subscription)
             timer = timeoutClock()
             lock.unlock()
@@ -183,6 +185,7 @@ extension Publishers.Timeout {
                 lock.unlock()
                 return .none
             }
+            // 每次, 收到上游数据之后, 都重置 TerminateTimeout 的值.
             timer?.cancel()
             didTimeout = false
             timer = timeoutClock()
@@ -244,6 +247,7 @@ extension Publishers.Timeout {
                 lock.unlock()
                 return
             }
+            // 超时 Timeout 的回调.
             didTimeout = true
             state = .terminal
             lock.unlock()
