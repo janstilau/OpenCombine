@@ -1,24 +1,25 @@
-//
-//  Publishers.FlatMap.swift
-//
-//  Created by Eric Patey on 16.08.2019.
-//
-
 extension Publisher {
     
+    /*
+     实现思路, 和 Rx 没有太大的区别.
+     */
     /// Transforms all elements from an upstream publisher into a new publisher up to
     /// a maximum number of publishers you specify.
-    ///
+    // 上游的每一个 Next 事件, 都是生成一个新的 Publisher. 下游节点, 其实是和这个新的 Publisher 的信号相连.
+    
     /// OpenCombine‘s `flatMap(maxPublishers:_:)` operator performs a similar function
     /// to the `flatMap(_:)` operator in the Swift standard library, but turns
     /// the elements from one kind of publisher into a new publisher that is sent
-    /// to subscribers. Use `flatMap(maxPublishers:_:)` when you want to create a new
+    /// to subscribers.
+    
+    /// Use `flatMap(maxPublishers:_:)` when you want to create a new
     /// series of events for downstream subscribers based on the received value.
     /// The closure creates the new `Publisher` based on the received value.
     /// The new `Publisher` can emit more than one event, and successful completion of
     /// the new `Publisher` does not complete the overall stream.
     /// Failure of the new `Publisher` will fail the overall stream.
-    ///
+    
+    
     /// In the example below, a `PassthroughSubject` publishes `WeatherStation` elements.
     /// The `flatMap(maxPublishers:_:)` receives each element, creates a `URL` from it,
     /// and produces a new `URLSession.DataTaskPublisher`, which will publish the data
@@ -54,6 +55,7 @@ extension Publisher {
     /// - Parameters:
     ///   - maxPublishers: Specifies the maximum number of concurrent publisher
     ///     subscriptions, or `Subscribers.Demand.unlimited` if unspecified.
+    
     ///   - transform: A closure that takes an element as a parameter and returns
     ///     a publisher that produces elements of that type.
     /// - Returns: A publisher that transforms elements from an upstream publisher into
@@ -81,6 +83,7 @@ extension Publisher where Failure == Never {
     ///     a publisher that produces elements of that type.
     /// - Returns: A publisher that transforms elements from an upstream publisher into
     ///   a publisher of that element’s type.
+    
     public func flatMap<Child: Publisher>(
         maxPublishers: Subscribers.Demand = .unlimited,
         _ transform: @escaping (Output) -> Child
@@ -154,9 +157,12 @@ extension Publishers {
             self.maxPublishers = maxPublishers
             self.transform = transform
         }
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Child.Output == Downstream.Input, Upstream.Failure == Downstream.Failure
         {
+            // 每次, 有新的 Subscribe 的时候, 是创建一个中间节点.
+            // 由这个中间节点, 完成上游数据转变为 Publisher 的操作.
             let outer = Outer(downstream: subscriber,
                               maxPublishers: maxPublishers,
                               map: transform)
@@ -231,6 +237,7 @@ extension Publishers.FlatMap {
         
         // MARK: - Subscriber
         
+        // 接收到了, 原始 UpStream 生成的节点数据.
         fileprivate func receive(subscription: Subscription) {
             lock.lock()
             guard outerSubscription == nil, !cancelledOrCompleted else {
@@ -240,6 +247,7 @@ extension Publishers.FlatMap {
             }
             outerSubscription = subscription
             lock.unlock()
+            // 原始 UpStream 的 Demand, 受 maxPublishers 的控制.
             subscription.request(maxPublishers)
         }
         
@@ -250,12 +258,14 @@ extension Publishers.FlatMap {
             if cancelledOrCompleted {
                 return .none
             }
+            // 在这里, 产生了 新的 Publisher.
             let child = map(input)
             lock.lock()
             let innerIndex = nextInnerIndex
             nextInnerIndex += 1
             pendingSubscriptions += 1
             lock.unlock()
+            // 新的 Publisher是将和 Side 对象进行了 attach.
             child.subscribe(Side(index: innerIndex, inner: self))
             return .none
         }
@@ -417,6 +427,7 @@ extension Publishers.FlatMap {
             lock.unlock()
             downstreamLock.lock()
             downstreamRecursive = true
+            // 直到这个时候, 后续节点才真正的拿到了数据.
             let newDemand = downstream.receive(input)
             downstreamRecursive = false
             downstreamLock.unlock()

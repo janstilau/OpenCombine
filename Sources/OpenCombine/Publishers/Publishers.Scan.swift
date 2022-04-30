@@ -1,17 +1,12 @@
-//
-//  Publishers.Scan.swift
-//
-//  Created by Eric Patey on 26.08.2019.
-//
 
 extension Publisher {
     
     /// Transforms elements from the upstream publisher by providing the current
     /// element to a closure along with the last value returned by the closure.
-    ///
+    
     /// Use `scan(_:_:)` to accumulate all previously-published values into a single
     /// value, which you then combine with each newly-published value.
-    ///
+    
     /// The following example logs a running total of all values received
     /// from the sequence publisher.
     ///
@@ -180,6 +175,7 @@ extension Publishers.Scan {
         )
         {
             self.downstream = downstream
+            // 最终, 数据是存储在 Result 这里.
             self.result = initialResult
             self.nextPartialResult = nextPartialResult
         }
@@ -189,6 +185,7 @@ extension Publishers.Scan {
         }
         
         func receive(_ input: Input) -> Subscribers.Demand {
+            // 每次, 更新 result 的值, 然后把 Result 的值, 交给下游节点.
             result = nextPartialResult(result, input)
             return downstream.receive(result)
         }
@@ -279,6 +276,7 @@ extension Publishers.TryScan {
                 status = .terminal
                 lock.unlock()
                 subscription.cancel()
+                // 如果出错了, 把 catch 到的错误, 传递到 downstream 中.
                 downstream.receive(completion: .failure(error))
                 return .none
             }
