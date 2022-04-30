@@ -2,6 +2,7 @@ import SwiftUI
 import Photos
 import Combine
 
+// ImagePickerView页面.
 struct PhotosView: View {
   @EnvironmentObject var model: CollageNeueModel
   @Environment(\.presentationMode) var presentationMode
@@ -23,6 +24,7 @@ struct PhotosView: View {
             let _ = model.enqueueThumbnail(asset: asset)
             
             Button(action: {
+              // 每个按钮点击之后, 是调用 ViewModel 的 ViewAction, 来触发 Model 层的数据变化.
               model.selectImage(asset: asset)
             }, label: {
               Image(uiImage: model.thumbnails[asset.localIdentifier] ?? UIImage(named: "IMG_1907")!)
@@ -60,6 +62,9 @@ struct PhotosView: View {
       model.bindPhotoPicker()
     }
     .onDisappear {
+      // 在 ViewDisAppeared 的时候, 触发了 ViewModel 的 Completion 信号.
+      // 这里设计的不好, 直接使用 Model 里面的 selectedPhotosSubject 发送 Completion 事件.
+      // 在 Model 内部, 根本不知道这里会触发完结事件.
       model.selectedPhotosSubject.send(completion: .finished)
     }
   }

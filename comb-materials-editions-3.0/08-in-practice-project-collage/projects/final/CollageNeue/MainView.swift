@@ -39,6 +39,7 @@ struct MainView: View {
       .padding(.bottom)
       .padding(.bottom)
       
+      // imagePreview 的变化, 直接影响到了 UI 的变化. 
       Image(uiImage: model.imagePreview ?? UIImage())
         .resizable()
         .frame(height: 200, alignment: .center)

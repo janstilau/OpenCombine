@@ -12,7 +12,6 @@ extension UIViewController {
                                       style: .default) { _ in
         resolve(.success(()))
       })
-      
       self.present(alertVC, animated: true, completion: nil)
     }
     .handleEvents(receiveCancel: {
