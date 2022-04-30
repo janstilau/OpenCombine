@@ -66,7 +66,7 @@ extension Publisher {
     /// Prints log messages for all publishing events.
     ///
     /// Use `print(_:to:)` to log messages the console.
-    ///
+    
     /// In the example below, log messages are printed on the console:
     ///
     ///     let integers = (1...2)
@@ -83,7 +83,7 @@ extension Publisher {
     ///     //  Logged a message: receive value: (1)
     ///     // 接收到了上游的完成事件
     ///     //  Logged a message: receive finished
-    ///
+    
     /// - Parameters:
     ///   - prefix: A string — which defaults to empty — with which to prefix all log
     ///     messages.
