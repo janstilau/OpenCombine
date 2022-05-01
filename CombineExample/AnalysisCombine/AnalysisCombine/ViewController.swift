@@ -46,7 +46,10 @@ class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        (1...3).publisher
+        let publihser = (1...3).publisher.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}
+        publihser.sink { output in
+            print(output)
+        }
         
 //        var thePerson = Person()
 //        thePerson.name = "Custom Name"

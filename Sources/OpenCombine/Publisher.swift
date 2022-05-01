@@ -92,7 +92,7 @@ public protocol Publisher {
 extension Publisher {
     
     /// Attaches the specified subscriber to this publisher.
-    ///
+    
     /// Always call this function instead of `receive(subscriber:)`.
     /// Adopters of `Publisher` must implement `receive(subscriber:)`.
     /// The implementation of `subscribe(_:)` in this extension calls through to
@@ -102,7 +102,22 @@ extension Publisher {
     ///     - subscriber: The subscriber to attach to this `Publisher`. After attaching,
     ///       the subscriber can start to receive values.
     
-    // 响应式实在是太难调试了, 所以, 在基本方法里面, 进行了各种机制埋点.
+    /*
+     Combine 和 Rx 的设计, 在这有很大的区别.
+     在 Rx 里面, 每一个 Subscribe 都返回一个 cancel 对象, 其实是 SinkDisposer 对象.
+     各个 SinkDisposer 和 Sink 之间具有循环引用, 下层节点的 SinkDisposer 引用着上层的 SinkDisposer.
+     上层节点, 引用着下层节点. 这是必须的, 因为数据流需要这样的串联.
+     
+     在 Combine 里面, 上层节点, 在下层节点中当做 Subscription 进行存储.
+     下层节点, 在上层节点中, 当做了 downstream 进行存储.
+     所以, 是在这里进行了循环引用.
+     在这个构建过程中, 是不返回 cancel 对象的.
+     
+     只有在最后, 进行最终的 subscriber 的时候, 才返回 cancelable 对象. 而这个对象, 一般也就是最有的一个 subscriber 对象.
+     sink, assignOn.
+     这最后一个节点的 cancel, 会触发自己存储的 Subscription 的 cancel, 也就是上层节点的 cancel. 是这样进行的取消.
+     所以, 在 Combine 中, 是没有 sinkDisposer 这样一层额外的管理对象的.
+     */
     public func subscribe<Subscriber: OpenCombine.Subscriber>(_ subscriber: Subscriber)
     where Failure == Subscriber.Failure, Output == Subscriber.Input
     {
@@ -127,7 +142,9 @@ extension Publisher {
     /// Attaches the specified subject to this publisher.
     ///
     /// - Parameter subject: The subject to attach to this publisher.
-    // 在 Combine 里面, Subejct 不自动是 Subscriber. 
+    // 在 Combine 里面, Subejct 不自动是 Subscriber.
+    // 当注册到 Subject 的时候, 其实可以认为是, 响应链条终止了. 后面的通路, 应该是已 Subject 为起点的, 新的响应链条.
+    // 所以, 这里返回一个 cancellable, 来做这条通路的 cancel 的触发点. 
     public func subscribe<Subject: OpenCombine.Subject>(
         _ subject: Subject
     ) -> AnyCancellable

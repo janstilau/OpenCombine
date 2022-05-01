@@ -1,9 +1,3 @@
-//
-//  NotificationCenter.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 10.10.2019.
-//
 
 import Foundation
 import OpenCombine

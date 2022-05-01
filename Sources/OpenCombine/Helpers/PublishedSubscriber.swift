@@ -1,10 +1,6 @@
 
-/*
- 在 Combine 中, Subject 并不是一个 Subscriber.
- Subject 协议里面的各个方法, 其实是和自己的抽象相关的, 并没有主动向 Subscriber 进行靠拢.
- 所以, 是不能直接将 Subject 添加到 receive 的函数后面的.
- 所以, 在 Combine 中, 要专门写一个中介类型, 来完成这件事.
- */
+// @Publish 中的 Subject 的 包装类.
+// 这是一个专门的包装类型, 专门给 PublishedSubject 使用的.
 internal struct PublishedSubscriber<Value>: Subscriber {
     
     internal typealias Input = Value
@@ -20,7 +16,7 @@ internal struct PublishedSubscriber<Value>: Subscriber {
         self.subject = subject
     }
     
-    // 就是调用 Subject 的抽象. 不太明白, 为什么不主动进行 Subscriber 的靠拢.
+    // 所有的 Subscriber 的实现, 都是调用 subject 方法完成的. 
     internal func receive(subscription: Subscription) {
         subject?.send(subscription: subscription)
     }
@@ -31,4 +27,6 @@ internal struct PublishedSubscriber<Value>: Subscriber {
     }
     
     internal func receive(completion: Subscribers.Completion<Never>) {}
+    
+    // 这个类, 并不是一个 Subscription 的实现类. 因为, 对于 @published 的属性的 assign 是没有取消的使用场景的. 
 }

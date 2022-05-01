@@ -1,19 +1,25 @@
 
+
+/*
+ 大部分的 Publisher, 都是 struct 值语义的.
+ Publisher 的作用, 其实是收集信息. 这些信息, 一般都会在真正生成响应链路的时候, 赋值到 引用类型的 InnerSink 节点中.
+ 所以, 各种 Operator 的使用, 其实就是一顿值的复制工作.
+ 到了最后的一个 Operator, 它的 upstream 对象, 其实是一个非常庞大的结构体了. 
+ */
 extension Publisher {
     
     /// Wraps this publisher with a type eraser.
-    ///
+    
     /// Use `eraseToAnyPublisher()` to expose an instance of `AnyPublisher`` to
     /// the downstream subscriber, rather than this publisher’s actual type.
     
     /// This form of _type erasure_ preserves abstraction across API boundaries, such as
     /// different modules.
+    
     /// When you expose your publishers as the `AnyPublisher` type, you can change
     /// the underlying implementation over time without affecting existing clients.
-    // 非常重要的一点, 后续的节点, 其实应该是按照协议编程. 他仅仅应该知道的, 就是前方是一个 Publisher, 我应该在它的基础上, 增加 Operator 相关方法的调用.
     // 使用, AnyPublisher, 使得暴露的各种类型, 得到了统一.
     
-    ///
     /// The following example shows two types that each have a `publisher` property.
     /// `TypeWithSubject` exposes this property as its actual type, `PassthroughSubject`,
     /// while `TypeWithErasedSubject` uses `eraseToAnyPublisher()` to expose it as

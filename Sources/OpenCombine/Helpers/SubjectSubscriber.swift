@@ -3,6 +3,8 @@
 // Subject 并不天然是 Subscriber, 所以不能直接被 Publisher 进行 Subscribe.
 
 // 所以, 实际上, 是在 Subject 前增加了一个节点, 使用这个节点, 来触发 Subject 的操作.
+
+// 这里还有一层含义, 就是 Subject 并不是 cancellable 的, 这个节点, 也是也是 Subs cription. 真正使用者进行整个链条的 cancel 的时候, 其实是由这个对象进行的触发.
 internal final class SubjectSubscriber<Downstream: Subject>
 : Subscriber,
   Subscription,
@@ -12,7 +14,7 @@ internal final class SubjectSubscriber<Downstream: Subject>
     
     private let lock = UnfairLock.allocate()
     // 记录下游 Subject 节点.
-    // 这是一个弱引用. 所以, Subject 的 Deinit, 其实是自动进行响应链条上.
+    // 这是一个弱引用, 所以, 当 Subject 节点析构了之后, 上游节点, 是不会触发到下游的 Subject 的.
     private weak var downstreamSubject: Downstream?
     // 记录上游 Subscription 节点.
     private var upstreamSubscription: Subscription?
@@ -63,19 +65,6 @@ internal final class SubjectSubscriber<Downstream: Subject>
         downstreamSubject = nil
     }
     
-    internal var description: String { return "Subject" }
-    
-    internal var playgroundDescription: Any { return description }
-    
-    internal var customMirror: Mirror {
-        let children: [Mirror.Child] = [
-            ("downstreamSubject", downstreamSubject as Any),
-            ("upstreamSubscription", upstreamSubscription as Any),
-            ("subject", downstreamSubject as Any)
-        ]
-        return Mirror(self, children: children)
-    }
-    
     internal func request(_ demand: Subscribers.Demand) {
         lock.lock()
         guard let subscription = upstreamSubscription else {
@@ -92,10 +81,25 @@ internal final class SubjectSubscriber<Downstream: Subject>
             lock.unlock()
             return
         }
-        // 上下游资源的释放.
+        // 上游资源的释放, 是打破和上游资源一起构成的循环引用
         upstreamSubscription = nil
+        // 下游资源的示范, 是打破下游资源一起构成的循环引用
         downstreamSubject = nil
         lock.unlock()
+        // 然后触发上游资源的 cancel.
         subscription.cancel()
+    }
+    
+    internal var description: String { return "Subject" }
+    
+    internal var playgroundDescription: Any { return description }
+    
+    internal var customMirror: Mirror {
+        let children: [Mirror.Child] = [
+            ("downstreamSubject", downstreamSubject as Any),
+            ("upstreamSubscription", upstreamSubscription as Any),
+            ("subject", downstreamSubject as Any)
+        ]
+        return Mirror(self, children: children)
     }
 }

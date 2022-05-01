@@ -37,6 +37,9 @@ extension Publisher {
     ///   returns a new element.
     /// - Returns: A publisher that uses the provided closure to map elements from
     ///   the upstream publisher to new elements that it then publishes.
+    
+    // 因为, 每次 Operator 其实都把 Self 传递进去了, 所以, 在多次使用 Operator 之后, 这个 Self 会越来越大.
+    // 这个时候, AnyPublisher 的作用就展示了出来, 它会把 Self 隐藏, 重新变回只有一个 Output, Result 类型的 Publihser
     public func map<Result>(
         _ transform: @escaping (Output) -> Result
     ) -> Publishers.Map<Self, Result> {

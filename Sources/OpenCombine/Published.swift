@@ -40,7 +40,6 @@ extension Publisher where Failure == Never {
     // 这是一个响应链条的终点.
     // 而这个终点之后的触发, 和之前的链条, 没有太大的关系.
     public func assign(to published: inout Published<Output>.PublishedPublisher) {
-        
         subscribe(PublishedSubscriber(published.subject))
     }
 }
