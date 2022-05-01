@@ -1,16 +1,47 @@
-//
-//  Subscribers.Sink.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 16.06.2019.
-//
+extension Publisher where Failure == Never {
+    
+    /// Attaches a subscriber with closure-based behavior to a publisher that never fails.
+    
+    /// Use `sink(receiveValue:)` to observe values received by the publisher and print
+    /// them to the console. This operator can only be used when the stream doesn’t fail,
+    /// that is, when the publisher’s `Failure` type is `Never`.
+    
+    /// In this example, a `Range` publisher publishes integers to a `sink(receiveValue:)`
+    /// operator’s `receiveValue` closure that prints them to the console:
+    ///
+    ///     let integers = (0...3)
+    ///     integers.publisher
+    ///         .sink { print("Received \($0)") }
+    ///
+    ///     // Prints:
+    ///     //  Received 0
+    ///     //  Received 1
+    ///     //  Received 2
+    ///     //  Received 3
+    ///
+    /// This method creates the subscriber and immediately requests an unlimited number of
+    /// values, prior to returning the subscriber.
+    /// The return value should be held, otherwise the stream will be canceled.
+    ///
+    /// - parameter receiveValue: The closure to execute on receipt of a value.
+    /// - Returns: A cancellable instance, which you use when you end assignment of
+    ///   the received value. Deallocation of the result will tear down the subscription
+    ///   stream.
+    public func sink(
+        receiveValue: @escaping (Output) -> Void
+    ) -> AnyCancellable {
+        // receiveCompletion 必然有值, 因为, Subscribers.Sink 里面这个成员变量并不是 Optional 的.
+        // 坦率的说, 给很多成员变量, 添加一个默认的无效值, 可以大大简化类型的处理逻辑 .
+        let subscriber = Subscribers.Sink<Output, Failure>(
+            receiveCompletion: { _ in },
+            receiveValue: receiveValue
+        )
+        subscribe(subscriber)
+        return AnyCancellable(subscriber)
+    }
+}
 
-/*
- 在 Combine 的体系里面, 节点对象
- 
- 上游节点, 生成一个 Subscription 对象, 存储在 Sink 里面, 而 Subscription 保持了下游的 Sink 对象. 这是一个强引用.
- Subscription 里面, 是上游节点如何接受上游节点, 操作, 然后输出给下游节点的逻辑.
- */
+
 extension Subscribers {
     /// A simple subscriber that requests an unlimited number of values upon subscription
     // unlimited Demand. Demand 的设计, 不是说下游节点需要, 上游节点就要一直给. 而是上游节点不能超过需要的数量, 什么时候, 真正的触发信号的发送, 还是上游节点的责任.
@@ -208,49 +239,6 @@ extension Publisher {
         subscribe(subscriber)
         // 主动进行类型的隐藏.
         // 实际上, subscribe 并不返回 cancel 对象. 如果返回了一个 cancel 对象, 是要在各个方法内专门进行声明的.
-        return AnyCancellable(subscriber)
-    }
-}
-
-extension Publisher where Failure == Never {
-    
-    /// Attaches a subscriber with closure-based behavior to a publisher that never fails.
-    ///
-    /// Use `sink(receiveValue:)` to observe values received by the publisher and print
-    /// them to the console. This operator can only be used when the stream doesn’t fail,
-    /// that is, when the publisher’s `Failure` type is `Never`.
-    ///
-    /// In this example, a `Range` publisher publishes integers to a `sink(receiveValue:)`
-    /// operator’s `receiveValue` closure that prints them to the console:
-    ///
-    ///     let integers = (0...3)
-    ///     integers.publisher
-    ///         .sink { print("Received \($0)") }
-    ///
-    ///     // Prints:
-    ///     //  Received 0
-    ///     //  Received 1
-    ///     //  Received 2
-    ///     //  Received 3
-    ///
-    /// This method creates the subscriber and immediately requests an unlimited number of
-    /// values, prior to returning the subscriber.
-    /// The return value should be held, otherwise the stream will be canceled.
-    ///
-    /// - parameter receiveValue: The closure to execute on receipt of a value.
-    /// - Returns: A cancellable instance, which you use when you end assignment of
-    ///   the received value. Deallocation of the result will tear down the subscription
-    ///   stream.
-    public func sink(
-        receiveValue: @escaping (Output) -> Void
-    ) -> AnyCancellable {
-        // receiveCompletion 必然有值, 因为, Subscribers.Sink 里面这个成员变量并不是 Optional 的.
-        // 坦率的说, 给很多成员变量, 添加一个默认的无效值, 可以大大简化类型的处理逻辑 .
-        let subscriber = Subscribers.Sink<Output, Failure>(
-            receiveCompletion: { _ in },
-            receiveValue: receiveValue
-        )
-        subscribe(subscriber)
         return AnyCancellable(subscriber)
     }
 }
