@@ -6,8 +6,8 @@
 //
 
 import UIKit
-//import OpenCombine
-import Combine
+import OpenCombine
+//import Combine
 
 protocol SomeProtocol {
     func doSth()
@@ -44,37 +44,28 @@ struct Person {
 class ViewController: UIViewController {
     
     var theAction: (() -> ())?
+    
+    var cancellable1: Cancellable?
+    var cancellable2: Cancellable?
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        let the1Publisher = (1...3).publisher
-        let publihser = (1...3).publisher.map { theInt in
-            theInt + 1
-        }.map { theInt in
-            theInt + 1
-        }.first { theInt in
-            theInt == 1
-        }.map { output in
-            output + 2
-        }
-        publihser.sink { output in
-            print(output)
-        }
-        
-//        var thePerson = Person()
-//        thePerson.name = "Custom Name"
-//        thePerson.age = 150
-//        self.theAction = thePerson.say
-        
-        let valeu = 100
-        self.theAction = valeu.introPrint
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-//        self.theAction?()
-//        self.theAction = nil
-        let value = 200
-        getProtocolFunc(value)
+
+        let pub =
+        (1...3).publisher
+            .map( { _ in return Int.random(in: 0...100) } )
+            .print("Random")
+            .multicast(subject: PassthroughSubject())
+
+        cancellable1 = pub
+            .sink { print ("Stream 1 received: \($0)")}
+        cancellable2 = pub
+            .sink { print ("Stream 2 received: \($0)")}
+        
+//        pub.connect()
     }
     
     func getProtocolFunc(_ sth: SomeProtocol) {

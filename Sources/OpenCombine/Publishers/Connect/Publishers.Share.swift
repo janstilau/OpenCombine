@@ -2,7 +2,7 @@
 extension Publisher {
     
     /// Shares the output of an upstream publisher with multiple subscribers.
-    ///
+    
     /// The publisher returned by this operator supports multiple subscribers, all of whom
     /// receive unchanged elements and completion states from the upstream publisher.
     ///
@@ -16,18 +16,19 @@ extension Publisher {
     /// a `delay(for:tolerance:scheduler:options:)` operator only to prevent the first
     /// subscriber from exhausting the sequence publisher immediately; an asynchronous
     /// publisher wouldn’t need this.
-    ///
+    
+    // 如果, 没有 Delay, 那么 Stream 1 就会把所有的数据全部消耗完了. 
     ///     let pub = (1...3).publisher
     ///         .delay(for: 1, scheduler: DispatchQueue.main)
     ///         .map( { _ in return Int.random(in: 0...100) } )
     ///         .print("Random")
     ///         .share()
-    ///
+    
     ///     cancellable1 = pub
     ///         .sink { print ("Stream 1 received: \($0)")}
     ///     cancellable2 = pub
     ///         .sink { print ("Stream 2 received: \($0)")}
-    ///
+    
     ///     // Prints:
     ///     // Random: receive value: (20)
     ///     // Stream 1 received: 20
@@ -80,6 +81,9 @@ extension Publishers {
         
         public let upstream: Upstream
         
+        // Share 就是一个 自动连接的, Multicast.
+        // Multicast 是 Share 最主要的需求, 就是共享前面链路的数据.
+        // AutoConnect 是为了不改变之前 Publisher 的行为, 不应该强制进行 connect 的调用.
         public init(upstream: Upstream) {
             // 和惯例的不通过. 这个 Inner 是提前生成的. 这个 Inner 就是一个分发器.
             // 上有节点, 连接到这个 Inner, Inner 连接到后续节点. 

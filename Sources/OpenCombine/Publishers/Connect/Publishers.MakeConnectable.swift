@@ -2,14 +2,14 @@
 extension Publisher where Failure == Never {
     
     /// Creates a connectable wrapper around the publisher.
-    ///
+    
     /// In the following example, `makeConnectable()` wraps its upstream publisher
     /// (an instance of `Publishers.Share`) with a `ConnectablePublisher`. Without this,
     /// the first sink subscriber would receive all the elements from the sequence
     /// publisher and cause it to complete before the second subscriber attaches.
     /// By making the publisher connectable, the publisher doesn’t produce any elements
     /// until after the `connect()` call.
-    ///
+    
     ///      let subject = Just<String>("Sent")
     ///      let pub = subject
     ///          .share()
@@ -40,14 +40,19 @@ extension Publisher where Failure == Never {
 extension Publishers {
     
     /// A publisher that provides explicit connectability to another publisher.
-    ///
+    
     /// `Publishers.MakeConnectable` is a `ConnectablePublisher`, which allows you to
     /// perform configuration before publishing any elements. Call `connect()` on this
     /// publisher when you want to attach to its upstream publisher and start producing
     /// elements.
-    ///
+    
     /// Use the `makeConnectable()` operator to wrap an upstream publisher with
     /// an instance of this publisher.
+    
+    // 将一个 Publisher, 变为 ConnectablePublisher, 一定是要由复用的问题.
+    // 不然, 在 connect 之前调用的那些 subscribe downstream 的数据, 要存到哪里.
+    // 这里是利用了 multicast 技术. 将所有的配置, 都在 PassthroughSubject 对象那进行了拦截.
+    // 然后 connect 的时候, 将 PassthroughSubject 在前半程的链路进行注册. 
     public struct MakeConnectable<Upstream: Publisher>: ConnectablePublisher {
         
         public typealias Output = Upstream.Output

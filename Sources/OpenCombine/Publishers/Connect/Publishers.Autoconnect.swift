@@ -1,4 +1,9 @@
 
+/*
+    ConnectablePublisher 的 Publisher. 在实现上, 应该都是一个分发的机制.
+    一般来说, Publisher 的 subscribe 其实是创建响应链条的地方, 但是现在是 Connect 才真正的触发信号的发送. 所以, 之前的 Subscribe, 一定要把后面的链条存起来.
+    在真正的触发 connect 的时候, 使得整个后续链条, 都能接收到前面节点发送过来的数据.
+ */
 extension ConnectablePublisher {
     
     /// Automates the process of connecting or disconnecting from this connectable
@@ -27,21 +32,24 @@ extension ConnectablePublisher {
 extension Publishers {
     
     /// A publisher that automatically connects to an upstream connectable publisher.
-    ///
+    // 一定要记住, Connect 是向上进行 Connect. 各种配置, 其实是向下进行配置, 但是真正的进行了信号的产生, 是从上层节点想下层节点进行数据的传递.
+    
     /// This publisher calls `connect()` on the upstream `ConnectablePublisher` when first
     /// attached to by a subscriber.
+    // 当, 有了第一个下游节点的 Attach 请求的时候, 进行上层节点的 attach 操作.
     public class Autoconnect<Upstream: ConnectablePublisher>: Publisher {
         
         public typealias Output = Upstream.Output
         
         public typealias Failure = Upstream.Failure
         
+        // 优秀的设计, 使用 Enum 进行状态管理的和存储.
         private enum State {
             case disconnected
             case connected(refcount: Int, connection: Cancellable)
         }
         
-        /// The publisher from which this publisher receives elements.
+        // 存储的上层节点. Publisher 就是一个收集器.
         public final let upstream: Upstream
         
         private let lock = UnfairLock.allocate()
@@ -79,6 +87,8 @@ extension Publishers {
             }
         }
         
+        // 既然是 autoConnect, 那么就是外界拿不到 connect 返回的 cancellable 对象.
+        // 那么应该在内部, 存储该值, 在没有后方节点的时候, 对链条进行销毁. 不然这个链条, 就永远无法释放了.
         fileprivate func willCancel() {
             lock.lock()
             switch state {
@@ -101,6 +111,7 @@ extension Publishers {
 
 extension Publishers.Autoconnect {
     
+    // 真正, 接受上方节点数据的对象.
     private struct Inner<Downstream: Subscriber>
     : Subscriber,
       CustomStringConvertible,
@@ -171,7 +182,9 @@ extension Publishers.Autoconnect {
         }
         
         fileprivate func cancel() {
+            // parent.willCancel 是为了通知, 是否应该触发整个链路的 cancel 了
             parent.willCancel()
+            // upstreamSubscription.cancel 会将分发链路的后半程, 从 Object 里面进行分离.
             upstreamSubscription.cancel()
         }
         
