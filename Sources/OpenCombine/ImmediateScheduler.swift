@@ -1,10 +1,10 @@
 
 /// A scheduler for performing synchronous actions.
-///
+// 同步, 所有的方法, 都是在同步调用概念上. 应该说, 这个类型, 是失去了调度的抽象含义的\
+
 /// You can only use this scheduler for immediate actions. If you attempt to schedule
 /// actions after a specific date, this scheduler ignores the date and performs them
 /// immediately.
-// 直接调用, 没有调度的含义存在.
 public struct ImmediateScheduler: Scheduler {
     
     // 基本上, 每个 Scheduler 的实现类, 都会定义自己的 SchedulerTimeType 类型.
@@ -134,11 +134,9 @@ public struct ImmediateScheduler: Scheduler {
     public typealias SchedulerOptions = Never
     
     /// The shared instance of the immediate scheduler.
-    ///
     /// You cannot create instances of the immediate scheduler yourself. Use only
     /// the shared instance.
     // ImmediateScheduler 没有任何的调度行为, 所以, 这里限制了, 不能自己创建.
-    // 不太明白, 这个万一有啥用. 因为自然就是 Immediate
     public static let shared = ImmediateScheduler()
     
     /// Performs the action at the next possible opportunity.

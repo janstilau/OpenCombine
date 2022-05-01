@@ -15,7 +15,7 @@ public final class Future<Output, Failure: Error>: Publisher {
     
     private let lock = UnfairLock.allocate()
     
-    // 存回调. 这里和 Promise 的概念, 就已经完全相同了.
+    // 存储, 所有的后方节点. Future 的信号产生, 或者已经产生后, 将所有的数据, 通过 downstreams 传递给后方节点.
     // 存储的策略, 和 Subject 里面的也是完全相同的.
     private var downstreams = ConduitList<Output, Failure>.empty
     
@@ -24,7 +24,7 @@ public final class Future<Output, Failure: Error>: Publisher {
     
     /// Creates a publisher that invokes a promise closure when the publisher emits
     /// an element.
-    ///
+    //
     /// - Parameter attemptToFulfill: A `Promise` that the publisher invokes when
     ///   the publisher emits an element or terminates with an error.
     // 这是一个饿汉式的触发场景. 所以在初始化的时候, 就进行了相关闭包的调用.
@@ -39,6 +39,7 @@ public final class Future<Output, Failure: Error>: Publisher {
         lock.deallocate()
     }
     
+    // resolve 函数.
     private func promise(_ result: Result<Output, Failure>) {
         lock.lock()
         guard self.result == nil else {
@@ -47,6 +48,7 @@ public final class Future<Output, Failure: Error>: Publisher {
         }
         // 存储, 最终异步闭包得到的结果.
         self.result = result
+        // 拿到结果之后, 把所有的后方节点进行了删除.
         let downstreams = self.downstreams.take()
         lock.unlock()
         

@@ -3,7 +3,9 @@
 ///
 /// By default an `ObservableObject` synthesizes an `objectWillChange` publisher that
 /// emits the changed value before any of its `@Published` properties changes.
-///
+// 如果, 标注了是 ObservableObject 对象, 并且里面有 @Published 的属性, 那么每次 @Published 的属性变化之前, 都会引起 objectWillChange 对应的 Publisher 的信号发送
+// 也可以自己实现 objectWillChange 的真正实现.
+
 ///     class Contact : ObservableObject {
 ///         @Published var name: String
 ///         @Published var age: Int
@@ -93,7 +95,9 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
 // 一个引用值.
 public final class ObservableObjectPublisher: Publisher {
     
-    public typealias Output = Void // 仅仅是, 值发生了改变, 并不告诉当前的值是什么.
+    // 仅仅是, 值发生了改变, 并不告诉当前的值是什么.
+    // 系统自动合成的, 也是不告诉你哪个属性发生了变化, 仅仅是该引用类型的属性, 发生了变化.
+    public typealias Output = Void
     
     public typealias Failure = Never
     
@@ -111,6 +115,7 @@ public final class ObservableObjectPublisher: Publisher {
         lock.deallocate()
     }
     
+    // 当, 收到了下游节点的 attach 请求之后, 创建了 Inner 对象, 进行管理. 从这里来看, 这个 Publisher 是当成了一个 DisPatch 节点来使用了.
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Downstream.Input == Void, Downstream.Failure == Never {
         let inner = Inner(downstream: subscriber, parent: self)
@@ -168,6 +173,7 @@ extension ObservableObjectPublisher {
         }
         
         private weak var parent: ObservableObjectPublisher?
+        // 存储, 真正的下游节点.
         private let downstream: Downstream
         private let downstreamLock = UnfairRecursiveLock.allocate()
         private let lock = UnfairLock.allocate()
@@ -189,11 +195,14 @@ extension ObservableObjectPublisher {
             lock.unlock()
             if state == .active {
                 downstreamLock.lock()
+                // 触发下游节点接收事件. 因为 Output 是 Never, 所以只有事件, 没有数据.
                 _ = downstream.receive()
                 downstreamLock.unlock()
             }
         }
         
+        // 仅仅是状态的更改, 在这里面, 是没有 demand 的管理的.
+        // 在接收到上游 Next 数据之后, 如果下游没有 Demand, 还是不进行发送 .
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             if state == .initialized {

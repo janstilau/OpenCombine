@@ -435,6 +435,28 @@
 			path = Connect;
 			sourceTree = "<group>";
 		};
+		06D020FC281E76E100227DD2 /* Published */ = {
+			isa = PBXGroup;
+			children = (
+				072697DFCD950B7F62A4521C13FAA255 /* PublishedSubject.swift */,
+				E0217593E5689D6996C141B21D24F020 /* PublishedSubscriber.swift */,
+				DDA9974438E8B54D8AA8FCB05A18C962 /* ObservableObject.swift */,
+				7B5AF3DD6F72A55EE7034065A192E38E /* Published.swift */,
+			);
+			path = Published;
+			sourceTree = "<group>";
+		};
+		06D020FD281E76F700227DD2 /* Subject */ = {
+			isa = PBXGroup;
+			children = (
+				1C07B219CDB3BE4DE53082D38FA363DD /* Subject.swift */,
+				6B1408ACA34B6AE1B4348ACCF2EB0B17 /* CurrentValueSubject.swift */,
+				179D3731CC08E0D7F07C0FEC53B2A933 /* PassthroughSubject.swift */,
+				55FE584375A2692DCB12E12A3C1878D9 /* SubjectSubscriber.swift */,
+			);
+			path = Subject;
+			sourceTree = "<group>";
+		};
 		139A69C4F16D2B1C554646A1302816E8 /* Pod */ = {
 			isa = PBXGroup;
 			children = (
@@ -446,13 +468,11 @@
 		1B3E7FD1D800F91EF521C838810AF3CA /* Helpers */ = {
 			isa = PBXGroup;
 			children = (
+				27B3605BA6834D8A7A4DE3A9E2B9138F /* Result.swift */,
 				E3E446E8C89FF5CB8CACD252BB02A9A7 /* ConduitBase.swift */,
 				7BB7AE355E688C9677DC5EDDAE15E5D8 /* ConduitList.swift */,
 				CA8D709CD53F50E2D1D5CC8EA7726659 /* DebugHook.swift */,
 				661C2D673951206C5183B00423D77A71 /* Locking.swift */,
-				072697DFCD950B7F62A4521C13FAA255 /* PublishedSubject.swift */,
-				E0217593E5689D6996C141B21D24F020 /* PublishedSubscriber.swift */,
-				55FE584375A2692DCB12E12A3C1878D9 /* SubjectSubscriber.swift */,
 				CD188B6B88C9C6B3BEF6DA0076A6E31E /* SubscriberTap.swift */,
 				DA0586D9907069CF01AC119BB5C45196 /* SubscriptionStatus.swift */,
 				F34FABA6ED54E627A2D500D6D89B45B1 /* SubscriptionTap.swift */,
@@ -592,6 +612,9 @@
 		810B3E317BD778FA22B5B8952DD3DB1F /* OpenCombine */ = {
 			isa = PBXGroup;
 			children = (
+				06D020FD281E76F700227DD2 /* Subject */,
+				06D020FC281E76E100227DD2 /* Published */,
+				D83ABC33D9B34C179E017AF57B518330 /* Publisher.swift */,
 				26DBD99D01AA30619457E5DED1E6C0B2 /* _Introspection.swift */,
 				93BC384CE8882C37C8F140726902AEB9 /* AnyCancellable.swift */,
 				A57E680B9516FA4239875BCC1F48D344 /* AnyPublisher.swift */,
@@ -599,17 +622,10 @@
 				7577D05FAB595E227B185FAFE8C35EC6 /* Cancellable.swift */,
 				7DD8F81505E9196601017DC7542984A5 /* Codable.swift */,
 				223D0F9BDDB0478AA58AD4F39546F33F /* CombineIdentifier.swift */,
-				6B1408ACA34B6AE1B4348ACCF2EB0B17 /* CurrentValueSubject.swift */,
 				BEEBF5C5085967CA03E13D76917C38D6 /* CustomCombineIdentifierConvertible.swift */,
 				8422E2CDD0320D1A4DEC750B9B513760 /* Future.swift */,
 				91AEBBD7B154E1E0804245E43F44AF8F /* ImmediateScheduler.swift */,
-				DDA9974438E8B54D8AA8FCB05A18C962 /* ObservableObject.swift */,
-				179D3731CC08E0D7F07C0FEC53B2A933 /* PassthroughSubject.swift */,
-				7B5AF3DD6F72A55EE7034065A192E38E /* Published.swift */,
-				D83ABC33D9B34C179E017AF57B518330 /* Publisher.swift */,
-				27B3605BA6834D8A7A4DE3A9E2B9138F /* Result.swift */,
 				D33D73610D899D73D636BAED794ED853 /* Scheduler.swift */,
-				1C07B219CDB3BE4DE53082D38FA363DD /* Subject.swift */,
 				5509800C3AF53297E043A440399BCEF1 /* Subscriber.swift */,
 				2589B2A3B35F69FAFBBF62850965AB24 /* Subscription.swift */,
 				0D8A4939BEE4DE6958DAB5C39448B371 /* Subscriptions.swift */,

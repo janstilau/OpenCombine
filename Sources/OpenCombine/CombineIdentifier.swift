@@ -1,10 +1,3 @@
-//
-//  CombineIdentifier.swift
-//  OpenCombine
-//
-//  Created by Sergej Jaskiewicz on 10.06.2019.
-//
-
 #if canImport(COpenCombineHelpers)
 import COpenCombineHelpers
 #endif
@@ -25,7 +18,6 @@ internal func __nextCombineIdentifier() -> UInt64 {
 /// `CombineIdentifier` as follows:
 ///
 ///     let combineIdentifier = CombineIdentifier()
-
 
 // 就是一个 Int 值的封装.
 // 使用类型来更好的进行表达.

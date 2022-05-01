@@ -1,11 +1,7 @@
-//
-//  Subscriptions.swift
-//
-//
-//  Created by Sergej Jaskiewicz on 26.06.2019.
-//
 
 /// A namespace for symbols related to subscriptions.
+
+// 这个 namespace 没啥用, 处理  _EmptySubscription 之外, 没有其他的定义. 
 public enum Subscriptions {}
 
 extension Subscriptions {

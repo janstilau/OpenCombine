@@ -1,17 +1,16 @@
 /// A publisher that exposes a method for outside callers to publish elements.
 // 一个, 外界可以通过 API 来手动进行信号发送的 ObjectPublisher. 这个类型, 在 Combine 中使用的很广.
-// 在 Combine 里面, 没有提供 Create 函数来自定义 Publisher, 而是, 通过 Subject 对象, 来完成相应的指令代码触发信号的操作.
 
 /// A subject is a publisher that you can use to ”inject” values into a stream, by calling
 /// its `send()` method. This can be useful for adapting existing imperative code to the
 /// Combine model.
 
-/*
- 和 Rx 的版本, 没有太大的区别. 主要用来进行命令式到响应式的切换的.
- 不过, 同 Rx 大量使用 Subject 作为成员变量不同的是, 在 Combine 里面, 是大量使用了 @PropertyWrapper 这种技术.
- */
+// 虽然上面这样说, 但是看源码, 很多地方都进行了 Inner 节点的自定义.
+// 其中, 非常关键的一点就是, request Demand 的管理. 在 Combine 的 Pull 模型下, 是需要下游节点明确的 Request 之后, Publisher 才主动地进行信号创建逻辑的触发的. 这单纯的使用 Subject 类型的包装, 是达不到该目的的.
 
 // 注意, Combine 中的 Subject, 仅仅是一个 Publisher, 并不是一个 Subscriber.
+// 如果是使用 Subject 当做 Subscriber, 其实是使用了一个包装类型-SubjectSubscriber, 在里面, 是使用一个弱指针, 来指引着 Subject 对象.
+// 如果 Subject 对象 deinit 了, 弱指针为 nil. 这个响应链条也就断了.
 public protocol Subject: AnyObject, Publisher {
     
     /// Sends a value to the subscriber.

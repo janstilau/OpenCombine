@@ -1,9 +1,9 @@
 
 /// A subject that broadcasts elements to downstream subscribers.
-///
+
 /// As a concrete implementation of `Subject`, the `PassthroughSubject` provides
 /// a convenient way to adapt existing imperative code to the Combine model.
-///
+
 /// Unlike `CurrentValueSubject`, a `PassthroughSubject` doesn’t have an initial value or
 /// a buffer of the most recently-published element.
 /// A `PassthroughSubject` drops values if there are no subscribers, or its current demand
@@ -93,6 +93,7 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
         }
     }
     
+    // 这里有了一些差异化和 Current, 对于上层节点的拉取, 是建立在有下层节点的 Request 的基础上的.
     private func acknowledgeDownstreamDemand() {
         lock.lock()
         if hasAnyDownstreamDemand {

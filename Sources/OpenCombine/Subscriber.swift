@@ -1,27 +1,27 @@
-//
-//  Subscriber.swift
-//  OpenCombine
-//
-//  Created by Sergej Jaskiewicz on 10.06.2019.
-//
 
 /// A protocol that declares a type that can receive input from a publisher.
-///
+//
+
 /// A `Subscriber` instance receives a stream of elements from a `Publisher`, along with
 /// life cycle events describing changes to their relationship. A given subscriber’s
 /// `Input` and `Failure` associated types must match the `Output` and `Failure` of its
 /// corresponding publisher.
-///
+//
+
 /// You connect a subscriber to a publisher by calling the publisher’s `subscribe(_:)`
-/// method.  After making this call, the publisher invokes the subscriber’s
+/// method.
+/// After making this call, the publisher invokes the subscriber’s
 /// `receive(subscription:)` method. This gives the subscriber a `Subscription` instance,
 /// which it uses to demand elements from the publisher, and to optionally cancel
-/// the subscription. After the subscriber makes an initial demand, the publisher calls
+/// the subscription.
+// 有着固定的行为流程, 这在实现 Publisher 的时候, 一定要遵守.
+
+/// After the subscriber makes an initial demand, the publisher calls
 /// `receive(_:)`, possibly asynchronously, to deliver newly-published elements.
 /// If the publisher stops publishing, it calls `receive(completion:)`, using a parameter
 /// of type `Subscribers.Completion` to indicate whether publishing completes normally or
 /// with an error.
-///
+
 /// OpenCombine provides the following subscribers as operators on the `Publisher` type:
 ///
 /// - `sink(receiveCompletion:receiveValue:)` executes arbitrary closures when
@@ -44,6 +44,7 @@ public protocol Subscriber: CustomCombineIdentifierConvertible {
     /// Use the received `Subscription` to request items from the publisher.
     /// - Parameter subscription: A subscription that represents the connection between
     ///   publisher and subscriber.
+    // 其实, 就是 Publisher 生成 Inner Sink 对象.
     func receive(subscription: Subscription)
     
     /// Tells the subscriber that the publisher has produced an element.

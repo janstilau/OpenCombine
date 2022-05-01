@@ -6,7 +6,8 @@
 //
 
 import UIKit
-import OpenCombine
+//import OpenCombine
+import Combine
 
 protocol SomeProtocol {
     func doSth()
@@ -46,7 +47,16 @@ class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        let publihser = (1...3).publisher.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}.map{$0}
+        let the1Publisher = (1...3).publisher
+        let publihser = (1...3).publisher.map { theInt in
+            theInt + 1
+        }.map { theInt in
+            theInt + 1
+        }.first { theInt in
+            theInt == 1
+        }.map { output in
+            output + 2
+        }
         publihser.sink { output in
             print(output)
         }

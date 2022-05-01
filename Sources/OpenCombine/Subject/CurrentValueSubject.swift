@@ -1,10 +1,9 @@
 /// A subject that wraps a single value and publishes a new element whenever the value
 /// changes.
-///
+
 /// Unlike `PassthroughSubject`, `CurrentValueSubject` maintains a buffer of the most
 /// recently published element.
 
-// 对于 CurrentValueSubject 来说, send 和 赋值操作, 是一个操作后果.
 /// Calling `send(_:)` on a `CurrentValueSubject` also updates the current value, making
 /// it equivalent to updating the `value` directly.
 
@@ -20,10 +19,13 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     private var active = true
     
     // 存储一下结束事件.
-    // 在 Subject 接收到上游的结束事件的时候, 会将这个值进行复制. 后续新的 Subscriber 来临的时候, 可以直接收到这个存储的事件.
+    // 在 Subject 接收到上游的结束事件的时候, 会将这个值进行存储.
+    // 后续新的 Subscriber 来临的时候, 可以直接收到这个存储的事件.
     private var completion: Subscribers.Completion<Failure>?
     
     // 存储一下, 上游节点. 上游节点, 只会在 Deinit 的时候, 对于所有的上游节点进行 cancel.
+    // 一个 Subject 对象, 可能会有很多的上游节点. 因为, 可能会有很多的信号, 触发 Object 的修改.
+    // 一个 Subject 对象, 可能会有很多的下游节点. 每次自己修改之后, 都会把修改信号, 发送给所有的下游节点. 
     private var upstreamSubscriptions: [Subscription] = []
     
     // 所以, 实际上, Subject 是天然的分发器.
@@ -50,13 +52,33 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         }
     }
     
+    private func sendValueAndConsumeLock(_ newValue: Output) {
+        // 必须要做这样的判断. 因为 Subject 的各个函数, 其实是手动触发的.
+        // 如果使用者 sendComplete 之后, 又进行了 send value, 其实有可能的. 业务逻辑复杂了之后, 类的设计者应该保证自己类的健壮性.
+        guard active else {
+            lock.unlock()
+            return
+        }
+        
+        currentValue = newValue
+        let downstreams = self.downstreams
+        lock.unlock()
+        // 先取出所有的下游节点, 然后就 unlock
+        // 因为给下游节点喂食, 可能会引发各种后续操作, 时间不可控的.
+        // 当, CurrentValue 发生变化的时候, 给所有的下游节点喂食.
+        downstreams.forEach { conduit in
+            conduit.offer(newValue)
+        }
+    }
+    
     // CurrentObject, 一定是初始化的时候, 提供值.
     public init(_ value: Output) {
         self.currentValue = value
     }
     
-    // 和 Rx 不同的是, Combine 里面, 对象的声明周期, 和 cancel 有了强绑定的关系.
     deinit {
+        // 要记住, 每个响应链条都是独立的. Subject Deinit 触发了上游链条的 cancel. 但是也是和自己相关的那个链条.
+        // 哪怕是共享链条, 也仅仅是在 dispatch 的节点里面, 将自己所在的链条, 从节点的分发存储中进行了删除而已.
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
@@ -68,13 +90,16 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
      */
     public func send(subscription: Subscription) {
         lock.lock()
-        // 存储所有的上游节点.
+        // 存储所有的上游节点. upstreamSubscriptions 在类内没有业务逻辑, 主要是为了在 Subject deinit 的时候, 进行上游节点的 cancel 处理.
         upstreamSubscriptions.append(subscription)
         lock.unlock()
         
-        // Subject, 对于上游节点的数据, 是来者不拒的.
-        // 但是, 他内部会管理所有的后续节点的 Demand 需求.
-        // 当, 上游节点发布数据到 Subject 之后, 会分发到 conduit 里面, 在每个 conduit 里面, 会进行 Demand 的管理.
+        /*
+         Subject, 是一个分发器. 可以认为它是一段相应链条的终点.
+         它所管理的几条后续链条, 它所管理的 ConduiteList 是各个链条的起始节点, 在这些节点里面, 进行了 Demand 的管理.
+         作为上一段链条的终点, 它不做 Demand 管理, 上游 Publisher 的 Next 事件全部接受.
+         但是转发个给下游节点的时候, 根据 Demand 进行的发送.
+         */
         subscription.request(.unlimited)
     }
     
@@ -103,24 +128,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         sendValueAndConsumeLock(input)
     }
     
-    // 如果, 已经结束了, 新的 Send 指令一点效果都没有
-    private func sendValueAndConsumeLock(_ newValue: Output) {
-        guard active else {
-            lock.unlock()
-            return
-        }
-        
-        currentValue = newValue
-        let downstreams = self.downstreams
-        lock.unlock()
-        // 先取出所有的下游节点, 然后就 unlock
-        // 因为给下游节点喂食, 可能会引发各种后续操作, 时间不可控的.
-        // 当, CurrentValue 发生变化的时候, 给所有的下游节点喂食.
-        downstreams.forEach { conduit in
-            conduit.offer(newValue)
-        }
-    }
-    
+    // 不论, Subject 作为多少条链条的终止节点, 只要有一条发送了 Completion, 都结束.
     public func send(completion: Subscribers.Completion<Failure>) {
         lock.lock()
         guard active else {
@@ -131,6 +139,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         // active 和 completion 是绑定在一起的, 可以使用一个 Enum 来进行管理.
         active = false
         self.completion = completion
+        
         let downstreams = self.downstreams.take()
         lock.unlock()
         downstreams.forEach { conduit in
@@ -159,7 +168,7 @@ extension CurrentValueSubject {
       CustomPlaygroundDisplayConvertible
     where Downstream.Input == Output, Downstream.Failure == Failure
     {
-        
+        // 这里有强引用.
         fileprivate var parent: CurrentValueSubject?
         
         // 在每个 Conduit 里面, 记录下游节点. 当上游节点发送数据过来的时候, 交给各个 Conduit 传递给后续节点上.
@@ -185,7 +194,7 @@ extension CurrentValueSubject {
             downstreamLock.deallocate()
         }
         
-        // 上游节点, 发送数据过来之后, 是调用 Offer 函数.
+        // 上游节点, 发送数据过来之后, forward 给下游节点.
         // 在这个函数内, 有着 Demand 的管理策略.
         override func offer(_ output: Output) {
             lock.lock()

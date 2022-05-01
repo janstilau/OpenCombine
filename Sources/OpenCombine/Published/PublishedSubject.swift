@@ -153,6 +153,7 @@ extension PublishedSubject {
             deliveredCurrentValue = true
             lock.unlock()
             downstreamLock.lock()
+            
             // 真正的向下游节点, 发送数据信息.
             let newDemand = downstream.receive(output)
             downstreamLock.unlock()

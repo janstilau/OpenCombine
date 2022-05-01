@@ -5,6 +5,9 @@
 /// expose. You can also use `AnySubscriber` to create a custom subscriber by providing
 /// closures for the methods defined in `Subscriber`, rather than implementing
 /// `Subscriber` directly.
+
+// 不太明白这个类的意义何在. 目前来看, 就是 ClosureBasedAnySubscriber 用来进行一些自定义的操作者.
+// 这个是用 Snik 也可以完全达到相应的目的.
 public struct AnySubscriber<Input, Failure: Error>: Subscriber,
                                                     CustomStringConvertible,
                                                     CustomReflectable,
@@ -91,7 +94,8 @@ public struct AnySubscriber<Input, Failure: Error>: Subscriber,
                 receiveValue: ((Input) -> Subscribers.Demand)? = nil,
                 receiveCompletion: ((Subscribers.Completion<Failure>) -> Void)? = nil) {
         
-        // 这里, 就体现了 BoxBase 的价值所在了.
+        // 如果, 没有响应的数据, 也填充一个对应的默认数据.
+        // 这样可以让 ClosureBasedAnySubscriber 内部的操作大大简化.
         box = ClosureBasedAnySubscriber(
             receiveSubscription ?? { _ in },
             receiveValue ?? { _ in .none },

@@ -1,10 +1,3 @@
-//
-//  Result.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 17.06.2019.
-//
-
 extension Result {
     
     internal func tryMap<NewSuccess>(

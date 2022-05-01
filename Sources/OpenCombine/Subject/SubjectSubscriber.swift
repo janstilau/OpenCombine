@@ -2,9 +2,10 @@
 // 专门, 找了一个类型, 来包装 Subject.
 // Subject 并不天然是 Subscriber, 所以不能直接被 Publisher 进行 Subscribe.
 
-// 所以, 实际上, 是在 Subject 前增加了一个节点, 使用这个节点, 来触发 Subject 的操作.
+// 所以, 实际上是增加了一个节点, 这个节点里面, 包装了 Subject 对象. 而这个几点, 是用弱引用的方式, 包装的 Subject 对象.
+// 所以, Subject 的声明周期, 其实是不受这个响应联调的影响的.
 
-// 这里还有一层含义, 就是 Subject 并不是 cancellable 的, 这个节点, 也是也是 Subs cription. 真正使用者进行整个链条的 cancel 的时候, 其实是由这个对象进行的触发.
+
 internal final class SubjectSubscriber<Downstream: Subject>
 : Subscriber,
   Subscription,
@@ -13,10 +14,11 @@ internal final class SubjectSubscriber<Downstream: Subject>
   CustomPlaygroundDisplayConvertible {
     
     private let lock = UnfairLock.allocate()
+    
     // 记录下游 Subject 节点.
     // 这是一个弱引用, 所以, 当 Subject 节点析构了之后, 上游节点, 是不会触发到下游的 Subject 的.
     private weak var downstreamSubject: Downstream?
-    // 记录上游 Subscription 节点.
+    // 记录上游 Subscription 节点. 这是惯例的实现, 和上游节点, 形成的了循环引用的关系.
     private var upstreamSubscription: Subscription?
     
     private var isCancelled: Bool { return downstreamSubject == nil }
@@ -38,18 +40,18 @@ internal final class SubjectSubscriber<Downstream: Subject>
         // 记录上游节点. 这里会有循环引用.
         upstreamSubscription = subscription
         lock.unlock()
-        // 然后把自己, 当做 Subject 的上游节点.
+        // 然后把自己, 当做 Subject 的上游节点. Subject 在析构的时候, 会触发 self.cancel 方法, 通知上游节点, 进行 cancel.
         subject.send(subscription: self)
     }
     
     internal func receive(_ input: Downstream.Output) -> Subscribers.Demand {
         lock.lock()
         guard let subject = downstreamSubject, upstreamSubscription != nil else {
-                  lock.unlock()
-                  return .none
-              }
+            lock.unlock()
+            return .none
+        }
         lock.unlock()
-        // 交给 Subject 进行分发.
+        // 当前节点收到上游节点的数据的时候, 是直接转交给了存储的 subject 节点.
         subject.send(input)
         return .none
     }
@@ -61,6 +63,8 @@ internal final class SubjectSubscriber<Downstream: Subject>
             return
         }
         lock.unlock()
+        // 当, 收到上游节点的完成事件之后, 交给下游节点.
+        // 然后主动释放资源. 其实感觉, 应该是上下游节点都释放. 不过, 因为是上游主动发送过来的 CompletionEvent, 所以应该是上游节点, 已经主动打破了循环引用才是.
         subject.send(completion: completion)
         downstreamSubject = nil
     }
@@ -77,7 +81,8 @@ internal final class SubjectSubscriber<Downstream: Subject>
     
     internal func cancel() {
         lock.lock()
-        guard !isCancelled, let subscription = upstreamSubscription else {
+        guard !isCancelled,
+                let subscription = upstreamSubscription else {
             lock.unlock()
             return
         }

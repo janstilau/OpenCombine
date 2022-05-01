@@ -1,5 +1,4 @@
 
-
 /*
  大部分的 Publisher, 都是 struct 值语义的.
  Publisher 的作用, 其实是收集信息. 这些信息, 一般都会在真正生成响应链路的时候, 赋值到 引用类型的 InnerSink 节点中.
@@ -44,35 +43,37 @@ extension Publisher {
     ///     if let subject = nonErased.publisher as? PassthroughSubject<Int,Never> {
     ///         print("Successfully cast nonErased.publisher.")
     ///     }
+    ///
     ///     let erased = TypeWithErasedSubject()
     ///     if let subject = erased.publisher as? PassthroughSubject<Int,Never> {
     ///         print("Successfully cast erased.publisher.")
     ///     }
     ///
     ///     // Prints "Successfully cast nonErased.publisher."
-    ///
     /// - Returns: An ``AnyPublisher`` wrapping this publisher.
+    // 之所以, 出现上面的状况是, AnyPublisher 是一个包装类型. 他和被包装的类型, 是没有类型关系的.
     
-    // 固定套路.
-    // 在 Publisher 上, 增加一个快捷方法, 用来生成真正的 Operator 对象.
     public func eraseToAnyPublisher() -> AnyPublisher<Output, Failure> {
         return .init(self)
     }
 }
 
 /// A type-erasing publisher.
-///
+
 /// Use `AnyPublisher` to wrap a publisher whose type has details you don’t want to expose
 /// across API boundaries, such as different modules. Wrapping a `Subject` with
 /// `AnyPublisher` also prevents callers from accessing its `send(_:)` method. When you
 /// use type erasure this way, you can change the underlying publisher implementation over
 /// time without affecting existing clients.
-///
+
 /// You can use OpenCombine’s `eraseToAnyPublisher()` operator to wrap a publisher with
 /// `AnyPublisher`.
 
-// 这还是一个值语义的结构, 但是, 里面有一个引用语义的 Box.
-// 真实一位这个引用语义的 Box, 使得这个对象, 其实是一个引用语义的结构.
+/*
+ public struct Map<Upstream: Publisher, Output>: Publisher
+ 上面是 Map 的结构. 因为, 它的 Upstream 类型参数是一个 Publisher. 所以, 当多次进行 map 之后, 里面的类型就会变得异常复杂.
+ AnyPublisher 就是为了解决这个问题的, 它的类型参数, 重新变为了最最原始的 Output, Failure 的形式, 他所 box 住的 Publisher 的相关信息, 完全进行了隐藏 .
+ */
 public struct AnyPublisher<Output, Failure: Error>
 : CustomStringConvertible,
   CustomPlaygroundDisplayConvertible {
@@ -83,16 +84,14 @@ public struct AnyPublisher<Output, Failure: Error>
     /// Creates a type-erasing publisher to wrap the provided publisher.
     ///
     /// - Parameter publisher: A publisher to wrap with a type-eraser.
-    // 如果, 这里是一个接口对象, 会有什么问题???
-    // 重点. Publisher 这个 Protocol, 是无法单独作为参数的类型修饰的, 因为它有  .
-    // 拥有 associatedtype 的协议, 代表着, 这个协议的类型是不完整的. 它只能在泛型中作为类型参数的限制使用.
-    // 因为泛型方法, 在真正被调用的时候, 必须是能够确定类型, 才能保证编译通过, 那么 Protocol 里面的 associatedtype 的类型也就能够确认了.
-    // 所以, 这里只能使用泛型的方式.
     @inlinable
     public init<PublisherType: Publisher>(_ publisher: PublisherType)
     where Output == PublisherType.Output, Failure == PublisherType.Failure
     {
-        // If this has already been boxed, avoid boxing again
+        // 使用一个接口对象来完成对于 Publisher 协议的实现.
+        // 然后这个接口对象, 到底如何生成其实是在内部完成的.
+        // 在类的内部, 都是使用 box 的抽象接口完成的功能逻辑.
+        // 在这个类里面, 没有太多的体现, 在 Subscriber 里面, 在内部使用 box, box 可能是不同的类型对象.
         if let erased = publisher as? AnyPublisher<Output, Failure> {
             box = erased.box
         } else {
@@ -109,6 +108,7 @@ public struct AnyPublisher<Output, Failure: Error>
     }
 }
 
+// AnyPublisher 对于 Publisher 的实现, 完全转交给了自己存储的 Box 对象了. 而这个对象, 是一个抽象数据类型.
 extension AnyPublisher: Publisher {
     
     /// This function is called to attach the specified `Subscriber` to this `Publisher`
@@ -142,13 +142,17 @@ internal class PublisherBoxBase<Output, Failure: Error>: Publisher {
     }
 }
 
-// 这种, Box, BoxBase 的结构非常常见. 是一种设计模式??? 为了之后可以灵活替换???
-// 看起来, 像是模板方法.
+/*
+ PublisherBox 的生成, 是需要完成的类型信息的.
+ 在 AnyPublisher 的 init 方法里面, 参数是需要完整的类型信息的.
+ 这些完整的类型信息中的类型, 被抽取出来, 来填充 PublisherBoxBase 所需要的类型信息.
+ AnyPublisher 中所暴露出去的, 也是这些被抽取的类型信息.
+ 通过这样, 完整的类型被隐藏了, 仅仅暴露出完整的类型信息中的部分信息.
+ */
 @usableFromInline
 internal final class PublisherBox<PublisherType: Publisher>
 : PublisherBoxBase<PublisherType.Output, PublisherType.Failure>
 {
-    // 相比较, 存储 Block 的方式, 这种显式的存储一个抽象数据在内部的做法, 是不是更加的清晰一点.
     @usableFromInline
     internal let base: PublisherType
     

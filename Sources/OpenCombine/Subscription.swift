@@ -1,9 +1,3 @@
-//
-//  Subscription.swift
-//  OpenCombine
-//
-//  Created by Sergej Jaskiewicz on 10.06.2019.
-//
 
 /// A protocol representing the connection of a subscriber to a publisher.
 ///
