@@ -1,17 +1,12 @@
-//
-//  Publishers.ReplaceError.swift
-//  OpenCombine
-//
-//  Created by Bogdan Vlad on 8/29/19.
-//
 
 extension Publisher {
     
     /// Replaces any errors in the stream with the provided element.
-    ///
+    
     /// If the upstream publisher fails with an error, this publisher emits the provided
     /// element, then finishes normally.
-    ///
+    // 使用, 提供的元素, 当错误发生的时候, 进行替换.
+    
     /// In the example below, a publisher of strings fails with a `MyError` instance,
     /// which sends a failure completion downstream. The `replaceError(with:)` operator
     /// handles the failure by publishing the string `(replacement element)` and
@@ -28,6 +23,7 @@ extension Publisher {
     ///
     ///     // Prints: "(replacement element) finished".
     ///
+    
     /// This `replaceError(with:)` functionality is useful when you want to handle
     /// an error by sending a single replacement element and end the stream.
     /// Use `catch(_:)` to recover from an error and provide a replacement publisher
@@ -49,9 +45,8 @@ extension Publishers {
         public typealias Output = Upstream.Output
         
         /// The kind of errors this publisher might publish.
-        ///
         /// Use `Never` if this `Publisher` does not publish errors.
-        public typealias Failure = Never // 因为已经替换了, 所以不会 Error 就是 NEVER.
+        public typealias Failure = Never
         
         /// The element with which to replace errors from the upstream publisher.
         public let output: Upstream.Output
@@ -81,8 +76,7 @@ extension Publishers {
 }
 
 extension Publishers.ReplaceError: Equatable
-where Upstream: Equatable, Upstream.Output: Equatable
-{}
+where Upstream: Equatable, Upstream.Output: Equatable {}
 
 extension Publishers.ReplaceError {
     
@@ -113,6 +107,7 @@ extension Publishers.ReplaceError {
             lock.deallocate()
         }
         
+        // 惯例实现.
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = status else {
@@ -125,6 +120,7 @@ extension Publishers.ReplaceError {
             downstream.receive(subscription: self)
         }
         
+        // 惯例实现.
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = status else {
@@ -151,6 +147,7 @@ extension Publishers.ReplaceError {
             }
             switch completion {
             case .finished:
+                // 惯例实现.
                 status = .terminal
                 lock.unlock()
                 downstream.receive(completion: .finished)
@@ -165,6 +162,7 @@ extension Publishers.ReplaceError {
                 }
                 status = .terminal
                 lock.unlock()
+                // 发生了错误, 输出 replace 的值, 然后结束.
                 _ = downstream.receive(output)
                 downstream.receive(completion: .finished)
             }
@@ -173,6 +171,7 @@ extension Publishers.ReplaceError {
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
+            // 已经发生了错误, 发送 replace 的值, 然后结束. 
             if terminated {
                 status = .terminal
                 lock.unlock()

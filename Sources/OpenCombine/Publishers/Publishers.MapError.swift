@@ -1,9 +1,55 @@
-//
-//  Publishers.MapError.swift
-//  
-//
-//  Created by Joseph Spadafora on 7/4/19.
-//
+
+extension Publisher {
+    
+    /// Converts any failure from the upstream publisher into a new error.
+    
+    // 当, 错误不匹配的时候, 使用该 Operator 进行转化.
+    /// Use the `mapError(_:)` operator when you need to replace one error type with
+    /// another, or where a downstream operator needs the error types of its inputs to
+    /// match.
+    
+    /// The following example uses a `tryMap(_:)` operator to divide `1` by each element
+    /// produced by a sequence publisher. When the publisher produces a `0`,
+    /// the `tryMap(_:)` fails with a `DivisionByZeroError`. The `mapError(_:)` operator
+    /// converts this into a `MyGenericError`.
+    ///
+    ///     struct DivisionByZeroError: Error {}
+    ///     struct MyGenericError: Error { var wrappedError: Error }
+    ///
+    ///     func myDivide(_ dividend: Double, _ divisor: Double) throws -> Double {
+    ///         guard divisor != 0 else { throw DivisionByZeroError() }
+    ///         return dividend / divisor
+    ///     }
+    ///
+    ///     let divisors: [Double] = [5, 4, 3, 2, 1, 0]
+    ///     divisors.publisher
+    ///         .tryMap { try myDivide(1, $0) }
+    ///         .mapError { MyGenericError(wrappedError: $0) }
+    ///         .sink(
+    ///             receiveCompletion: { print ("completion: \($0)") ,
+    ///             receiveValue: { print ("value: \($0)") }
+    ///          )
+    ///
+    ///     // Prints:
+    ///     //   value: 0.2
+    ///     //   value: 0.25
+    ///     //   value: 0.3333333333333333
+    ///     //   value: 0.5
+    ///     //   value: 1.0
+    ///     //   completion: failure(MyGenericError(wrappedError: DivisionByZeroError()))"
+    ///
+    /// - Parameter transform: A closure that takes the upstream failure as a parameter
+    ///   and returns a new error for the publisher to terminate with.
+    /// - Returns: A publisher that replaces any upstream failure with a new error
+    ///   produced by the `transform` closure.
+    public func mapError<NewFailure: Error>(
+        // 当, 原本的问题发生的时候, 应该如何将传递过来的 Error, 转化成为一个新的错误类型.
+        _ transform: @escaping (Failure) -> NewFailure
+    ) -> Publishers.MapError<Self, NewFailure>
+    {
+        return Publishers.MapError(upstream: self, transform)
+    }
+}
 
 extension Publishers {
     
@@ -41,56 +87,6 @@ extension Publishers {
     }
 }
 
-extension Publisher {
-    
-    /// Converts any failure from the upstream publisher into a new error.
-    ///
-    /// Use the `mapError(_:)` operator when you need to replace one error type with
-    /// another, or where a downstream operator needs the error types of its inputs to
-    /// match.
-    ///
-    /// The following example uses a `tryMap(_:)` operator to divide `1` by each element
-    /// produced by a sequence publisher. When the publisher produces a `0`,
-    /// the `tryMap(_:)` fails with a `DivisionByZeroError`. The `mapError(_:)` operator
-    /// converts this into a `MyGenericError`.
-    ///
-    ///     struct DivisionByZeroError: Error {}
-    ///     struct MyGenericError: Error { var wrappedError: Error }
-    ///
-    ///     func myDivide(_ dividend: Double, _ divisor: Double) throws -> Double {
-    ///         guard divisor != 0 else { throw DivisionByZeroError() }
-    ///         return dividend / divisor
-    ///     }
-    ///
-    ///     let divisors: [Double] = [5, 4, 3, 2, 1, 0]
-    ///     divisors.publisher
-    ///         .tryMap { try myDivide(1, $0) }
-    ///         .mapError { MyGenericError(wrappedError: $0) }
-    ///         .sink(
-    ///             receiveCompletion: { print ("completion: \($0)") ,
-    ///             receiveValue: { print ("value: \($0)") }
-    ///          )
-    ///
-    ///     // Prints:
-    ///     //   value: 0.2
-    ///     //   value: 0.25
-    ///     //   value: 0.3333333333333333
-    ///     //   value: 0.5
-    ///     //   value: 1.0
-    ///     //   completion: failure(MyGenericError(wrappedError: DivisionByZeroError()))"
-    ///
-    /// - Parameter transform: A closure that takes the upstream failure as a parameter
-    ///   and returns a new error for the publisher to terminate with.
-    /// - Returns: A publisher that replaces any upstream failure with a new error
-    ///   produced by the `transform` closure.
-    public func mapError<NewFailure: Error>(
-        _ transform: @escaping (Failure) -> NewFailure
-    ) -> Publishers.MapError<Self, NewFailure>
-    {
-        return Publishers.MapError(upstream: self, transform)
-    }
-}
-
 extension Publishers.MapError {
     
     private struct Inner<Downstream: Subscriber>
@@ -120,14 +116,17 @@ extension Publishers.MapError {
             self.map = map
         }
         
+        // Forward 传递.
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
         }
         
+        // Forward 传递.
         func receive(_ input: Input) -> Subscribers.Demand {
             return downstream.receive(input)
         }
         
+        // 当发生错误的时候, 将原始的错误, 变化成为新的类型, 然后传递给下游节点.
         func receive(completion: Subscribers.Completion<Failure>) {
             switch completion {
             case .finished:

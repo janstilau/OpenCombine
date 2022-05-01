@@ -1,15 +1,9 @@
-//
-//  Publishers.Retry.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 28.06.2020.
-//
 
 extension Publisher {
     
     /// Attempts to recreate a failed subscription with the upstream publisher up to
     /// the number of times you specify.
-    ///
+    
     /// Use `retry(_:)` to try connecting to an upstream publisher after a failed
     /// connection attempt.
     ///
@@ -74,16 +68,12 @@ extension Publishers {
         ///
         /// If `nil`, this publisher attempts to reconnect with the upstream publisher
         /// an unlimited number of times.
+        // 这个值, 一定要设置, 不然无限重链.
         public let retries: Int?
         
         /// Creates a publisher that attempts to recreate its subscription to a failed
         /// upstream publisher.
-        ///
-        /// - Parameters:
-        ///   - upstream: The publisher from which this publisher receives its elements.
-        ///   - retries: The maximum number of retry attempts to perform. If `nil`, this
-        ///     publisher attempts to reconnect with the upstream publisher an unlimited
-        ///     number of times.
+        /// 惯例,  信息收集.
         public init(upstream: Upstream, retries: Int?) {
             self.upstream = upstream
             self.retries = retries
@@ -112,6 +102,7 @@ extension Publishers.Retry {
         
         typealias Failure = Upstream.Failure
         
+        // 使用了 Enum, 做更好的状态管理.
         private enum State {
             case ready(Publishers.Retry<Upstream>, Downstream)
             case terminal
@@ -126,8 +117,10 @@ extension Publishers.Retry {
         
         private var state: State
         
+        // 上游节点, 可以变化.
         private var upstreamSubscription: Subscription?
         
+        // 重试次数.
         private var remaining: Chances
         
         private var downstreamNeedsSubscription = true
@@ -149,12 +142,14 @@ extension Publishers.Retry {
         
         func receive(subscription: Subscription) {
             lock.lock()
-            guard case let .ready(_, downstream) = state, upstreamSubscription == nil
+            guard case let .ready(_, downstream) = state,
+                    upstreamSubscription == nil
             else {
                 lock.unlock()
                 subscription.cancel()
                 return
             }
+            // 存储上游节点.
             upstreamSubscription = subscription
             let downstreamDemand = self.downstreamDemand
             let downstreamNeedsSubscription = self.downstreamNeedsSubscription
@@ -177,6 +172,7 @@ extension Publishers.Retry {
             downstreamDemand -= 1
             lock.unlock()
             
+            // 传输数据.
             let newDemand = downstream.receive(input)
             
             if newDemand == .none { return .none }
@@ -186,6 +182,7 @@ extension Publishers.Retry {
             
             if let upstreamSubscription = self.upstreamSubscription {
                 lock.unlock()
+                // 向上游要求更多的数据.
                 upstreamSubscription.request(newDemand)
             } else {
                 lock.unlock()
@@ -201,12 +198,16 @@ extension Publishers.Retry {
                 return
             }
             
+            // 如果, 失败了
             if case .failure = completion {
+                // 上游放弃. 这个上游应该自己把资源释放了.
                 upstreamSubscription = nil
                 switch remaining {
                 case .finite(0):
+                    // 没有机会了. 给后续节点传输失败.
                     break
                 case .finite(let attempts):
+                    // 管理 remain 的次数.
                     remaining = .finite(attempts - 1)
                     fallthrough
                 case .infinite:
@@ -219,6 +220,7 @@ extension Publishers.Retry {
                         completionRecursion = true
                         needsSubscribe = false
                         lock.unlock()
+                        // 再次使用上游节点, 进行 attach 的动作.
                         parent.upstream.subscribe(self)
                         lock.lock()
                         completionRecursion = false

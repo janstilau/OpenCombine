@@ -27,6 +27,8 @@ extension Publisher where Failure == Never {
     /// - Returns: A cancellable instance, which you use when you end assignment of
     ///   the received value. Deallocation of the result will tear down the subscription
     ///   stream.
+    
+    // 只有, Failure 类型是 Never 的时候, 才能使用这个 Operator.
     public func sink(
         receiveValue: @escaping (Output) -> Void
     ) -> AnyCancellable {
