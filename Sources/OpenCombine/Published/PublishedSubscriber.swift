@@ -1,6 +1,7 @@
 
 // @Publish 中的 Subject 的 包装类.
 // 这是一个专门的包装类型, 专门给 PublishedSubject 使用的.
+// 应该这样说, Subject 的 SubjectSubscriber 类型, 里面都是弱引用.
 internal struct PublishedSubscriber<Value>: Subscriber {
     
     internal typealias Input = Value

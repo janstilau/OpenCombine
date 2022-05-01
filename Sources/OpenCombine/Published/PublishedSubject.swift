@@ -1,11 +1,6 @@
-//
-//  PublishedSubject.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 29.10.2020.
-//
 
-// 这是一个引用类型. 
+// 这是一个引用类型.
+// PublishedSubject 和 CurrentSubject 没有太大的区别. 最最主要的就是, 增加了 changePublisher, 需要在每次值改变的时候, 进行调用. 触发值改变的信号的发出. 
 internal final class PublishedSubject<Output>: Subject {
     
     internal typealias Failure = Never
@@ -19,7 +14,8 @@ internal final class PublishedSubject<Output>: Subject {
     private var upstreamSubscriptions: [Subscription] = []
     // 记录了所有的下游节点.
     private var downstreams = ConduitList<Output, Failure>.empty
-    
+    // 这是 ObservableObject 赋值的 Publisher.
+    // 每次值改动的时候, 主动调用一下.
     private var changePublisher: ObservableObjectPublisher?
     
     internal var value: Output {
@@ -84,8 +80,8 @@ internal final class PublishedSubject<Output>: Subject {
         let downstreams = self.downstreams
         let changePublisher = self.changePublisher
         lock.unlock()
-        // 通知一下, 当前已经发生了变化.
-        // 这主要是为了通知监听该 Subject 的数据.
+        // 这是为了实现, 外界监控变化的需求.
+        // 也就是 objectWillChange: ObservableObjectPublisher 
         changePublisher?.send()
         // 然后, 才是真正的后续监听者, 收到发生改变的值.
         downstreams.forEach { conduit in
@@ -185,7 +181,7 @@ extension PublishedSubject {
                 self.demand -= 1
                 lock.unlock()
                 downstreamLock.lock()
-                // 在, Request 里面, 也会触发相关的行为. 
+                // 在, Request 里面, 也会触发相关的行为.
                 let newDemand = downstream.receive(currentValue)
                 downstreamLock.unlock()
                 guard newDemand > 0 else { return }
@@ -206,6 +202,8 @@ extension PublishedSubject {
             lock.unlock()
             parent?.disassociate(self)
         }
+        
+        
         
         var description: String { return "PublishedSubject" }
         

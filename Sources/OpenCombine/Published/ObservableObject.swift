@@ -1,6 +1,5 @@
-
 /// A type of object with a publisher that emits before the object has changed.
-///
+
 /// By default an `ObservableObject` synthesizes an `objectWillChange` publisher that
 /// emits the changed value before any of its `@Published` properties changes.
 // 如果, 标注了是 ObservableObject 对象, 并且里面有 @Published 的属性, 那么每次 @Published 的属性变化之前, 都会引起 objectWillChange 对应的 Publisher 的信号发送
@@ -39,6 +38,8 @@ public protocol ObservableObject: AnyObject {
     var objectWillChange: ObjectWillChangePublisher { get }
 }
 
+// 这里是一个小技巧, 专门做一个私有协议, 然后让特定的类型来实现该协议.
+// 其实, 就是类型判断. 不过如果类型过多的话, 使用协议判断, 代码会更加的清晰.
 private protocol _ObservableObjectProperty {
     var objectWillChange: ObservableObjectPublisher? { get nonmutating set }
 }
@@ -46,20 +47,26 @@ private protocol _ObservableObjectProperty {
 #if swift(>=5.1)
 extension Published: _ObservableObjectProperty {}
 
+// ObservableObject 的 objectWillChange 会自动合成. 就是在 get 的时候, 进行了懒加载.
+// 并且, 对于每个 Published 属性中, 隐藏的 Publisher 的 objectWillChange 进行了赋值操作.
 extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPublisher {
     
     /// A publisher that emits before the object has changed.
     public var objectWillChange: ObservableObjectPublisher {
         var installedPublisher: ObservableObjectPublisher?
+        
+        // 使用元信息, 查找到 Published 类型. 对里面的值 objectWillChange 属性进行了赋值 .
         var reflection: Mirror? = Mirror(reflecting: self)
         while let aClass = reflection {
             for (_, property) in aClass.children {
+                // 首先判断, 是否是 Published 的类型.
                 guard let property = property as? _ObservableObjectProperty else {
                     // Visit other fields until we meet a @Published field
                     continue
                 }
                 
-                // Now we know that the field is @Published.
+                // 然后判断, 是否 Published 类型, 是否已经有了 objectWillChange 属性了.
+                // 如果一个有了, 那就是全都有了.
                 if let alreadyInstalledPublisher = property.objectWillChange {
                     installedPublisher = alreadyInstalledPublisher
                     // Don't visit other fields, as all @Published fields
@@ -67,6 +74,9 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
                     break
                 }
                 
+                // 如果 @Published 已经有了 objectWillChange, 那就证明, 这个 ObservableObject 已经初始化过 objectWillChange 属性了. 直接返回.
+                // 如果, 还没有, 那么将所有的 @Published 属性的 objectWillChange 统一赋值成为 installedPublisher
+                // 正是因为如此, 所有的 @Published 都是使用了同样的一个 Publisher, 才能实现, 每个值修改之前, 都能触发同一个信号的发射.
                 // Okay, this field doesn't have a publisher installed.
                 // This means that other fields don't have it either
                 // (because we install it only once and fields can't be added at runtime).
@@ -78,13 +88,17 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
                     installedPublisher = publisher
                     return publisher
                 }
-                
+                // 注意, 这里 lazilyCreatedPublisher 的构建过程.
+                // 如果 installedPublisher 有值了, 那么就使用 installedPublisher 的值.
+                // 所以, 最终所有的 Property 都是使用的同样的一个 installedPublisher.
+                // 真的是令人困恼的代码.
                 property.objectWillChange = lazilyCreatedPublisher
-                
                 // Continue visiting other fields.
             }
             reflection = aClass.superclassMirror
         }
+        
+        // 如果, 没有 installedPublisher, 那就是里面根本就没有 @Published 属性. 随便给一个值.
         return installedPublisher ?? ObservableObjectPublisher()
     }
 }
@@ -92,7 +106,6 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
 #endif
 
 /// A publisher that publishes changes from observable objects.
-// 一个引用值.
 public final class ObservableObjectPublisher: Publisher {
     
     // 仅仅是, 值发生了改变, 并不告诉当前的值是什么.
@@ -211,6 +224,7 @@ extension ObservableObjectPublisher {
             lock.unlock()
         }
         
+        // 当下游触发了 cancel 之后, 就是将自己从 dispatch 表中进行删除.
         func cancel() {
             lock.lock()
             state = .terminal

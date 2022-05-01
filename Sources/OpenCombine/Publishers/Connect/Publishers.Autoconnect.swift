@@ -86,6 +86,7 @@ extension Publishers {
                 if refcount <= 1 {
                     self.state = .disconnected
                     lock.unlock()
+                    // 如果, 后方节点没有值了,  那么会自动进行 cancelable 的 cancel 触发的.
                     connection.cancel()
                 } else {
                     state = .connected(refcount: refcount - 1, connection: connection)

@@ -438,9 +438,9 @@
 		06D020FC281E76E100227DD2 /* Published */ = {
 			isa = PBXGroup;
 			children = (
+				DDA9974438E8B54D8AA8FCB05A18C962 /* ObservableObject.swift */,
 				072697DFCD950B7F62A4521C13FAA255 /* PublishedSubject.swift */,
 				E0217593E5689D6996C141B21D24F020 /* PublishedSubscriber.swift */,
-				DDA9974438E8B54D8AA8FCB05A18C962 /* ObservableObject.swift */,
 				7B5AF3DD6F72A55EE7034065A192E38E /* Published.swift */,
 			);
 			path = Published;

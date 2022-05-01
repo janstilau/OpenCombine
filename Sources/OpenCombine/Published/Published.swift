@@ -47,9 +47,10 @@ extension Publisher where Failure == Never {
 
 
 /// A type that publishes a property marked with an attribute.
-///
+
 /// Publishing a property with the `@Published` attribute creates a publisher of this
 /// type. You access the publisher with the `$` operator, as shown here:
+
 ///
 ///     class Weather {
 ///         @Published var temperature: Double
@@ -78,31 +79,8 @@ extension Publisher where Failure == Never {
 /// > Important: The `@Published` attribute is class constrained. Use it with properties
 /// of classes, not with non-class types like structures.
 ///
-/*
- 苹果文档.
- Publishing a property with the @Published attribute creates a publisher of this type. You access the publisher with the $ operator, as shown here:
- class Weather {
- @Published var temperature: Double
- init(temperature: Double) {
- self.temperature = temperature
- }
- }
- 
- let weather = Weather(temperature: 20)
- cancellable = weather.$temperature
- .sink() {
- print ("Temperature now: \($0)")
- }
- weather.temperature = 25
- 
- // Prints:
- // Temperature now: 20.0
- // Temperature now: 25.0
- When the property changes, publishing occurs in the property’s willSet block, meaning subscribers receive the new value before it’s actually set on the property. In the above example, the second time the sink executes its closure, it receives the parameter value 25. However, if the closure evaluated weather.temperature, the value returned would be 20.
- */
 
 // 非常重要的一个 PropertyWrapper
-
 
 @propertyWrapper
 public struct Published<Value> {
@@ -131,7 +109,7 @@ public struct Published<Value> {
     
     private enum Storage {
         case value(Value)
-        case publisher(PublishedPublisher) //  PublishedPublisher 是引用语义的.
+        case publisher(PublishedPublisher)
     }
     
     @propertyWrapper
@@ -142,9 +120,8 @@ public struct Published<Value> {
         }
     }
     
-    // 没太明白, 这里整个 @propertyWrapper 有什么作用. 直接使用 PublishedBox 不得了.
-    // 猜测. 使用的时候, storage 更显式. 但是, 需要一个引用语义的对象在这里.
-    // 所以, 这个 Box 的唯一的作用, 就是让我们使用 Enum 的同时, 保证了引用语义.
+    // 这里实现的有点复杂啊.
+    // 如果我实现, 可能里面就一个 PublishedSubject 属性就完事了. 
     @PublishedBox private var storage: Storage
     
     internal var objectWillChange: ObservableObjectPublisher? {
@@ -176,6 +153,7 @@ public struct Published<Value> {
         mutating get {
             return getPublisher()
         }
+        // 不应该出现在 Set 里面,
         set { // swiftlint:disable:this unused_setter_value
             switch storage {
             case .value(let value):
@@ -188,11 +166,8 @@ public struct Published<Value> {
     
     /// Note: This method can mutate `storage`
     internal func getPublisher() -> PublishedPublisher {
-        
         switch storage {
         case .value(let value):
-            // Get 方法里面, 有了副作用.
-            // 进行了 Storage 的切换
             let publisher = PublishedPublisher(value)
             storage = .publisher(publisher)
             return publisher
@@ -210,6 +185,7 @@ public struct Published<Value> {
     }
     // swiftlint:enable let_var_whitespace
     
+    // 这是什么意思.
     public static subscript<EnclosingSelf: AnyObject>(
         _enclosingInstance object: EnclosingSelf,
         wrapped wrappedKeyPath: ReferenceWritableKeyPath<EnclosingSelf, Value>,
@@ -228,6 +204,7 @@ public struct Published<Value> {
             case .value:
                 object[keyPath: storageKeyPath].storage = .publisher(PublishedPublisher(newValue))
             case .publisher(let publisher):
+                // 在这里, 触发了改变.
                 publisher.subject.value = newValue
             }
         }
