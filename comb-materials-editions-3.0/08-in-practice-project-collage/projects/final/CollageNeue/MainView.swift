@@ -67,6 +67,9 @@ struct MainView: View {
     .onChange(of: model.lastSavedPhotoID, perform: { lastSavedPhotoID in
       isDisplayingSavedMessage = true
     })
+    
+    // 这是 KVO ?????
+    // 监听值的变化之后, 自动弹框 ????
     .alert("Saved photo with id: \(model.lastSavedPhotoID)", isPresented: $isDisplayingSavedMessage, actions: { })
     .alert(lastErrorMessage, isPresented: $isDisplayingErrorMessage, actions: { })
     .sheet(isPresented: $isDisplayingPhotoPicker, onDismiss: {
@@ -74,10 +77,14 @@ struct MainView: View {
     }) {
       PhotosView().environmentObject(model)
     }
+    
     .onAppear(perform: model.bindMainView)
+    // 当, 收到 Model 的 updateUISubject 的时候, 可以指定一个函数.
+    // 在 View 里面, 也可以进行函数的定义. 不过, 一般就是在里面, 进行 UI 的更新了.
     .onReceive(model.updateUISubject, perform: updateUI)
   }
   
+  // 函数的参数, 就是信号发送的 Next 值 .
   func updateUI(photosCount: Int) {
     saveIsEnabled = photosCount > 0 && photosCount % 2 == 0
     clearIsEnabled = photosCount > 0

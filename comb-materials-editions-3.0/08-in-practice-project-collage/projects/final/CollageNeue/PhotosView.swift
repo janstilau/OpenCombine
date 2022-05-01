@@ -49,6 +49,7 @@ struct PhotosView: View {
     .alert("No access to Camera Roll", isPresented: $isDisplayingError, actions: { }, message: {
       Text("You can grant access to Collage Neue from the Settings app")
     })
+    
     .onAppear {
       // Check for Photos access authorization and reload the list if authorized.
       PHPhotoLibrary.fetchAuthorizationStatus { status in
@@ -61,6 +62,7 @@ struct PhotosView: View {
       
       model.bindPhotoPicker()
     }
+    
     .onDisappear {
       // 在 ViewDisAppeared 的时候, 触发了 ViewModel 的 Completion 信号.
       // 这里设计的不好, 直接使用 Model 里面的 selectedPhotosSubject 发送 Completion 事件.

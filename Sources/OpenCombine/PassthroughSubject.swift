@@ -193,6 +193,12 @@ extension PassthroughSubject {
             parent?.acknowledgeDownstreamDemand()
         }
         
+        /*
+         Conduit 和 downstream 之间有循环引用.
+         Conduit 还被 PassThroughSubject 强引用着.
+         
+         cancel, 打破了循环引用, 取消了 PassThroughSubject 的强引用. 
+         */
         override func cancel() {
             lock.lock()
             if downstream.take() == nil {

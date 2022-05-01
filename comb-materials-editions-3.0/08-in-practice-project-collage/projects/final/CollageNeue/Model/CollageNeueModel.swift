@@ -47,6 +47,7 @@ class CollageNeueModel: ObservableObject {
   
   func add() {
     // 不太明白, 这个值为什么要每次都新创建.
+    // 因为, 每次都在 PhotoView 消失的时候, PassthroughSubject 都发送了 Compelteion 事件.
     selectedPhotosSubject = PassthroughSubject<UIImage, Never>()
     // selectedPhotosSubject 的变化, 会触发后面的事件变化.
     
@@ -71,6 +72,8 @@ class CollageNeueModel: ObservableObject {
       .assign(to: \.value, on: images)
     // 3
       .store(in: &subscriptions)
+    
+    // 如果, 不把结果放在 subscriptions 里面, 那么
   }
   
   func clear() {

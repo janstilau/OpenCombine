@@ -18,6 +18,8 @@ extension Subscribers {
         /// the subscriber sets this property to `nil`.
         // 存储一下, 要被赋值的对象. 这里必须是强引用.
         // 只有自己显示的进行 cancel 的情况下, 才应该进行资源的释放 .
+
+        // 这里是强引用
         public private(set) var object: Root?
         
         /// The key path that indicates the property to assign.

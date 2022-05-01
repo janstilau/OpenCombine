@@ -1,9 +1,3 @@
-//
-//  RunLoop+Scheduler.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 13.12.2019.
-//
 
 import Foundation
 import OpenCombine
@@ -213,6 +207,7 @@ extension RunLoop {
     ///
     /// You can omit this whenever Combine is not available (e. g. on Linux).
     public var ocombine: OCombine {
+        //  这其实就和 .yd 一样, 各种功能, 还是根据
         return OCombine(self)
     }
 }

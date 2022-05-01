@@ -200,6 +200,8 @@ extension URLSession.OCombine.DataTaskPublisher {
             }
         }
         
+        // 当, DataTask.Sink 之后, 一定要保存好返回的 Subscription 对象.
+        // 不然, 该对象 deinit 的时候, 调用 cancel, 也会导致上游节点的 cancel 行为. 
         func cancel() {
             lock.lock()
             guard parent != nil else {

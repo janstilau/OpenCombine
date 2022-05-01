@@ -1,3 +1,6 @@
+// 这个类, 就是手动控制一些 next 事件, 已经 completion 时间
+// 这样下游节点收到的, 就是手动填入的这些数据了.
+// 可以用来 mock, 或者将一些已知数据, 填入到 Combine 环境中.
 /// A publisher that allows for recording a series of inputs and a completion for later
 /// playback to each subscriber.
 public struct Record<Output, Failure: Error>: Publisher {

@@ -4,13 +4,13 @@ extension Publisher where Failure == Never {
     /// Republishes elements received from a publisher, by assigning them to a property
     /// marked as a publisher.
     
-    // the life cycle of the subscription, 是通过 weak 指针做的管理.
     /// Use this operator when you want to receive elements from a publisher and republish
     /// them through a property marked with the `@Published` attribute. The `assign(to:)`
     /// operator manages the life cycle of the subscription, canceling the subscription
     /// automatically when the `Published` instance deinitializes. Because of this,
     /// the `assign(to:)` operator doesn't return an `AnyCancellable` that you're
     /// responsible for like `assign(to:on:)` does.
+    // Published 作为 downstream, 是一个弱指针. 当 Published 对象消失之后, 该指针消失, 也就无法向后进行事件的传送了.
     
     /// The example below shows a model class that receives elements from an internal
     /// `Timer.TimerPublisher`, and assigns them to a `@Published` property called
@@ -27,6 +27,9 @@ extension Publisher where Failure == Never {
     
     /// If you instead implemented `MyModel` with `assign(to: lastUpdated, on: self)`,
     /// storing the returned `AnyCancellable` instance could cause a reference cycle,
+    // AnyCancellable 里面存储的, 就是 Assign 对象, 里面强引用了 self.
+    // AnyCancellable 再次被引用, 这就形成了循环引用.
+    
     /// because the `Subscribers.Assign` subscriber would hold a strong reference
     /// to `self`. Using `assign(to:)` solves this problem.
     ///
@@ -37,7 +40,7 @@ extension Publisher where Failure == Never {
     // 这是一个响应链条的终点.
     // 而这个终点之后的触发, 和之前的链条, 没有太大的关系.
     public func assign(to published: inout Published<Output>.PublishedPublisher) {
-        // Subject 在
+        
         subscribe(PublishedSubscriber(published.subject))
     }
 }

@@ -14,7 +14,6 @@ internal struct PublishedSubscriber<Value>: Subscriber {
     internal let combineIdentifier = CombineIdentifier()
     
     // 因为这里是 weak, 所以, Subject 消亡之后, 这里自动就没有引用了.
-    // 通过这样的错误, 使得 Subject 的生命周期, 和自己的
     private weak var subject: PublishedSubject<Value>?
     
     internal init(_ subject: PublishedSubject<Value>) {
