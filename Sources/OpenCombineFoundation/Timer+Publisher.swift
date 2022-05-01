@@ -1,9 +1,3 @@
-//
-//  Timer+Publisher.swift
-//
-//
-//  Created by Sergej Jaskiewicz on 23.06.2020.
-//
 
 import Foundation
 import OpenCombine
@@ -33,20 +27,6 @@ extension Foundation.Timer {
         return .init(interval: interval, runLoop: runLoop, mode: mode, options: options)
     }
     
-    /// A namespace for disambiguation when both OpenCombine and Combine are imported.
-    ///
-    /// Foundation overlay for Combine extends `Timer` with new methods and nested
-    /// types.
-    /// If you import both OpenCombine and Foundation, you will not be able
-    /// to write `Timer.TimerPublisher`,
-    /// because Swift is unable to understand which `TimerPublisher`
-    /// you're referring to.
-    ///
-    /// So you have to write `Timer.OCombine.TimerPublisher`.
-    ///
-    /// This bug is tracked [here](https://bugs.swift.org/browse/SR-11183).
-    ///
-    /// You can omit this whenever Combine is not available (e. g. on Linux).
     public enum OCombine {
         
         /// A publisher that repeatedly emits the current date on a given interval.
@@ -66,14 +46,7 @@ extension Foundation.Timer {
             
             /// Creates a publisher that repeatedly emits the current date
             /// on the given interval.
-            ///
-            /// - Parameters:
-            ///   - interval: The interval on which to publish events.
-            ///   - tolerance: The allowed timing variance when emitting events.
-            ///     Defaults to `nil`, which allows any variance.
-            ///   - runLoop: The run loop on which the timer runs.
-            ///   - mode: The run loop mode in which to run the timer.
-            ///   - options: Scheduler options passed to the timer. Defaults to `nil`.
+            // 惯例, Publisher 就是为了收集信息.
             public init(
                 interval: TimeInterval,
                 tolerance: TimeInterval? = nil,
@@ -92,6 +65,7 @@ extension Foundation.Timer {
                 lock.deallocate()
             }
             
+            // 对于 downstream 的 attach 请求, 就是存储相关的数据.
             public func receive<Downstream: Subscriber>(subscriber: Downstream)
             where Failure == Downstream.Failure, Output == Downstream.Input
             {
@@ -102,6 +76,7 @@ extension Foundation.Timer {
                 subscriber.receive(subscription: inner)
             }
             
+            // connect 函数里面, 才是真正的定时器的创建并且加到 Runloop 里面.
             public func connect() -> Cancellable {
                 let timer = Timer(timeInterval: interval, repeats: true, block: fire)
                 timer.tolerance = tolerance ?? 0
@@ -111,12 +86,12 @@ extension Foundation.Timer {
             
             // MARK: Private
             
+            // 每次定时器触发之后, 进行 downstream 额 send 处理.
             private func fire(_ timer: Timer) {
                 lock.lock()
                 let sides = self.sides
                 lock.unlock()
                 let now = Date()
-                // 
                 for side in sides.values {
                     side.send(now)
                 }

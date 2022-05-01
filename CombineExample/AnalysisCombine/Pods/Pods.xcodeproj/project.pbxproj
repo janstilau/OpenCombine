@@ -751,8 +751,8 @@
 			children = (
 				DAB7E2E9DF5BB4663359C2301598FE52 /* JSONEncoder.swift */,
 				6F513207D67E04070707BE66331FAF85 /* NotificationCenter.swift */,
-				4257B34FD44160959731D4EBE93D7AE7 /* OperationQueue+Scheduler.swift */,
 				A4CC7C99373488F91C0684A765E0CADC /* PropertyListEncoder.swift */,
+				4257B34FD44160959731D4EBE93D7AE7 /* OperationQueue+Scheduler.swift */,
 				5F306DE296B865CCCEA1705600C335B3 /* RunLoop+Scheduler.swift */,
 				6EF68B61D31606C2003C3672B7DDEA9C /* Timer+Publisher.swift */,
 				3804E6173D29740FFF698049880EF4E4 /* URLSession.swift */,

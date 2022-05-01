@@ -4,20 +4,6 @@ import OpenCombine
 
 extension RunLoop {
     
-    /// A namespace for disambiguation when both OpenCombine and Combine are imported.
-    ///
-    /// Foundation overlay for Combine extends `RunLoop` with new methods and nested
-    /// types.
-    /// If you import both OpenCombine and Foundation, you will not be able
-    /// to write `RunLoop.SchedulerTimeType`,
-    /// because Swift is unable to understand which `SchedulerTimeType`
-    /// you're referring to.
-    ///
-    /// So you have to write `RunLoop.OCombine.SchedulerTimeType`.
-    ///
-    /// This bug is tracked [here](https://bugs.swift.org/browse/SR-11183).
-    ///
-    /// You can omit this whenever Combine is not available (e. g. on Linux).
     public struct OCombine: Scheduler {
         
         public let runLoop: RunLoop
@@ -148,8 +134,7 @@ extension RunLoop {
         }
         
         /// Options that affect the operation of the run loop scheduler.
-        public struct SchedulerOptions {
-        }
+        public struct SchedulerOptions { }
         
         public func schedule(options: SchedulerOptions?, _ action: @escaping () -> Void) {
             runLoop.performBlockPortably(action)

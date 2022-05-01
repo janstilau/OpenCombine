@@ -1,10 +1,3 @@
-//
-//  URLSession.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 13.12.2019.
-//
-
 import Foundation
 
 #if canImport(FoundationNetworking)
@@ -15,19 +8,6 @@ import OpenCombine
 
 extension URLSession {
     
-    /// A namespace for disambiguation when both OpenCombine and Foundation are imported.
-    ///
-    /// Foundation extends `URLSession` with new methods and nested types.
-    /// If you import both OpenCombine and Foundation, you will not be able
-    /// to write `URLSession.DataTaskPublisher`,
-    /// because Swift is unable to understand which `DataTaskPublisher`
-    /// you're referring to — the one declared in Foundation or in OpenCombine.
-    ///
-    /// So you have to write `URLSession.OCombine.DataTaskPublisher`.
-    ///
-    /// This bug is tracked [here](https://bugs.swift.org/browse/SR-11183).
-    ///
-    /// You can omit this whenever Combine is not available (e. g. on Linux).
     public struct OCombine {
         
         public let session: URLSession
@@ -46,11 +26,13 @@ extension URLSession {
             
             public let session: URLSession
             
+            // 惯例, Publisher 就是为了收集信息的
             public init(request: URLRequest, session: URLSession) {
                 self.request = request
                 self.session = session
             }
             
+            // 真正的触发, 是在 receive 到 downstream 的 attach 请求的时候.
             public func receive<Downstream: Subscriber>(subscriber: Downstream)
             where Downstream.Failure == Failure, Downstream.Input == Output
             {
@@ -90,6 +72,9 @@ extension URLSession {
 
 extension URLSession {
     
+    /*
+     原理和各种 yd, rx 扩展一模一样, 使用一个新的 NameSpace 来完成各种动作.
+     */
     /// A namespace for disambiguation when both OpenCombine and Foundation are imported.
     ///
     /// Foundation extends `URLSession` with new methods and nested types.
@@ -131,7 +116,8 @@ extension URLSession {
 }
 
 extension URLSession.OCombine.DataTaskPublisher {
-    // DataTask 的相应链条的头结点.
+    // DataTask 的相应链条的头结点. 所以是 Subscription.
+    // 头结点, 不会 attach 到节点的后方, 所以不是 Subscriber.
     private class Inner<Downstream: Subscriber>
     : Subscription,
       CustomStringConvertible,
@@ -161,6 +147,7 @@ extension URLSession.OCombine.DataTaskPublisher {
         }
         
         // 当, 下游节点进行 demand 的 request 的时候, 进行真正的网络请求的发送.
+        // 这是尊重 Combine 的 Pull 原型的做法.
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -168,6 +155,8 @@ extension URLSession.OCombine.DataTaskPublisher {
                 lock.unlock()
                 return
             }
+            // 在这里, 才真正的进行了网络请求的发送.
+            // 只会发送一次.
             if self.task == nil {
                 task = parent.session.dataTask(with: parent.request,
                                                completionHandler: handleResponse)
@@ -183,12 +172,17 @@ extension URLSession.OCombine.DataTaskPublisher {
             // 在 DataTask 的回调里面, 根据收到的信息, 向后方节点发送对应的数据.
             // 也可能失败.
             // 和自己想象中的不太一样, 本以为是应 subject 完成的这件事.
-            guard demand > 0, parent != nil, let downstream = self.downstream else {
+            guard demand > 0,
+                    parent != nil,
+                    let downstream = self.downstream else {
                 lock.unlock()
                 return
             }
+            // 当, 收到响应之后, 立马进行了资源的释放 .
             lockedTerminate()
             lock.unlock()
+            
+            // 根据结构, 发送相关的信号.
             switch (data, response, error) {
             case let (data, response?, nil):
                 _ = downstream.receive((data ?? Data(), response))
@@ -201,7 +195,7 @@ extension URLSession.OCombine.DataTaskPublisher {
         }
         
         // 当, DataTask.Sink 之后, 一定要保存好返回的 Subscription 对象.
-        // 不然, 该对象 deinit 的时候, 调用 cancel, 也会导致上游节点的 cancel 行为. 
+        // 不然, 该对象 deinit 的时候, 调用 cancel, 也会导致上游节点的 cancel 行为.
         func cancel() {
             lock.lock()
             guard parent != nil else {
@@ -209,8 +203,10 @@ extension URLSession.OCombine.DataTaskPublisher {
                 return
             }
             let task = self.task
+            // 资源释放
             lockedTerminate()
             lock.unlock()
+            // 真正网络请求的取消.
             task?.cancel()
         }
         

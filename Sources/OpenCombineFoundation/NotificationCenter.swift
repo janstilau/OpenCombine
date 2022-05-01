@@ -4,19 +4,6 @@ import OpenCombine
 
 extension NotificationCenter {
     
-    /// A namespace for disambiguation when both OpenCombine and Foundation are imported.
-    ///
-    /// Foundation extends `NotificationCenter` with new methods and nested types.
-    /// If you import both OpenCombine and Foundation, you will not be able
-    /// to write `NotificationCenter.Publisher`,
-    /// because Swift is unable to understand which `Publisher`
-    /// you're referring to — the one declared in Foundation or in OpenCombine.
-    ///
-    /// So you have to write `NotificationCenter.OCombine.Publisher`.
-    ///
-    /// This bug is tracked [here](https://bugs.swift.org/browse/SR-11183).
-    ///
-    /// You can omit this whenever Combine is not available (e. g. on Linux).
     public struct OCombine {
         
         public let center: NotificationCenter
@@ -41,14 +28,7 @@ extension NotificationCenter {
             /// The object posting the named notification.
             public let object: AnyObject?
             
-            /// Creates a publisher that emits events when broadcasting notifications.
-            ///
-            /// - Parameters:
-            ///   - center: The notification center to publish notifications for.
-            ///   - name: The name of the notification to publish.
-            ///   - object: The object posting the named notification. If `nil`,
-            ///     the publisher emits elements for any object producing a notification
-            ///     with the given name.
+            // 对于 Publisher 来说, 主要是收集工作.
             public init(center: NotificationCenter,
                         name: Notification.Name,
                         object: AnyObject? = nil) {
@@ -57,6 +37,7 @@ extension NotificationCenter {
                 self.object = object
             }
             
+            // Publisher 收集好了数据, 当真正的收到了后方节点的 attach 请求之后, 就会生成真正的 Subscription 对象, 在这里, 这个对象是响应链路的头结点.
             public func receive<Downstream: Subscriber>(subscriber: Downstream)
             where Downstream.Failure == Never, Downstream.Input == Notification
             {
@@ -135,7 +116,8 @@ extension NotificationCenter.OCombine.Publisher: Equatable {
 // 大量使用了嵌套类型.
 extension Notification {
     
-    // 真正的, 节点对象.
+    // 这是一个 Subscription, 是因为, 他要收到后面节点的 Request Demand 的请求 和 cancel 请求.
+    // 这不是一个 Subscriber, 是一位, 他是一个头结点. 不会 attach 到其他节点的后面.
     fileprivate final class Subscription<Downstream: Subscriber>
     : OpenCombine.Subscription,
       CustomStringConvertible,
@@ -165,7 +147,7 @@ extension Notification {
             self.center = center
             self.name = name
             self.object = object
-            // 这里, 对 downstream 进行了强引用.
+            // 使用, Notificaiton 的原始 API, 对于通知回调这件事, 进行了注册.
             self.observation = center
                 .addObserver(forName: name, object: object, queue: nil) { [weak self] in
                     self?.didReceiveNotification($0, downstream: downstream)
@@ -177,7 +159,7 @@ extension Notification {
             downstreamLock.deallocate()
         }
         
-        // 每次, 收到通知之后, 其实会有 demand 的 -1 操作的.
+        // 因为, 在 Combine 里面, 必须要尊重 Pull 原型, 所以在真正的接收到 NotificaiotnCenter 的回调之后, 其实要到这里, 进行 Demand 相关的判断的.
         private func didReceiveNotification(_ notification: Notification,
                                             downstream: Downstream) {
             lock.lock()
@@ -205,6 +187,7 @@ extension Notification {
             lock.unlock()
         }
         
+        // Cancel, 则是将自己从 NotificaitonCenter 里面移除. 
         func cancel() {
             lock.lock()
             guard let center = self.center.take(),

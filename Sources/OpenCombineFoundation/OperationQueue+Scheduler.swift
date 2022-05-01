@@ -1,9 +1,3 @@
-//
-//  OperationQueue+Scheduler.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 14.06.2020.
-//
 
 import Foundation
 import OpenCombine
