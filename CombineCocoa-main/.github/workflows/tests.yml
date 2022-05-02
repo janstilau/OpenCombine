@@ -1,0 +1,41 @@
+name: CombineCocoa
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  xcode-tests:
+    name: "Xcode & SPM Test"
+    runs-on: macOS-latest
+    
+    strategy:
+      matrix:
+        platform: [iOS]
+        include:
+          - platform: iOS
+            sdk: iphonesimulator
+            destination: "name=iPhone 11"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Make project
+        run: make project
+      - name: Install Pods
+        run: pod install --project-directory=Example
+      - name: Run tests
+        run: set -o pipefail && xcodebuild -workspace Example/Example.xcworkspace -scheme Example -enableCodeCoverage YES -sdk ${{ matrix.sdk }} -destination "${{ matrix.destination }}" test | xcpretty -c -r html --output logs/${{ matrix.platform }}.html
+      - uses: codecov/codecov-action@v1.0.13
+        with:
+          token: 4842bea2-22dc-479b-b0a4-ff0b22aa9818
+          name: CombineCocoa
+      - uses: actions/upload-artifact@v1
+        with:
+          name: build-logs-${{ github.run_id }}
+          path: logs
+  carthage:
+      name: "Carthage Test"
+      runs-on: macOS-latest
+      steps:
+        - uses: actions/checkout@v2
+        - name: Make project
+          run: make project
+        - name: Carthage build
+          run: carthage build --no-skip-current --platform iOS --configuration Release --project-directory ./

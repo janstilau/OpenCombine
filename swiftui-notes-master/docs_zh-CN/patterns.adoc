@@ -1,0 +1,90 @@
+[#patterns]
+= 常用模式和方法
+
+本章包括一系列模式和发布者、订阅者和管道的示例。
+这些示例旨在说明如何使用 Combine 框架完成各种任务。
+
+include::pattern-sink.adoc[]
+include::pattern-assign.adoc[]
+include::pattern-datataskpublisher-decode.adoc[]
+include::pattern-datataskpublisher-trymap.adoc[]
+include::pattern-future.adoc[]
+include::pattern-sequencing-operations.adoc[]
+
+[#patterns-general-error-handling]
+== 错误处理
+
+上述示例都假设，如果发生错误情况，订阅者将处理这些情况。
+但是，你并不总是能够控制订阅者的要求——如果你使用 SwiftUI，情况可能如此。
+在这些情况下，你需要构建管道，以便输出类型与订阅者的类型匹配。
+这意味着你在处理管道内的任何错误。
+
+例如，如果你正在使用 SwiftUI，并且你希望使用 <<reference#reference-assign,assign>> 在按钮上设置 `isEnabled` 属性，则订阅者将有几个要求：
+
+. 订阅者应匹配 `<Bool, Never>` 的类型输出
+. 应该在主线程调用订阅者
+
+如果发布者抛出一个错误（例如 <<reference#reference-datataskpublisher,URLSession.dataTaskPublisher>> ），你需要构建一个管道来转换输出类型，还需要处理管道内的错误，以匹配错误类型 `<Never>`。
+
+如何处理管道内的错误取决于管道的定义方式。
+如果管道设置为返回单个结果并终止， 一个很好的例子就是 <<patterns#patterns-oneshot-error-handling>>。
+如果管道被设置为持续更新，则错误处理要复杂一点。
+这种情况下的一个很好的例子是 <<patterns#patterns-continual-error-handling>>。
+
+:leveloffset: +1
+include::pattern-assertnofailure.adoc[]
+include::pattern-oneshot-error-handling.adoc[]
+include::pattern-retry.adoc[]
+include::pattern-continual-error-handling.adoc[]
+include::pattern-constrained-network.adoc[]
+:leveloffset: -1
+
+[#patterns-uikit-integration]
+== 和 UIKit 或 AppKit 集成
+
+:leveloffset: +1
+include::pattern-update-interface-userinput.adoc[]
+include::pattern-cascading-update-interface.adoc[]
+include::pattern-merging-streams-interface.adoc[]
+include::pattern-delegate-publisher-subject.adoc[]
+include::pattern-notificationcenter.adoc[]
+:leveloffset: -1
+
+[#patterns-swiftui-integration]
+== 和 SwiftUI 集成
+
+:leveloffset: +1
+include::pattern-observableobject.adoc[]
+:leveloffset: -1
+
+[#patterns-testing-and-debugging]
+== 测试和调试
+
+Combine 中的发布者和订阅者接口是非常易于测试的。
+
+借助 Combine 的可组合性，你可以利用此优势创建或消费符合 https://developer.apple.com/documentation/combine/publisher[Publisher] 协议的 API。
+
+以 https://developer.apple.com/documentation/combine/publisher[publisher protocol] 为关键接口，你可以替换任何一方以单独验证你的代码。
+
+例如，如果你的代码专注于通过 Combine 从外部 Web 服务中提供其数据，则可能会使此接口遵循 `AnyPublisher<Data, Error>`。 
+然后，你可以使用该接口独立测试管道的任何一侧。
+
+* 你可以模拟 API 请求和可能响应的数据，包括各种错误条件。
+这可以包括使用 <<reference#reference-just,Just>> 或 <<reference#reference-fail,Fail>> 创建的发布者来返回数据，或者更复杂的使用 <<reference#reference-future,Future>>。
+使用这些方案都不需要你进行实际的网络接口调用。
+
+* 同样，你也可以隔离测试，让发布者进行 API 调用，并验证预期的各种成功和失败条件。
+
+:leveloffset: +1
+include::pattern-test-pipeline-expectation.adoc[]
+include::pattern-test-subscriber-subject.adoc[]
+include::pattern-test-subscriber-scheduled.adoc[]
+include::pattern-test-entwine.adoc[]
+include::pattern-debugging-pipelines-print.adoc[]
+include::pattern-debugging-pipelines-handleevents.adoc[]
+include::pattern-debugging-pipelines-breakpoint.adoc[]
+:leveloffset: -1
+
+// force a page break - ignored in HTML rendering
+<<<
+'''

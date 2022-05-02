@@ -1,0 +1,66 @@
+[#patterns-oneshot-error-handling]
+== 使用 catch 处理一次性管道中的错误
+
+__目的__::
+
+* 如果你需要在管道内处理失败，例如在使用 `assign` 操作符或其他要求失败类型为 `<Never>` 的操作符之前，你可以使用 `catch` 来提供适当的逻辑。
+
+__参考__::
+
+* <<reference#reference-catch,catch>>
+* <<reference#reference-just,Just>>
+
+__另请参阅__::
+
+* <<patterns#patterns-retry>>
+* <<patterns#patterns-continual-error-handling>>
+* <<patterns#patterns-constrained-network>>
+
+__代码和解释__::
+
+<<reference#reference-catch,catch>> 处理错误的方式，是将上游发布者替换为另一个发布者，这是你在闭包中用返回值提供的。
+
+[WARNING]
+====
+请注意，这实际上终止了管道。
+如果你使用的是一次性发布者（不创建多个事件），那这就没什么。
+====
+
+例如，<<reference#reference-datataskpublisher,URLSession.dataTaskPublisher>> 是一个一次性的发布者，你可以使用 catch 在发生错误时返回默认值，以确保你得到响应结果。
+扩展我们以前的示例以提供默认的响应：
+
+[source, swift]
+----
+struct IPInfo: Codable {
+    // matching the data structure returned from ip.jsontest.com
+    var ip: String
+}
+let myURL = URL(string: "http://ip.jsontest.com")
+// NOTE(heckj): you'll need to enable insecure downloads in your Info.plist for this example
+// since the URL scheme is 'http'
+
+let remoteDataPublisher = URLSession.shared.dataTaskPublisher(for: myURL!)
+    // the dataTaskPublisher output combination is (data: Data, response: URLResponse)
+    .map({ (inputTuple) -> Data in
+        return inputTuple.data
+    })
+    .decode(type: IPInfo.self, decoder: JSONDecoder()) <1>
+    .catch { err in <2>
+        return Publishers.Just(IPInfo(ip: "8.8.8.8"))<3>
+    }
+    .eraseToAnyPublisher()
+----
+
+<1> 通常，catch 操作符将被放置在几个可能失败的操作符之后，以便在之前任何可能的操作失败时提供回退或默认值。
+<2> 使用 catch 时，你可以得到错误类型，并可以检查它以选择如何提供响应。
+<3> Just 发布者经常用于启动另一个一次性管道，或在发生失败时直接提供默认的响应。
+
+此技术的一个可能问题是，如果你希望原始发布者生成多个响应值，但使用 catch 之后原始管道就已结束了。
+如果你正在创建一条对 <<reference#reference-published,@Published>> 属性做出响应的管道，那么在任何失败值激活 catch 操作符之后，管道将不再做出进一步响应。
+有关此工作原理的详细信息，请参阅 <<reference#reference-catch,catch>>。
+
+如果你要继续响应错误并处理它们，请参阅 <<patterns#patterns-continual-error-handling>>。
+
+// force a page break - in HTML rendering is just a <HR>
+<<<
+'''

@@ -1,0 +1,108 @@
+[#patterns-testing-subscriber-scheduled]
+== 使用从 PassthroughSubject 预定好的发送的事件测试订阅者
+
+__目的__::
+
+* 当你想要测试的是管道的时序时，用于测试管道或订阅者。
+
+__参考__::
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/PublisherTests.swift[UsingCombineTests/PublisherTests.swift]
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/FuturePublisherTests.swift[UsingCombineTests/FuturePublisherTests.swift]
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/SinkSubscriberTests.swift[UsingCombineTests/SinkSubscriberTests.swift]
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/SwitchAndFlatMapPublisherTests.swift[UsingCombineTests/SwitchAndFlatMapPublisherTests.swift]
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/DebounceAndRemoveDuplicatesPublisherTests.swift[UsingCombineTests/DebounceAndRemoveDuplicatesPublisherTests.swift]
+
+__另请参阅__::
+
+
+* <<patterns#patterns-testing-subscriber>>
+* <<patterns#patterns-testable-publisher-subscriber>>
+* <<patterns#patterns-testing-publisher>>
+* <<reference#reference-passthroughsubject,passthroughSubject>>
+
+__代码和解释__::
+
+在 Combine 中有许多针对数据时序的操作符，包括 <<reference#reference-debounce,debounce>>、<<reference#reference-throttle,throttle>> 以及 <<reference#reference-delay,delay>>。
+在进行 UI 测试之外，你可能需要测试你的管道时序具有所需的效果。
+
+实现这个的方法之一是利用 https://developer.apple.com/documentation/xctest/xctestexpectation[XCTestExpectation] 和 <<reference#reference-passthroughsubject,passthroughSubject>>，将两者结合起来。
+基于 <<patterns#patterns-testing-publisher>> 和 <<patterns#patterns-testing-subscriber>>，在测试中添加 https://developer.apple.com/documentation/dispatch/dispatchqueue[DispatchQueue]，以安排 PassthroughSubject 的 `.send()` 方法的调用。
+
+一个这种用法的例子：
+
+.https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/PublisherTests.swift#L178[UsingCombineTests/PublisherTests.swift - testKVOPublisher]
+[source, swift]
+----
+func testKVOPublisher() {
+    let expectation = XCTestExpectation(description: self.debugDescription)
+    let foo = KVOAbleNSObject()
+    let q = DispatchQueue(label: self.debugDescription) <1>
+
+    let _ = foo.publisher(for: \.intValue)
+        .print()
+        .sink { someValue in
+            print("value of intValue updated to: >>\(someValue)<<")
+        }
+
+    q.asyncAfter(deadline: .now() + 0.5, execute: { <2>
+        print("Updating to foo.intValue on background queue")
+        foo.intValue = 5
+        expectation.fulfill() <3>
+    })
+    wait(for: [expectation], timeout: 5.0) <4>
+}
+----
+
+<1> 这将为你的测试添加 `DispatchQueue`，并以测试的描述 debugDescription 来命名该队列。
+这只在调试中测试失败时显示，并且在还有其它后台线程也在使用时，方便地提醒测试代码中发生了什么情况。
+<2> `.asyncAfter` 和参数 deadline 一起使用，用来定义何时发起请求.
+<3> 这是将任何相关的断言嵌入到订阅者或其周围的最简单的方式。此外，将 `.fulfill()` 作为你发送队列的最后一个条目，好让测试知道它现在已完成。
+<4> 请确保当你设置等待超时时间时，有足够的时间让你的队列被调用。
+
+此技术的一个明显缺点是，它使得测试花费的最短时间至少是测试中的最大的队列延迟。
+
+另一种选择是第三方库，名为 EntwineTest，开发灵感来自 RxTest 库。
+EntwineTest 是 Entwine 的一部分，一个提供了一些 helpers 扩展了 Combine 的 Swift 库。
+该库可以在 github 上找到，位于 https://github.com/tcldr/Entwine.git，只要使用时遵守 MIT 证书即可。
+
+EntwineTest 中包含的关键元素之一是虚拟时间调度器，以及使用此调度器时安排（`TestablePublisher`）并收集和记录（`TestableSubscriber`）结果时间的其他类。
+
+来自 EntwineTest 工程的 README 中的一个例子包含在：
+
+.https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/EntwineTestExampleTests.swift[UsingCombineTests/EntwineTestExampleTests.swift - testExampleUsingVirtualTimeScheduler]
+[source, swift]
+----
+func testExampleUsingVirtualTimeScheduler() {
+    let scheduler = TestScheduler(initialClock: 0) <1>
+    var didSink = false
+    let cancellable = Just(1) <2>
+        .delay(for: 1, scheduler: scheduler)
+        .sink { _ in
+            didSink = true
+        }
+
+    XCTAssertNotNil(cancellable)
+    // where a real scheduler would have triggered when .sink() was invoked
+    // the virtual time scheduler requires resume() to commence and runs to
+    // completion.
+    scheduler.resume() <3>
+    XCTAssertTrue(didSink) <4>
+}
+----
+
+<1> 使用虚拟时间调度器需要在测试开始时创建一个，将其时钟初始化为起始值。
+EntwineTest 中的虚拟时间调度器将以 `200` 的值开始订阅，如果管道在时间为 `900` 时还没完成，则会超时。
+<2> 你和以往创建任何发布者或订阅者一样，创建你的管道。
+EntwineTest 还提供可测试的发布者和订阅者，以供使用。
+有关 EntwineTest 这些部分的更多详细信息，请看 <<patterns#patterns-testable-publisher-subscriber>>.
+<3> `.resume()` 需要在虚拟时间调度器上调用，以开始其工作和触发管道运行。
+<4> 在管道运行到完成后，对预期的最终结果进行断言。
+
+// force a page break - in HTML rendering is just a <HR>
+<<<
+'''

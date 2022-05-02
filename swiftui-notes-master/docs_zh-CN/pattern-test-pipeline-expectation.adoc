@@ -1,0 +1,90 @@
+
+[#patterns-testing-publisher]
+== 使用 XCTestExpectation 测试发布者
+
+__目的__::
+
+* 用于测试发布者（以及连接的任何管道）
+
+__参考__::
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/DataTaskPublisherTests.swift[UsingCombineTests/DataTaskPublisherTests.swift]
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/EmptyPublisherTests.swift[UsingCombineTests/EmptyPublisherTests.swift]
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/FuturePublisherTests.swift[UsingCombineTests/FuturePublisherTests.swift]
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/PublisherTests.swift[UsingCombineTests/PublisherTests.swift]
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/DebounceAndRemoveDuplicatesPublisherTests.swift[UsingCombineTests/DebounceAndRemoveDuplicatesPublisherTests.swift]
+
+__另请参阅__::
+
+* <<patterns#patterns-testing-publisher>>
+* <<patterns#patterns-testing-subscriber-scheduled>>
+* <<patterns#patterns-testing-subscriber>>
+
+__代码和解释__::
+
+当你测试发布者或创建发布者的某些代码时，你可能无法控制发布者何时返回数据以进行测试。
+由其订阅者驱动的 Combine 可以设置一个同步事件来启动数据流。
+你可以使用 https://developer.apple.com/documentation/xctest/xctestexpectation[XCTestExpectation] 等待一段确定的时间之后，再调用 completion 闭包进行测试。
+
+此与 Combine 一起使用的模式：
+
+. 在测试中设置 expectation。
+. 确定要测试的代码。
+. 设置要调用的代码，以便在执行成功的情况下，你调用 expectation 的 `.fulfill()` 函数。
+. 设置具有明确超时时间的 `wait()` 函数，如果 expectation 在该时间窗口内未调用 `fulfill()`，则测试将失败。
+
+如果你正在测试管道中的结果数据，那么在 <<reference#reference-sink>> 操作符的 `receiveValue` 闭包中触发 `fulfill()` 函数是非常方便的。
+如果你正在测试管道中的失败情况，则通常在 <<reference#reference-sink>> 操作符的 `receiveCompletion` 闭包中包含 `fulfill()` 方法是有效的。
+
+下列示例显示使用 expectation 测试一次性发布者(本例中是 <<reference#reference-datataskpublisher,URLSession.dataTaskPublisher>>)，并期望数据在不出错的情况下流动。
+
+.https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/DataTaskPublisherTests.swift#L47[UsingCombineTests/DataTaskPublisherTests.swift - testDataTaskPublisher]
+[source, swift]
+----
+func testDataTaskPublisher() {
+        // setup
+        let expectation = XCTestExpectation(description: "Download from \(String(describing: testURL))") <1>
+        let remoteDataPublisher = URLSession.shared.dataTaskPublisher(for: self.testURL!)
+            // validate
+            .sink(receiveCompletion: { fini in
+                print(".sink() received the completion", String(describing: fini))
+                switch fini {
+                case .finished: expectation.fulfill() <2>
+                case .failure: XCTFail() <3>
+                }
+            }, receiveValue: { (data, response) in
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    XCTFail("Unable to parse response an HTTPURLResponse")
+                    return
+                }
+                XCTAssertNotNil(data)
+                // print(".sink() data received \(data)")
+                XCTAssertNotNil(httpResponse)
+                XCTAssertEqual(httpResponse.statusCode, 200) <4>
+                // print(".sink() httpResponse received \(httpResponse)")
+            })
+
+        XCTAssertNotNil(remoteDataPublisher)
+        wait(for: [expectation], timeout: 5.0) <5>
+    }
+----
+
+<1> Expectation 设置为一个字符串，这样在发生失败时更容易调试。
+此字符串仅在测试失败时才能看到。
+我们在这里测试的代码是 `dataTaskPublisher` 从测试前就已定义好的预设的 URL 中取回数据。
+发布者通过将 <<reference#reference-sink,sink>> 订阅者连接到它开始触发请求。
+如果没有 expectation，代码仍将运行，但构建的测试运行结构将不会等到结果返回之后再去检查是否有任何意外。
+测试中的 expectation "暂停测试" 去等待响应，让操作符先发挥它们的作用。
+<2> 在这个例子中，测试期望可以成功完成并正常终止，因此在 `receiveCompletion` 闭包内调用 `expectation.fulfill()`，具体是接收到 `.finished` completion 后调用。
+<3> 由于我们不期望失败，如果我们收到 `.failure` completion，我们也明确地调用 `XCTFail()`。
+<4> 我们在 `receiveValue` 中还有一些其他断言。
+由于此发布者设置返回单个值然后终止，因此我们可以对收到的数据进行内联断言。
+如果我们收到多个值，那么我们可以收集这些值，并就事后收到的内容做出断言。
+<5> 此测试使用单个 expectation，但你可以包含多个独立的 expectation，去要求它们都被 `fulfill()`。
+它还规定此测试的最长运行时间为 5 秒。
+测试并不总是需要五秒钟，因为一旦收到 fulfill，它就会完成。
+如果出于某种原因，测试需要超过五秒钟的响应时间，XCTest 将报告测试失败。
+
+// force a page break - in HTML rendering is just a <HR>
+<<<
+'''

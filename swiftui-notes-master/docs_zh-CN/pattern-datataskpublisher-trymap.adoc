@@ -1,0 +1,156 @@
+[#patterns-datataskpublisher-trymap]
+== 使用 dataTaskPublisher 进行更严格的请求处理
+
+__目的__::
+
+* 当 URLSesion 进行连接时，它仅在远程服务器未响应时报告错误。
+你可能需要根据状态码将各种响应视为不同的错误。
+为此，你可以使用 tryMap 检查 http 响应并在管道中抛出错误。
+
+__参考__::
+
+* <<reference#reference-datataskpublisher,URLSession.dataTaskPublisher>>
+* <<reference#reference-trymap,tryMap>>
+* <<reference#reference-decode,decode>>
+* <<reference#reference-sink,sink>>
+* <<reference#reference-subscribe,subscribe>>
+* <<reference#reference-maperror,mapError>>
+
+__另请参阅__::
+
+* <<patterns#patterns-datataskpublisher-decode>>
+* <<patterns#patterns-oneshot-error-handling>>
+* <<patterns#patterns-retry>>
+
+
+__代码和解释__::
+
+要对 URL 响应中被认为是失败的操作进行更多控制，可以对 `dataTaskPublisher` 的元组响应使用 `tryMap` 操作符。
+由于 `dataTaskPublisher` 将响应数据和 `URLResponse` 都返回到了管道中，你可以立即检查响应，并在需要时抛出自己的错误。
+
+这方面的一个例子可能看起来像：
+
+[source, swift]
+----
+let myURL = URL(string: "https://postman-echo.com/time/valid?timestamp=2016-10-10")
+// checks the validity of a timestamp - this one returns {"valid":true}
+// matching the data structure returned from https://postman-echo.com/time/valid
+fileprivate struct PostmanEchoTimeStampCheckResponse: Decodable, Hashable {
+    let valid: Bool
+}
+enum TestFailureCondition: Error {
+    case invalidServerResponse
+}
+
+let remoteDataPublisher = URLSession.shared.dataTaskPublisher(for: myURL!)
+    .tryMap { data, response -> Data in <1>
+                guard let httpResponse = response as? HTTPURLResponse, <2>
+                    httpResponse.statusCode == 200 else { <3>
+                        throw TestFailureCondition.invalidServerResponse <4>
+                }
+                return data <5>
+    }
+    .decode(type: PostmanEchoTimeStampCheckResponse.self, decoder: JSONDecoder())
+
+let cancellableSink = remoteDataPublisher
+    .sink(receiveCompletion: { completion in
+            print(".sink() received the completion", String(describing: completion))
+            switch completion {
+                case .finished:
+                    break
+                case .failure(let anError):
+                    print("received error: ", anError)
+            }
+    }, receiveValue: { someValue in
+        print(".sink() received \(someValue)")
+    })
+----
+
+在 <<patterns#patterns-datataskpublisher-decode, 上个模式>> 中使用了 <<reference#reference-map,map>> 操作符， 这里我们使用 tryMap，这使我们能够根据返回的内容识别并在管道中抛出错误。
+
+<1> <<reference#reference-trymap,tryMap>> 仍旧获得元组 `(data: Data, response: URLResponse)`，并且在这里定义仅返回管道中的 Data 类型。
+<2> 在 `tryMap` 的闭包内，我们将响应转换为 `HTTPURLResponse` 并深入进去，包括查看特定的状态码。
+<3> 在这个例子中，我们希望将 200 状态码以外的**任何**响应视为失败。`HTTPURLResponse`.`statusCode` 是一种 Int 类型，因此你也可以使用 `httpResponse.statusCode > 300` 等逻辑。
+<4> 如果判断条件未满足，则会抛出我们选择的错误实例：在这个例子中，是 `invalidServerResponse`。
+<5> 如果没有出现错误，则我们只需传递 `Data` 以进行进一步处理。
+
+=== 标准化 dataTaskPublisher 返回的错误
+
+当在管道上触发错误时，不管错误发生在管道中的什么位置，都会发送 `.failure` 完成回调，并把错误封装在其中。
+
+此模式可以扩展来返回一个发布者，该发布者使用此通用模式可接受并处理任意数量的特定错误。
+在许多示例中，我们用默认值替换错误条件。
+如果我们想要返回一个发布者的函数，该发布者不会根据失败来选择将发生什么，则同样 <<reference#reference-trymap,tryMap>> 操作符可以与 <<reference#reference-maperror,mapError>> 一起使用来转换响应对象以及转换 URLError 错误类型。
+
+[source, swift]
+----
+enum APIError: Error, LocalizedError { <1>
+    case unknown, apiError(reason: String), parserError(reason: String), networkError(from: URLError)
+
+    var errorDescription: String? {
+        switch self {
+        case .unknown:
+            return "Unknown error"
+        case .apiError(let reason), .parserError(let reason):
+            return reason
+        case .networkError(let from): <2>
+            return from.localizedDescription
+        }
+    }
+}
+
+func fetch(url: URL) -> AnyPublisher<Data, APIError> {
+    let request = URLRequest(url: url)
+
+    return URLSession.DataTaskPublisher(request: request, session: .shared) <3>
+        .tryMap { data, response in <4>
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIError.unknown
+            }
+            if (httpResponse.statusCode == 401) {
+                throw APIError.apiError(reason: "Unauthorized");
+            }
+            if (httpResponse.statusCode == 403) {
+                throw APIError.apiError(reason: "Resource forbidden");
+            }
+            if (httpResponse.statusCode == 404) {
+                throw APIError.apiError(reason: "Resource not found");
+            }
+            if (405..<500 ~= httpResponse.statusCode) {
+                throw APIError.apiError(reason: "client error");
+            }
+            if (500..<600 ~= httpResponse.statusCode) {
+                throw APIError.apiError(reason: "server error");
+            }
+            return data
+        }
+        .mapError { error in <5>
+            // if it's our kind of error already, we can return it directly
+            if let error = error as? APIError {
+                return error
+            }
+            // if it is a TestExampleError, convert it into our new error type
+            if error is TestExampleError {
+                return APIError.parserError(reason: "Our example error")
+            }
+            // if it is a URLError, we can convert it into our more general error kind
+            if let urlerror = error as? URLError {
+                return APIError.networkError(from: urlerror)
+            }
+            // if all else fails, return the unknown error condition
+            return APIError.unknown
+        }
+        .eraseToAnyPublisher() <6>
+}
+----
+
+<1> `APIError` 是一个错误类型的枚举，我们在此示例中使用该枚举来列举可能发生的所有错误。
+<2> `.networkError` 是 `APIError` 的一个特定情况，当 <<reference#reference-datataskpublisher,URLSession.dataTaskPublisher>> 返回错误时我们将把错误转换为该类型。
+<3> 我们使用标准 dataTaskPublisher 开始生成此发布者。
+<4> 然后，我们将路由到 <<reference#reference-trymap,tryMap>> 操作符来检查响应，根据服务器响应创建特定的错误。
+<5> 最后，我们使用 <<reference#reference-maperror,mapError>> 将任何其他不可忽视的错误类型转换为通用的错误类型 `APIError`。
+
+
+// force a page break - in HTML rendering is just a <HR>
+<<<
+'''

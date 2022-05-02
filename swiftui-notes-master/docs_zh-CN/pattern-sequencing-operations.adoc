@@ -1,0 +1,198 @@
+[#patterns-sequencing-operations]
+== 有序的异步操作
+
+__目的__::
+
+* 使用 Combine 的管道来显式地对异步操作进行排序
+
+[TIP]
+====
+这类似于一个叫做 "promise chaining" 的概念。
+虽然你可以将 Combine 处理的和其行为一致，但它可能不能良好地替代对 promise 库的使用。
+主要区别在于，promise 库总是将每个 promise 作为单一结果处理，而 Combine 带来了可能需要处理许多值的复杂性。
+====
+
+__参考__::
+
+* <<reference#reference-future,Future>>
+* <<reference#reference-flatmap,flatMap>>
+* <<reference#reference-zip,zip>>
+* <<reference#reference-sink,sink>>
+
+__另请参阅__::
+
+* <<patterns#patterns-delegate-publisher-subject>>
+* 使用此代码的 ViewController 在 github 的项目中 https://github.com/heckj/swiftui-notes/blob/master/UIKit-Combine/AsyncCoordinatorViewController.swift[UIKit-Combine/AsyncCoordinatorViewController.swift].
+
+__代码和解释__::
+
+任何需要按特定顺序执行的异步（或同步）任务组都可以使用 Combine 管道进行协调管理。
+通过使用 <<reference#reference-future,Future>> 操作符，可以捕获完成异步请求的行为，序列操作符提供了这种协调功能的结构。
+
+通过将任何异步 API 请求与 <<reference#reference-future,Future>> 发布者进行封装，然后将其与 <<reference#reference-flatmap,flatMap>> 操作符链接在一起，你可以以特定顺序调用被封装的异步 API 请求。
+通过使用 <<reference#reference-future,Future>> 或其他发布者创建多个管道，使用 <<reference#reference-zip,zip>> 操作符将它们合并之后等待管道完成，通过这种方法可以创建多个并行的异步请求。
+
+如果你想强制一个 <<reference#reference-future,Future>> 发布者直到另一个发布者完成之后才被调用，你可以把 future 发布者创建在 <<reference#reference-flatmap,flatMap>> 的闭包中，这样它就会等待有值被传入 flatMap 操作符之后才会被创建。
+
+通过组合这些技术，可以创建任何并行或串行任务的结构。
+
+如果后面的任务需要较早任务的数据，这种协调异步请求的技术会特别有效。
+在这些情况下，所需的数据结果可以直接通过管道传输。
+
+此排序的示例如下。 
+在此示例中，按钮在完成时会高亮显示，按钮的排列顺序是特意用来显示操作顺序的。
+整个序列由单独的按钮操作触发，该操作还会重置所有按钮的状态，如果序列中有尚未完成的任务，则都将被取消。
+在此示例中，异步 API 请求会在随机的时间之后完成，作为例子来展示时序的工作原理。
+
+创建的工作流分步表示如下：
+
+* 步骤 1 先运行。
+* 步骤 2 有三个并行的任务，在步骤 1 完成之后运行。
+* 步骤 3 等步骤 2 的三个任务全部完成之后，再开始执行。
+* 步骤 4 在步骤 3 完成之后开始执行。
+
+此外，还有一个 activity indicator 被触发，以便在序列开始时开始动画，在第 4 步完成时停止。
+
+.https://github.com/heckj/swiftui-notes/blob/master/UIKit-Combine/AsyncCoordinatorViewController.swift[UIKit-Combine/AsyncCoordinatorViewController.swift]
+[source, swift]
+----
+
+import UIKit
+import Combine
+
+class AsyncCoordinatorViewController: UIViewController {
+
+    @IBOutlet weak var startButton: UIButton!
+
+    @IBOutlet weak var step1_button: UIButton!
+    @IBOutlet weak var step2_1_button: UIButton!
+    @IBOutlet weak var step2_2_button: UIButton!
+    @IBOutlet weak var step2_3_button: UIButton!
+    @IBOutlet weak var step3_button: UIButton!
+    @IBOutlet weak var step4_button: UIButton!
+    @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
+
+    var cancellable: AnyCancellable?
+    var coordinatedPipeline: AnyPublisher<Bool, Error>?
+
+    @IBAction func doit(_ sender: Any) {
+        runItAll()
+    }
+
+    func runItAll() {
+        if self.cancellable != nil { <1>
+            print("Cancelling existing run")
+            cancellable?.cancel()
+            self.activityIndicator.stopAnimating()
+        }
+        print("resetting all the steps")
+        self.resetAllSteps() <2>
+        // driving it by attaching it to .sink
+        self.activityIndicator.startAnimating() <3>
+        print("attaching a new sink to start things going")
+        self.cancellable = coordinatedPipeline? <4>
+            .print()
+            .sink(receiveCompletion: { completion in
+                print(".sink() received the completion: ", String(describing: completion))
+                self.activityIndicator.stopAnimating()
+            }, receiveValue: { value in
+                print(".sink() received value: ", value)
+            })
+    }
+    // MARK: - helper pieces that would normally be in other files
+
+    // this emulates an async API call with a completion callback
+    // it does nothing other than wait and ultimately return with a boolean value
+    func randomAsyncAPI(completion completionBlock: @escaping ((Bool, Error?) -> Void)) {
+        DispatchQueue.global(qos: .background).async {
+            sleep(.random(in: 1...4))
+            completionBlock(true, nil)
+        }
+    }
+
+    /// Creates and returns pipeline that uses a Future to wrap randomAsyncAPI
+    /// and then updates a UIButton to represent the completion of the async
+    /// work before returning a boolean True.
+    /// - Parameter button: button to be updated
+    func createFuturePublisher(button: UIButton) -> AnyPublisher<Bool, Error> { <5>
+        return Future<Bool, Error> { promise in
+            self.randomAsyncAPI() { (result, err) in
+                if let err = err {
+                    promise(.failure(err))
+                } else {
+                    promise(.success(result))
+                }
+            }
+        }
+        .receive(on: RunLoop.main)
+            // so that we can update UI elements to show the "completion"
+            // of this step
+        .map { inValue -> Bool in <6>
+            // intentionally side effecting here to show progress of pipeline
+            self.markStepDone(button: button)
+            return true
+        }
+        .eraseToAnyPublisher()
+    }
+
+    /// highlights a button and changes the background color to green
+    /// - Parameter button: reference to button being updated
+    func markStepDone(button: UIButton) {
+        button.backgroundColor = .systemGreen
+        button.isHighlighted = true
+    }
+
+    func resetAllSteps() {
+        for button in [self.step1_button, self.step2_1_button, self.step2_2_button, self.step2_3_button, self.step3_button, self.step4_button] {
+            button?.backgroundColor = .lightGray
+            button?.isHighlighted = false
+        }
+        self.activityIndicator.stopAnimating()
+    }
+
+    // MARK: - view setup
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        self.activityIndicator.stopAnimating()
+
+        // Do any additional setup after loading the view.
+
+        coordinatedPipeline = createFuturePublisher(button: self.step1_button) <7>
+            .flatMap { flatMapInValue -> AnyPublisher<Bool, Error> in
+            let step2_1 = self.createFuturePublisher(button: self.step2_1_button)
+            let step2_2 = self.createFuturePublisher(button: self.step2_2_button)
+            let step2_3 = self.createFuturePublisher(button: self.step2_3_button)
+            return Publishers.Zip3(step2_1, step2_2, step2_3)
+                .map { _ -> Bool in
+                    return true
+                }
+                .eraseToAnyPublisher()
+            }
+        .flatMap { _ in
+            return self.createFuturePublisher(button: self.step3_button)
+        }
+        .flatMap { _ in
+            return self.createFuturePublisher(button: self.step4_button)
+        }
+        .eraseToAnyPublisher()
+    }
+}
+----
+
+<1> `runItAll` 协调此工作流的进行，它从检查当前是否正在执行开始。
+如果是，它会在当前的订阅者上调用 `cancel()`。
+<2> `resetAllSteps` 通过遍历所有表示当前工作流状态的按钮，并将它们重置为灰色和未高亮以回到初始状态。
+它还验证 activity indicator 当前未处于动画中。
+<3> 然后我们开始执行请求，首先开启 activity indicator 的旋转动画。
+<4> 使用 <<reference#reference-sink,sink>> 创建订阅者并存储对工作流的引用。
+被订阅的发布者是在该函数外创建的，允许被多次复用。
+管道中的 <<reference#reference-print,print>> 操作符用于调试，在触发管道时在控制台显示输出。
+<5> 每个步骤都由 <<reference#reference-future,Future>> 发布者紧跟管道构建而成，然后立即由管道操作符切换到主线程，然后更新 UIButton 的背景色，以显示该步骤已完成。
+这封装在 `createFuturePublisher` 的调用中，使用 <<reference#reference-erasetoanypublisher,eraseToAnyPublisher>> 以简化返回的类型。
+<6> <<reference#reference-map,map>> 操作符用于创建并更新 UIButton，作为特定的效果以显示步骤已完成。
+<7> 创建整个管道及其串行和并行任务结构，是结合了对 `createFuturePublisher` 的调用以及对 <<reference#reference-flatmap,flatMap>> 和 <<reference#reference-zip,zip>> 操作符的使用共同完成的。
+
+// force a page break - in HTML rendering is just a <HR>
+<<<
+'''

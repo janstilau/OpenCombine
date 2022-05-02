@@ -1,0 +1,61 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test-adoc-generation:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    #- name: pwd
+    #  run: pwd
+    # result: /home/runner/work/swiftui-notes/swiftui-notes
+
+    - name: verify html generation with asciidoctor
+      run: docker run --rm -v $(pwd):/documents/ --name asciidoc-to-html heckj/docker-asciidoctor asciidoctor -v -t -D /documents/output -r ./docs/lib/google-analytics-docinfoprocessor.rb docs/using-combine-book.adoc
+      # results to appear in the directory 'output'
+
+  build:
+
+    runs-on: macos-11
+    #env:
+      # sets the version of Xcode to utilize within the VM for all steps
+      # DEVELOPER_DIR: /Applications/Xcode_13.app/Contents/Developer
+    steps:
+    - uses: actions/checkout@v2
+
+    # - name: docker version
+    #   run: docker -v
+
+    # - name: docker help
+    #   run: docker --help
+
+    - name: Show what's in Applications
+      run: ls -al /Applications
+
+    # - name: xcodebuild --help
+    #  run: xcodebuild --help
+
+    - name: xcodebuild --showsdks
+      run: xcodebuild -showsdks
+
+    # - name: xcodebuild -showBuildSettings
+    #   run: xcodebuild -showBuildSettings
+
+    # - name: xcodebuild -showTestPlans
+    #   run: xcodebuild -showTestPlans
+
+    - name: xcodebuild -list
+      run: xcodebuild -list
+
+    - name: Show available destinations
+      run: xcodebuild -scheme SwiftUI-Notes -showdestinations
+
+    - name: Run the Combine test suite
+      run: |
+        xcodebuild -scheme SwiftUI-Notes \
+        -configuration Debug \
+        -sdk iphonesimulator15.0 \
+        -destination 'platform=iOS Simulator,OS=15.0,name=iPhone 8' \
+        test -showBuildTimingSummary

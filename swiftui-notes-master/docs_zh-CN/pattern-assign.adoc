@@ -1,0 +1,40 @@
+[#patterns-assign-subscriber]
+== 使用 assign 创建一个订阅者
+
+__目的__::
+
+* 使用管道的结果来设置值，这个值通常是位于用户界面或控制组件上的属性，不过任何符合 KVO 的对象都可以提供该值。
+
+__参考__::
+
+* <<reference#reference-assign,assign>>
+* <<reference#reference-receive,receive>>
+
+__另请参阅__::
+
+* <<patterns#patterns-sink-subscriber>>
+
+__代码和解释__::
+
+Assign 是专门设计用于将来自发布者或管道的数据应用到属性的订阅者，每当它收到数据时都会更新该属性。
+与 sink 一样，它创建时激活并请求无限数据。
+Assign 要求将失败类型指定为 `<Never>`，因此，如果你的管道可能失败（例如使用 tryMap 等操作符），则需要在使用 `.assign` 之前 <<patterns#patterns-general-error-handling>>。
+
+.简单的 assign 例子
+[source, swift]
+----
+let cancellablePipeline = publishingSource <1>
+    .receive(on: RunLoop.main) <2>
+    .assign(to: \.isEnabled, on: yourButton) <3>
+
+cancellablePipeline.cancel() <4>
+----
+
+<1> `.assign` 通常在创建时链接到发布者，并且返回值是可取消的。
+<2> 如果 `.assign` 被用于更新用户界面的元素，则需要确保在主线程更新它。这个调用确保了订阅者是在主线程上接收数据的。
+<3> Assign 持有对使用 https://developer.apple.com/documentation/swift/referencewritablekeypath[key path] 更新的属性的引用，以及对正在更新的对象的引用。
+<4> 在任何时候，你都可以调用 `cancel()` 终止和使管道失效。通常，当把从管道中更新的对象（如 viewController）销毁时，我们会取消管道。
+
+// force a page break - in HTML rendering is just a <HR>
+<<<
+'''

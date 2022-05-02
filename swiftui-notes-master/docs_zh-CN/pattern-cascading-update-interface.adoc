@@ -1,0 +1,366 @@
+[#patterns-cascading-update-interface]
+== 级联多个 UI 更新，包括网络请求
+
+__目的__::
+
+* 由上游的订阅者触发多个 UI 元素更新
+
+__参考__::
+
+* 带有此代码的 ViewController 在 github 项目中，位于 https://github.com/heckj/swiftui-notes/blob/master/UIKit-Combine/GithubViewController.swift[UIKit-Combine/GithubViewController.swift]。
+你可以通过在 github 项目中运行 UIKit target 来查看此代码。
+* GithubAPI 在 github 项目中，位于 https://github.com/heckj/swiftui-notes/blob/master/UIKit-Combine/GithubAPI.swift[UIKit-Combine/GithubAPI.swift]
+
+* 发布者:
+<<reference#reference-published,@Published>>,
+<<reference#reference-datataskpublisher,URLSession.dataTaskPublisher>>,
+<<reference#reference-just,Just>>,
+<<reference#reference-empty,Empty>>
+* 操作符:
+<<reference#reference-decode,decode>>,
+<<reference#reference-catch,catch>>,
+<<reference#reference-map,map>>,
+<<reference#reference-trymap,tryMap>>,
+<<reference#reference-switchtolatest,switchToLatest>>,
+<<reference#reference-filter,filter>>,
+<<reference#reference-handleevents,handleEvents>>,
+<<reference#reference-subscribe,subscribe>>,
+<<reference#reference-receive,receive>>,
+<<reference#reference-throttle,throttle>>,
+<<reference#reference-removeduplicates,removeDuplicates>>
+* 订阅者:
+<<reference#reference-sink,sink>>,
+<<reference#reference-assign,assign>>
+
+__另请参阅__::
+
+* <<patterns#patterns-continual-error-handling>>
+* <<patterns#patterns-oneshot-error-handling>>
+* <<patterns#patterns-datataskpublisher-trymap>>
+
+__代码和解释__::
+
+以下提供的示例是扩展了 <<patterns#patterns-update-interface-userinput>> 例子中的发布者, 添加了额外的 Combine 管道，当有人与所提供的界面交互时以更新多个 UI 元素。
+
+此视图的模式从接受用户输入的文本框开始，紧接着是一系列操作事件流：
+
+1. 使用一个 IBAction 来更新 <<reference#reference-published,@Published>> `username` 变量。
+2. 我们有一个订阅者（`usernameSubscriber`）连接到 `$username` 发布者，该发布者发送值的更新，并尝试取回 GitHub user。
+结果返回的变量 `githubUserData`（也被 <<reference#reference-published,@Published>> 标记）是一个 GitHub 用户对象的列表。
+尽管我们只期望在这里获得单个值，但我们使用列表是因为我们可以方便地在失败情况下返回空列表：无法访问 API 或用户名未在 GitHub 注册。
+3. 我们有 `passthroughSubject` `apiNetworkActivitySubscriber` 来反映 GithubAPI 对象何时开始或完成网络请求。
+4. 我们有另一个订阅者 `repositoryCountSubscriber` 连接到 `$githubUserData` 发布者，该发布者从 github 用户数据对象中提取出仓库个数，并将其分配给要显示的文本字段。
+5. 我们有一个最终的订阅者 `avatarViewSubscriber` 连接到 `$githubUserData`，尝试取回与用户的头像相关的图像进行显示。
+
+[TIP]
+====
+返回空列表很有用，因为当提供无效的用户名时，我们希望明确地移除以前显示的任何头像。
+为此，我们需要管道始终有值可以流动，以便触发进一步的管道和相关的 UI 界面更新。
+如果我们使用可选的 `String?` 而不是 `String[]` 数组，可选的字符串不会在值是 nil 时触发某些管道，并且我们始终希望管道返回一个结果值（即使是空值）。
+====
+
+以 <<reference#reference-assign,assign>> 和 <<reference#reference-sink,sink>> 创建的订阅者被存储在 ViewController 实例的 `AnyCancellable` 变量中。
+由于它们是在类实例中定义的，Swift 编译器创建的 deinitializers 会在类被销毁时，取消并清理发布者。
+
+[NOTE]
+====
+许多喜欢 RxSwift 的开发者使用的是 "CancelBag" 对象来存储可取消的引用，并在销毁时取消管道。
+可以在这儿看到一个这样的例子：https://github.com/tailec/CombineExamples/blob/master/CombineExamples/Shared/CancellableBag.swift.
+这与 Combine 中在 `AnyCancellable` 类型上调用 `store` 函数是相似的，它允许你将订阅者的引用保存在一个集合中，例如 `Set<AnyCancellable>`。
+====
+
+管道使用 <<reference#reference-subscribe,subscribe>> 操作符明确配置为在后台队列中工作。
+如果没有该额外的配置，管道将被在主线程调用并执行，因为它们是从 UI 线程上调用的，这可能会导致用户界面响应速度明显减慢。
+同样，当管道的结果分配给或更新 UI 元素时，<<reference#reference-receive,receive>> 操作符用于将该工作转移回主线程。
+
+[WARNING]
+====
+为了让 UI 在 <<reference#reference-published,@Published>> 属性发送的更改事件中不断更新，我们希望确保任何配置的管道都具有 <Never> 的失败类型。
+这是 <<reference#reference-assign,assign>> 操作符所必需的。
+当使用 <<reference#reference-sink,sink>> 操作符时，它也是一个潜在的 bug 来源。
+如果来自 <<reference#reference-published,@Published>> 变量的管道以一个接受 Error 失败类型的 <<reference#reference-sink,sink>> 结束，如果发生错误，sink 将给管道发送终止信号。
+这将停止管道的任何进一步处理，即使有变量仍然被更新。
+====
+
+.https://github.com/heckj/swiftui-notes/blob/master/UIKit-Combine/GithubAPI.swift[UIKit-Combine/GithubAPI.swift]
+[source, swift]
+----
+import Foundation
+import Combine
+
+enum APIFailureCondition: Error {
+    case invalidServerResponse
+}
+
+struct GithubAPIUser: Decodable { <1>
+    // A very *small* subset of the content available about
+    //  a github API user for example:
+    // https://api.github.com/users/heckj
+    let login: String
+    let public_repos: Int
+    let avatar_url: String
+}
+
+struct GithubAPI { <2>
+    // NOTE(heckj): I've also seen this kind of API access
+    // object set up with with a class and static methods on the class.
+    // I don't know that there's a specific benefit to making this a value
+    // type/struct with a function on it.
+
+    /// externally accessible publisher that indicates that network activity is happening in the API proxy
+    static let networkActivityPublisher = PassthroughSubject<Bool, Never>() <3>
+
+    /// creates a one-shot publisher that provides a GithubAPI User
+    /// object as the end result. This method was specifically designed to
+    /// return a list of 1 object, as opposed to the object itself to make
+    /// it easier to distinguish a "no user" result (empty list)
+    /// representation that could be dealt with more easily in a Combine
+    /// pipeline than an optional value. The expected return type is a
+    /// Publisher that returns either an empty list, or a list of one
+    /// GithubAPUser, with a failure return type of Never, so it's
+    /// suitable for recurring pipeline updates working with a @Published
+    /// data source.
+    /// - Parameter username: username to be retrieved from the Github API
+    static func retrieveGithubUser(username: String) -> AnyPublisher<[GithubAPIUser], Never> { <4>
+
+        if username.count < 3 { <5>
+            return Just([]).eraseToAnyPublisher()
+        }
+        let assembledURL = String("https://api.github.com/users/\(username)")
+        let publisher = URLSession.shared.dataTaskPublisher(for: URL(string: assembledURL)!)
+            .handleEvents(receiveSubscription: { _ in <6>
+                networkActivityPublisher.send(true)
+            }, receiveCompletion: { _ in
+                networkActivityPublisher.send(false)
+            }, receiveCancel: {
+                networkActivityPublisher.send(false)
+            })
+            .tryMap { data, response -> Data in <7>
+                guard let httpResponse = response as? HTTPURLResponse,
+                    httpResponse.statusCode == 200 else {
+                        throw APIFailureCondition.invalidServerResponse
+                }
+                return data
+            }
+            .decode(type: GithubAPIUser.self, decoder: JSONDecoder()) <8>
+            .map {
+                [$0] <9>
+            }
+            .catch { err in <10>
+                // When I originally wrote this method, I was returning
+                // a GithubAPIUser? optional.
+                // I ended up converting this to return an empty
+                // list as the "error output replacement" so that I could
+                // represent that the current value requested didn't *have* a
+                // correct github API response.
+                return Just([])
+            }
+            .eraseToAnyPublisher() <11>
+            return publisher
+    }
+}
+----
+
+<1> 此处创建的 decodable 结构体是从 GitHub API 返回的数据的一部分。
+在由 <<reference#reference-decode,decode>> 操作符处理时，任何未在结构体中定义的字段都将被简单地忽略。
+<2> 与 GitHub API 交互的代码被放在一个独立的结构体中，我习惯于将其放在一个单独的文件中。
+API 结构体中的函数返回一个发布者，然后与 ViewController 中的其他管道进行混合合并。
+<3> 该结构体还使用 <<reference#reference-passthroughsubject,passthroughSubject>> 暴露了一个发布者，使用布尔值以在发送网络请求时反映其状态。
+<4> 我最开始创建了一个管道以返回一个可选的 GithubAPIUser 实例，但发现没有一种方便的方法来在失败条件下传递 “nil” 或空对象。
+然后我修改了代码以返回一个列表，即使只需要一个实例，它却能更方便地表示一个“空”对象。
+这对于想要在对 GithubAPIUser 对象不再存在后，在后续管道中做出响应以擦除现有值的情况很重要 —— 这时可以删除 repositoryCount 和用户头像的数据。
+<5> 这里的逻辑只是为了防止无关的网络请求，如果请求的用户名少于 3 个字符，则返回空结果。
+<6> <<reference#reference-handleevents,handleEvents>> 操作符是我们触发网络请求发布者更新的方式。
+我们定义了在订阅和终结（完成和取消）时触发的闭包，它们会在 <<reference#reference-passthroughsubject,passthroughSubject>> 上调用 `send()`。
+这是我们如何作为单独的发布者提供有关管道操作的元数据的示例。
+<7> <<reference#reference-trymap,tryMap>> 添加了对来自 github 的 API 响应的额外检查，以将来自 API 的不是有效用户实例的正确响应转换为管道失败条件。
+<8> <<reference#reference-decode,decode>> 从响应中获取数据并将其解码为 `GithubAPIUser` 的单个实例。
+<9> <<reference#reference-map,map>> 用于获取单个实例并将其转换为单元素的列表，将类型更改为 `GithubAPIUser` 的列表：`[GithubAPIUser]`。
+<10> <<reference#reference-catch,catch>> 运算符捕获此管道中的错误条件，并在失败时返回一个空列表，同时还将失败类型转换为 `Never`。
+<11> <<reference#reference-erasetoanypublisher,eraseToAnyPublisher>> 抹去链式操作符的复杂类型，并将整个管道暴露为 `AnyPublisher` 的一个实例。
+
+.https://github.com/heckj/swiftui-notes/blob/master/UIKit-Combine/GithubViewController.swift[UIKit-Combine/GithubViewController.swift]
+[source, swift]
+----
+
+import UIKit
+import Combine
+
+class ViewController: UIViewController {
+
+    @IBOutlet weak var github_id_entry: UITextField!
+    @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
+    @IBOutlet weak var repositoryCountLabel: UILabel!
+    @IBOutlet weak var githubAvatarImageView: UIImageView!
+
+    var repositoryCountSubscriber: AnyCancellable?
+    var avatarViewSubscriber: AnyCancellable?
+    var usernameSubscriber: AnyCancellable?
+    var headingSubscriber: AnyCancellable?
+    var apiNetworkActivitySubscriber: AnyCancellable?
+
+    // username from the github_id_entry field, updated via IBAction
+    @Published var username: String = ""
+
+    // github user retrieved from the API publisher. As it's updated, it
+    // is "wired" to update UI elements
+    @Published private var githubUserData: [GithubAPIUser] = []
+
+    // publisher reference for this is $username, of type <String, Never>
+    var myBackgroundQueue: DispatchQueue = DispatchQueue(label: "viewControllerBackgroundQueue")
+    let coreLocationProxy = LocationHeadingProxy()
+
+    // MARK - Actions
+
+    @IBAction func githubIdChanged(_ sender: UITextField) {
+        username = sender.text ?? ""
+        print("Set username to ", username)
+    }
+
+    // MARK - lifecycle methods
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // Do any additional setup after loading the view.
+
+        let apiActivitySub = GithubAPI.networkActivityPublisher <1>
+        .receive(on: RunLoop.main)
+            .sink { doingSomethingNow in
+                if (doingSomethingNow) {
+                    self.activityIndicator.startAnimating()
+                } else {
+                    self.activityIndicator.stopAnimating()
+                }
+        }
+        apiNetworkActivitySubscriber = AnyCancellable(apiActivitySub)
+
+        usernameSubscriber = $username <2>
+            .throttle(for: 0.5, scheduler: myBackgroundQueue, latest: true)
+            // ^^ scheduler myBackGroundQueue publishes resulting elements
+            // into that queue, resulting on this processing moving off the
+            // main runloop.
+            .removeDuplicates()
+            .print("username pipeline: ") // debugging output for pipeline
+            .map { username -> AnyPublisher<[GithubAPIUser], Never> in
+                return GithubAPI.retrieveGithubUser(username: username)
+            }
+            // ^^ type returned in the pipeline is a Publisher, so we use
+            // switchToLatest to flatten the values out of that
+            // pipeline to return down the chain, rather than returning a
+            // publisher down the pipeline.
+            .switchToLatest()
+            // using a sink to get the results from the API search lets us
+            // get not only the user, but also any errors attempting to get it.
+            .receive(on: RunLoop.main)
+            .assign(to: \.githubUserData, on: self)
+
+        // using .assign() on the other hand (which returns an
+        // AnyCancellable) *DOES* require a Failure type of <Never>
+        repositoryCountSubscriber = $githubUserData <3>
+            .print("github user data: ")
+            .map { userData -> String in
+                if let firstUser = userData.first {
+                    return String(firstUser.public_repos)
+                }
+                return "unknown"
+            }
+            .receive(on: RunLoop.main)
+            .assign(to: \.text, on: repositoryCountLabel)
+
+        let avatarViewSub = $githubUserData <4>
+            .map { userData -> AnyPublisher<UIImage, Never> in
+                guard let firstUser = userData.first else {
+                    // my placeholder data being returned below is an empty
+                    // UIImage() instance, which simply clears the display.
+                    // Your use case may be better served with an explicit
+                    // placeholder image in the event of this error condition.
+                    return Just(UIImage()).eraseToAnyPublisher()
+                }
+                return URLSession.shared.dataTaskPublisher(for: URL(string: firstUser.avatar_url)!)
+                    // ^^ this hands back (Data, response) objects
+                    .handleEvents(receiveSubscription: { _ in
+                        DispatchQueue.main.async {
+                            self.activityIndicator.startAnimating()
+                        }
+                    }, receiveCompletion: { _ in
+                        DispatchQueue.main.async {
+                            self.activityIndicator.stopAnimating()
+                        }
+                    }, receiveCancel: {
+                        DispatchQueue.main.async {
+                            self.activityIndicator.stopAnimating()
+                        }
+                    })
+                    .receive(on: self.myBackgroundQueue)
+                    // ^^ do this work on a background Queue so we don't impact
+                    // UI responsiveness
+                    .map { $0.data }
+                    // ^^ pare down to just the Data object
+                    .map { UIImage(data: $0)!}
+                    // ^^ convert Data into a UIImage with its initializer
+                    .catch { err in
+                        return Just(UIImage())
+                    }
+                    // ^^ deal the failure scenario and return my "replacement"
+                    // image for when an avatar image either isn't available or
+                    // fails somewhere in the pipeline here.
+                    .eraseToAnyPublisher()
+                    // ^^ match the return type here to the return type defined
+                    // in the .map() wrapping this because otherwise the return
+                    // type would be terribly complex nested set of generics.
+            }
+            .switchToLatest()
+            // ^^ Take the returned publisher that's been passed down the chain
+            // and "subscribe it out" to the value within in, and then pass
+            // that further down.
+            .receive(on: RunLoop.main)
+            // ^^ and then switch to receive and process the data on the main
+            // queue since we're messing with the UI
+            .map { image -> UIImage? in
+                image
+            }
+            // ^^ this converts from the type UIImage to the type UIImage?
+            // which is key to making it work correctly with the .assign()
+            // operator, which must map the type *exactly*
+            .assign(to: \.image, on: self.githubAvatarImageView)
+
+        // convert the .sink to an `AnyCancellable` object that we have
+        // referenced from the implied initializers
+        avatarViewSubscriber = AnyCancellable(avatarViewSub)
+
+        // KVO publisher of UIKit interface element
+        let _ = repositoryCountLabel.publisher(for: \.text) <5>
+            .sink { someValue in
+                print("repositoryCountLabel Updated to \(String(describing: someValue))")
+        }
+    }
+
+}
+----
+<1> 我们向我们之前的 controller 添加一个订阅者，它将来自 GithubAPI 对象的活跃状态的通知连接到我们的 activityIndicator。
+<2> 从 IBAction 更新用户名的地方（来自我们之前的示例 <<patterns#patterns-update-interface-userinput>>）我们让订阅者发出网络请求并将结果放入一个我们的 ViewController 的新变量中（还是 <<reference#reference-published,@Published>>）。
+<3> 第一个订阅者连接在发布者 `$githubUserData` 上。
+此管道提取用户仓库的个数并更新到 UILabel 实例上。
+当列表为空时，管道中间有一些逻辑来返回字符串 “unknown”。
+<4> 第二个订阅者也连接到发布者 `$githubUserData`。
+这会触发网络请求以获取 github 头像的图像数据。
+这是一个更复杂的管道，从 `githubUser` 中提取数据，组装一个 URL，然后请求它。
+我们也使用 <<reference#reference-handleevents,handleEvents>> 操作符来触发对我们视图中的 activityIndi​​cator 的更新。
+我们使用 <<reference#reference-receive,receive>> 在后台队列上发出请求，然后将结果传递回主线程以更新 UI 元素。
+<<reference#reference-catch,catch>> 和失败处理在失败时返回一个空的 `UIImage` 实例。
+<5> 最终订阅者连接到 UILabel 自身。
+任何来自 Foundation 的 Key-Value Observable 对象都可以产生一个发布者。
+在此示例中，我们附加了一个发布者，该发布者触发 UI 元素已更新的打印语句。
+
+[NOTE]
+====
+虽然我们可以在更新 UI 元素时简单地将管道连接到它们，但这使得和实际的 UI 元素本身耦合更紧密。
+虽然简单而直接，但创建明确的状态，以及分别对用户行为和数据做出更新是一个好的建议，这更利于调试和理解。
+在上面的示例中，我们使用两个 <<reference#reference-published,@Published>> 属性来保存与当前视图关联的状态。
+其中一个由 `IBAction` 更新，第二个使用 Combine 发布者管道以声明的方式更新。
+所有其他的 UI 元素都依赖这些属性的发布者更新时进行更新。
+====
+
+// force a page break - in HTML rendering is just a <HR>
+<<<
+'''

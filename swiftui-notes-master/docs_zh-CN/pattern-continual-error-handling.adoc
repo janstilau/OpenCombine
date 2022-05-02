@@ -1,0 +1,62 @@
+[#patterns-continual-error-handling]
+== 使用 flatMap 和 catch 在不取消管道的情况下处理错误
+
+__目的__::
+
+* `flatMap` 操作符可以与 `catch` 一起使用，以持续处理新发布的值上的错误。
+
+__参考__::
+
+* <<reference#reference-flatmap,flatMap>>
+* <<reference#reference-just,Just>>
+* <<reference#reference-catch,catch>>
+
+__另请参阅__::
+
+* <<patterns#patterns-oneshot-error-handling>>
+* <<patterns#patterns-retry>>
+
+__代码和解释__::
+
+`flatMap` 是用于处理持续事件流中错误的操作符。
+
+你提供一个闭包给 `flatMap`，该闭包可以获取所传入的值，并创建一个一次性的发布者，完成可能失败的工作。
+这方面的一个例子是从网络请求数据，然后将其解码。
+你可以引入一个 <<reference#reference-catch,catch>> 操作符，以捕获任何错误并提供适当的值。
+
+当你想要保持对上游发布者的更新时，这是一个完美的机制，因为它创建一次性的发布者或短管道，发送一个单一的值，然后完成每一个传入的值。
+所创建的一次性发布者的完成事件在 flatMap 中终止，并且不会传递给下游订阅者。
+
+一个使用 `dataTaskPublisher` 的这样的例子:
+
+[source, swift]
+----
+let remoteDataPublisher = Just(self.testURL!) <1>
+    .flatMap { url in <2>
+        URLSession.shared.dataTaskPublisher(for: url) <3>
+        .tryMap { data, response -> Data in <4>
+            guard let httpResponse = response as? HTTPURLResponse,
+                httpResponse.statusCode == 200 else {
+                    throw TestFailureCondition.invalidServerResponse
+            }
+            return data
+        }
+        .decode(type: PostmanEchoTimeStampCheckResponse.self, decoder: JSONDecoder()) <5>
+        .catch {_ in <6>
+            return Just(PostmanEchoTimeStampCheckResponse(valid: false))
+        }
+    }
+    .eraseToAnyPublisher()
+----
+
+<1> `Just` 以传入一个 URL 作为示例启动此发布者。
+<2> `flatMap` 以 URL 作为输入，闭包继续创建一次性发布者管道。
+<3> `dataTaskPublisher` 使用输入的 url 发出请求。
+<4> 输出的结果（一个 `(Data, URLResponse)` 元组）流入 `tryMap` 以解析其他错误。
+<5> `decode` 尝试将返回的数据转换为本地定义的类型。
+<6> 如果其中任何一个失败，`catch` 将把错误转换为一个默认的值。
+在这个例子中，是具有预设好 `valid = false` 属性的对象。
+
+// force a page break - in HTML rendering is just a <HR>
+<<<
+'''

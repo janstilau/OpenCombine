@@ -1,0 +1,73 @@
+[#patterns-future]
+== 用 Future 来封装异步请求以创建一次性的发布者
+
+__目的__::
+
+* 使用 `Future` 将异步请求转换为发布者，以便在 Combine 管道中使用返回结果。
+
+__参考__::
+
+* <<reference#reference-future,Future>>
+
+__另请参阅__::
+
+* <<patterns#patterns-delegate-publisher-subject>>
+
+__代码和解释__::
+
+[source, swift]
+----
+import Contacts
+let futureAsyncPublisher = Future<Bool, Error> { promise in <1>
+    CNContactStore().requestAccess(for: .contacts) { grantedAccess, err in <2>
+        // err is an optional
+        if let err = err { <3>
+            return promise(.failure(err))
+        }
+        return promise(.success(grantedAccess)) <4>
+    }
+}.eraseToAnyPublisher()
+----
+
+<1> `Future` 本身由你定义返回类型，并接受一个闭包。
+它给出一个与类型描述相匹配的 `Result` 对象，你可以与之交互。
+<2> 只要传入的闭包符合类型要求，任何异步的 API 你都可以调用。
+<3> 在异步 API 完成的回调中，由你决定什么是失败还是成功。
+对 `promise(.failure(<FailureType>))` 的调用返回一个失败的结果。
+<4> 或者调用 `promise(.success(<OutputType>))` 返回一个值。
+
+[NOTE]
+====
+<<reference#reference-future,Future>> 在创建时立即发起其中异步 API 的调用，*而不是* 当它收到订阅需求时。
+这可能不是你想要或需要的行为。
+如果你希望在订阅者请求数据时再发起调用，你可能需要用 <<reference#reference-deferred,Deferred>> 来包装 Future。
+====
+
+如果您想返回一个已经被解析的 promise 作为 `Future` 发布者，你可以在闭包中立即返回你想要的结果。
+
+以下示例将单个值 `true` 返回表示成功。
+你同样可以简单地返回 `false`，发布者仍然会将其作为一个成功的 promise。
+
+[source, swift]
+----
+let resolvedSuccessAsPublisher = Future<Bool, Error> { promise in
+    promise(.success(true))
+}.eraseToAnyPublisher()
+----
+
+一个返回 `Future` 发布者的例子，它立即将 promise 解析为错误。
+
+[source, swift]
+----
+enum ExampleFailure: Error {
+    case oneCase
+}
+
+let resolvedFailureAsPublisher = Future<Bool, Error> { promise in
+    promise(.failure(ExampleFailure.oneCase))
+}.eraseToAnyPublisher()
+----
+
+// force a page break - in HTML rendering is just a <HR>
+<<<
+'''

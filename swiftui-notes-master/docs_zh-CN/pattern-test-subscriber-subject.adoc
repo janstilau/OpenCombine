@@ -1,0 +1,138 @@
+[#patterns-testing-subscriber]
+== 使用 PassthroughSubject 测试订阅者
+
+__目的__::
+
+* 为了测试订阅者或包含订阅者的代码，我们可以使用 PassthroughSubject 模拟发布源，明确地控制哪些数据被发送和何时发送。
+
+__参考__::
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/EncodeDecodeTests.swift[UsingCombineTests/EncodeDecodeTests.swift]
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/FilterPublisherTests.swift[UsingCombineTests/FilterPublisherTests.swift]
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/FuturePublisherTests.swift[UsingCombineTests/FuturePublisherTests.swift]
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/RetryPublisherTests.swift[UsingCombineTests/RetryPublisherTests.swift]
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/SinkSubscriberTests.swift[UsingCombineTests/SinkSubscriberTests.swift]
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/SwitchAndFlatMapPublisherTests.swift[UsingCombineTests/SwitchAndFlatMapPublisherTests.swift]
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/DebounceAndRemoveDuplicatesPublisherTests.swift[UsingCombineTests/DebounceAndRemoveDuplicatesPublisherTests.swift]
+
+__另请参阅__::
+
+* <<patterns#patterns-testing-publisher>>
+* <<reference#reference-passthroughsubject,passthroughSubject>>
+* <<patterns#patterns-testing-subscriber-scheduled>>
+* <<patterns#patterns-testable-publisher-subscriber>>
+
+__代码和解释__::
+
+当你单独测试订阅者时，你可以通过使用 <<reference#reference-passthroughsubject,passthroughSubject>> 模拟发布者以及使用相关的 `.send()` 方法触发更新来更精细的控制测试。
+
+此模式依赖于订阅者在构建时设置发布者-订阅者生命周期的初始部分，并让代码保持等待直到提供数据。
+使用 `PassthroughSubject`，发送数据以触发管道和订阅者闭包，或跟踪可以被验证的状态更改，即可控制测试代码本身。
+
+当你测试订阅者对失败的反应时，这种测试模式也非常有效，否则可能会终止订阅。
+
+使用这种测试构建方法的一般模式是：
+
+. 设置你的 subscriber 和任何你想包含在测试中影响它的管道。
+. 在测试中创建一个 `PassthroughSubject`，构造合适的输出类型和失败类型以与订阅者匹配。
+. 为任何初始值或先决条件设置断言。
+. 通过 subject 发送数据。
+. 测试发送数据的结果 —— 直接测试数据或断言预期的状态更改。
+. 如果需要，发送其他数据。
+. 测试状态或其他变化的进一步演变。
+
+此模式的示例如下：
+
+.https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/SinkSubscriberTests.swift#L44[UsingCombineTests/SinkSubscriberTests.swift - testSinkReceiveDataThenError]
+[source, swift]
+----
+func testSinkReceiveDataThenError() {
+
+    // setup - preconditions <1>
+    let expectedValues = ["firstStringValue", "secondStringValue"]
+    enum TestFailureCondition: Error {
+        case anErrorExample
+    }
+    var countValuesReceived = 0
+    var countCompletionsReceived = 0
+
+    // setup
+    let simplePublisher = PassthroughSubject<String, Error>() <2>
+
+    let _ = simplePublisher <3>
+        .sink(receiveCompletion: { completion in
+            countCompletionsReceived += 1
+            switch completion { <4>
+            case .finished:
+                print(".sink() received the completion:", String(describing: completion))
+                // no associated data, but you can react to knowing the
+                // request has been completed
+                XCTFail("We should never receive the completion, the error should happen first")
+                break
+            case .failure(let anError):
+                // do what you want with the error details, presenting,
+                // logging, or hiding as appropriate
+                print("received the error: ", anError)
+                XCTAssertEqual(anError.localizedDescription,
+                               TestFailureCondition.anErrorExample.localizedDescription) <5>
+                break
+            }
+        }, receiveValue: { someValue in <6>
+            // do what you want with the resulting value passed down
+            // be aware that depending on the data type being returned,
+            // you may get this closure invoked multiple times.
+            XCTAssertNotNil(someValue)
+            XCTAssertTrue(expectedValues.contains(someValue))
+            countValuesReceived += 1
+            print(".sink() received \(someValue)")
+        })
+
+    // validate
+    XCTAssertEqual(countValuesReceived, 0) <7>
+    XCTAssertEqual(countCompletionsReceived, 0)
+
+    simplePublisher.send("firstStringValue") <8>
+    XCTAssertEqual(countValuesReceived, 1)
+    XCTAssertEqual(countCompletionsReceived, 0)
+
+    simplePublisher.send("secondStringValue")
+    XCTAssertEqual(countValuesReceived, 2)
+    XCTAssertEqual(countCompletionsReceived, 0)
+
+    simplePublisher.send(completion: Subscribers.Completion.failure(TestFailureCondition.anErrorExample))  <9>
+    XCTAssertEqual(countValuesReceived, 2)
+    XCTAssertEqual(countCompletionsReceived, 1)
+
+    // this data will never be seen by anything in the pipeline above because
+    // we have already sent a completion
+    simplePublisher.send(completion: Subscribers.Completion.finished) <10>
+    XCTAssertEqual(countValuesReceived, 2)
+    XCTAssertEqual(countCompletionsReceived, 1)
+}
+----
+
+<1> 此测试设置了一些变量，以便在测试执行期间捕获和修改它们，用于验证 sink 代码的执行时间和工作方式。
+此外，我们在此处定义了一个错误，以便在我们的测试代码中使用它来验证失败的情况。
+<2> 此代码设置为使用 <<reference#reference-passthroughsubject,passthroughSubject>> 来驱动测试，但我们感兴趣的测试代码是订阅者。
+<3> 该订阅者被配置在测试下（在这儿是一个标准的 <<reference#reference-sink,sink>>）。
+我们配置了在接收到数据和 completion 时会触发的代码。
+<4> 在接收到 completion 时，我们对其调用 switch，添加了一个断言，如果 finish 被调用了，将不通过测试，因为我们期望只会生成 `.failure` completion。
+<5> Swift 中的测试错误是否相等没那么容易，但如果错误是你正在控制的代码，有时你可以使用 `localizedDescription` 作为测试收到的错误类型的便捷方式。
+<6> `receiveValue` 闭包在考虑如何对收到的值进行断言时更为复杂。
+由于我们在此测试过程中会收到多个值，我们有一些额外的逻辑来检查值是否在我们发送的集合内。
+与 completion 的处理逻辑一样，我们还是增加测试特定变量，我们将在以后断言这些变量以验证状态和操作顺序。
+<7> 在我们发送任何数据以仔细检查我们的假设之前，我们先验证计数变量。
+<8> 在测试中，`send()` 触发了操作，之后我们就可以立即通过验证我们更新的测试变量来验证所产生的效果了。
+在你自己的代码中，你可能无法（或不想要）修改你的订阅者，但你可能能够向对象提供私有/可测试的属性或途径，以类似的方式验证它们。
+<9> 我们还使用 `send()` 发送一个 completion，在这个例子中是一个失败的 completion。
+<10> 最后的 `send()` 验证刚刚发生的失败事件 —— 当前发送的 finished completion 应该没有被处理，并且应该没有后续的状态更新再发生。
+
+// force a page break - in HTML rendering is just a <HR>
+<<<
+'''

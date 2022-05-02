@@ -1,0 +1,65 @@
+[#patterns-sink-subscriber]
+== 使用 sink 创建一个订阅者
+
+__目的__::
+
+* 要接收来自发布者或管道生成的输出以及错误或者完成消息，你可以使用 <<reference#reference-sink,sink>> 创建一个订阅者。
+
+__参考__::
+
+* <<reference#reference-sink,sink>>
+
+__另请参阅__::
+
+* <<patterns#patterns-assign-subscriber>>
+* <<patterns#patterns-testing-publisher>>
+* <<patterns#patterns-testing-subscriber-scheduled>>
+
+__代码和解释__::
+
+Sink 创建了一个通用订阅者来捕获或响应来自 Combine 管道的数据，同时支持取消和 <<coreconcepts#coreconcepts-lifecycle>>。
+
+.简单的 sink 例子
+[source, swift]
+----
+let cancellablePipeline = publishingSource.sink { someValue in <1>
+    // do what you want with the resulting value passed down
+    // be aware that depending on the publisher, this closure
+    // may be invoked multiple times.
+    print(".sink() received \(someValue)")
+})
+----
+<1> 简单版本的 sink 是非常简洁的，跟了一个尾随闭包来接收从管道发送来的数据。
+
+.带有完成事件和数据的 sink
+[source, swift]
+----
+let cancellablePipeline = publishingSource.sink(receiveCompletion: { completion in <1>
+    switch completion {
+    case .finished:
+        // no associated data, but you can react to knowing the
+        // request has been completed
+        break
+    case .failure(let anError):
+        // do what you want with the error details, presenting,
+        // logging, or hiding as appropriate
+        print("received the error: ", anError)
+        break
+    }
+}, receiveValue: { someValue in
+    // do what you want with the resulting value passed down
+    // be aware that depending on the publisher, this closure
+    // may be invoked multiple times.
+    print(".sink() received \(someValue)")
+})
+
+cancellablePipeline.cancel() <2>
+----
+
+<1> Sinks 是通过发布者或管道中的代码链创建的，并为管道提供终点。
+当 sink 在发布者创建或调用时，它通过 `subscribe` 方法隐式地开始了 <<coreconcepts#coreconcepts-lifecycle>>，并请求无限制的数据。
+<2> Sinks 是可取消的订阅者。在任何时候，你可以使用 sink 末端对其的引用，并在上面调用 `.cancel()` 来使管道失效并关闭管道。
+
+// force a page break - in HTML rendering is just a <HR>
+<<<
+'''

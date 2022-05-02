@@ -1,0 +1,97 @@
+[#patterns-testable-publisher-subscriber]
+== 使用 EntwineTest 创建可测试的发布器和订阅者
+
+__目的__::
+
+* 当你想要测试的是管道的时序时，用于测试管道或订阅者。
+
+__参考__::
+
+* https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/EntwineTestExampleTests.swift[UsingCombineTests/EntwineTestExampleTests.swift]
+
+__另请参阅__::
+
+* <<patterns#patterns-testing-publisher>>
+* <<patterns#patterns-testing-subscriber>>
+* <<patterns#patterns-testing-subscriber-scheduled>>
+* <<reference#reference-passthroughsubject,passthroughSubject>>
+
+__代码和解释__::
+
+EntwineTest 库可在 gitHub https://github.com/tcldr/Entwine.git 找到，为使管道可测试提供了一些额外的选择。
+除了虚拟时间调度器外，EntwineTest 还有一个 `TestablePublisher` 和 `TestableSubscriber`。
+这些与虚拟时间调度器协调工作，允许你指定发布者生成数据的时间，并验证订阅者收到的数据。
+
+[WARNING]
+====
+截至 Xcode 11.2，SwiftPM 存在影响使用 Entwine 作为测试库的 bug。
+详细信息可在 Swift 的开源 bug 报告中找到 https://bugs.swift.org/plugins/servlet/mobile#issue/SR-11564[SR-11564]。
+
+如果使用 Xcode 11.2，你可能需要应用该解决方法，将项目设置修改为 `DEAD_CODE_STRIPPING=NO`。
+====
+
+包含在 EntwineTest 项目中的一个这样的例子：
+
+.https://github.com/heckj/swiftui-notes/blob/master/UsingCombineTests/EntwineTestExampleTests.swift[UsingCombineTests/EntwineTestExampleTests.swift - testMap]
+[source, swift]
+----
+import XCTest
+import EntwineTest
+// library loaded from
+// https://github.com/tcldr/Entwine/blob/master/Assets/EntwineTest/README.md
+// as a Swift package https://github.com/tcldr/Entwine.git : 0.6.0,
+// Next Major Version
+
+class EntwineTestExampleTests: XCTestCase {
+
+    func testMap() {
+
+        let testScheduler = TestScheduler(initialClock: 0)
+
+        // creates a publisher that will schedule its elements relatively
+        // at the point of subscription
+        let testablePublisher: TestablePublisher<String, Never> = testScheduler.createRelativeTestablePublisher([ <1>
+            (100, .input("a")),
+            (200, .input("b")),
+            (300, .input("c")),
+        ])
+
+        // a publisher that maps strings to uppercase
+        let subjectUnderTest = testablePublisher.map { $0.uppercased() }
+
+        // uses the method described above (schedules a subscription at 200
+        // to be cancelled at 900)
+        let results = testScheduler.start { subjectUnderTest } <2>
+
+        XCTAssertEqual(results.recordedOutput, [ <3>
+            (200, .subscription),
+            // subscribed at 200
+            (300, .input("A")),
+            // received uppercased input @ 100 + subscription time
+            (400, .input("B")),
+            // received uppercased input @ 200 + subscription time
+            (500, .input("C")),
+            // received uppercased input @ 300 + subscription time
+        ])
+    }
+}
+----
+
+<1> `TestablePublisher` 允许你设置一个在特定时间返回特定值的发布者。
+在这个例子中，它会以相同的间隔返回 3 个值。
+<2> 当你使用虚拟时间调度器时，重要的是要确保从 start 开始调用它。
+这会启动虚拟时间调度器，它的运行速度可以比时钟快，因为它只需要增加虚拟时间，而不是等待真实过去的时间。
+<3> `results` 是一个 TestableSubscriber 对象，包括 `recordedOutput` 属性，该属性提供所有数据的有序列表，并将控制事件的交互与其时间组合在一起。
+
+如果这个测试序列是用 asyncAfter 完成的，那么测试将至少需要 500ms 才能完成。
+当我在我的笔记本电脑上运行此测试时，它记录花费了 0.0121 秒以完成测试（12.1ms）。
+
+[NOTE]
+====
+EntwineTest 的副作用是，使用虚拟时间调度器的测试比实时时钟运行速度快得多。
+使用实时调度机制来延迟数据发送值的相同测试可能需要更长的时间才能完成。
+====
+
+// force a page break - in HTML rendering is just a <HR>
+<<<
+'''
