@@ -1,3 +1,9 @@
+//
+//  Publishers.Delay.swift
+//  OpenCombine
+//
+//  Created by Евгений Богомолов on 07/09/2019.
+//
 
 extension Publisher {
     

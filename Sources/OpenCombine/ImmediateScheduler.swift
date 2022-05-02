@@ -5,8 +5,6 @@
 /// You can only use this scheduler for immediate actions. If you attempt to schedule
 /// actions after a specific date, this scheduler ignores the date and performs them
 /// immediately.
-// 这里说的很明白, ImmediateScheduler 没有任何调度的能力
-
 public struct ImmediateScheduler: Scheduler {
     
     // 基本上, 每个 Scheduler 的实现类, 都会定义自己的 SchedulerTimeType 类型.
@@ -143,7 +141,6 @@ public struct ImmediateScheduler: Scheduler {
     
     /// Performs the action at the next possible opportunity.
     // 各种操作, 都是直接调用.
-    // Immediatescheduler 其实是失去了调度这层含义的.
     @inlinable
     public func schedule(options: SchedulerOptions?, _ action: @escaping () -> Void) {
         action()
@@ -157,7 +154,7 @@ public struct ImmediateScheduler: Scheduler {
     
     /// Performs the action at some time after the specified date.
     /// The immediate scheduler ignores `date` and performs the action immediately.
-    // 直接调用, 失去了调度的能力
+    // 各种, 延后的操作, 都是直接调用.
     public func schedule(after date: SchedulerTimeType,
                          tolerance: SchedulerTimeType.Stride,
                          options: SchedulerOptions?,
@@ -168,7 +165,6 @@ public struct ImmediateScheduler: Scheduler {
     /// Performs the action at some time after the specified date, at the specified
     /// frequency, optionally taking into account tolerance if possible.
     /// The immediate scheduler ignores `date` and performs the action immediately.
-    // 直接调用, 失去了调度的能力
     public func schedule(after date: SchedulerTimeType,
                          interval: SchedulerTimeType.Stride,
                          tolerance: SchedulerTimeType.Stride,
