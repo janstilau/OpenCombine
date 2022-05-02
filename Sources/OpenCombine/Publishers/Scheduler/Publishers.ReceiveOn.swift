@@ -1,12 +1,9 @@
 
 // 该 Sink 节点, 不会做任何的数据操作, 或者中间节点的插入.
-// 它的作用, 主要是下游节点 receive 到上游节点的信号数据时, 环境的切换.
-
+// 它所做的, 就是调度, 将下游节点接收到上游节点这件事, 进行了调度.
 extension Publisher {
-    
     /// Specifies the scheduler on which to receive elements from the publisher.
     
-    // 任何事件, 都是要在对应的环境下进行接受. Next, Error, Completion 都会在对应的环境下, 接收到上游的事件.
     /// You use the `receive(on:options:)` operator to receive results and completion on
     /// a specific scheduler, such as performing UI work on the main run loop. In contrast
     /// with `subscribe(on:options:)`, which affects upstream messages,
@@ -23,13 +20,15 @@ extension Publisher {
     ///     // Some subscriber that updates the UI.
     ///     let labelUpdater = MyLabelUpdateSubscriber()
     
-    // 在 backgroundQueue 进行了, 响应链路的构建工作.
-    // 在 RunLoop.main 中, 进行了事件的传递工作.
+    
+    // subscribe(on 在 Combine 里面, 会使用的很多. 因为它代表的是, 信号的产生逻辑, 应该在哪个环境被使用.
+    // 按照 Combine 的 Pull 设计, 上游节点 Subscription, 在接收到下游的 RequestDemand 的时候, 来触发真正的信号产生逻辑, 所以, subscribe(on 会影响到这部分的逻辑发生的环境.
     ///     jsonPublisher
     ///         .subscribe(on: backgroundQueue)
     ///         .receive(on: RunLoop.main)
     ///         .subscribe(labelUpdater)
 
+    
     // 倾向于使用调度器, 来进行后续链路的搭建. 因为 Operator 就是, 各个业务节点的分割, 然后组成一副复杂的业务逻辑流.
     // 将, 任务分割出去, 使得各个业务节点可以在简单的逻辑中, 完成自己的任务 .
     /// Prefer `receive(on:options:)` over explicit use of dispatch queues when performing
@@ -55,8 +54,11 @@ extension Publisher {
     ///   - options: Scheduler options used to customize element delivery.
     /// - Returns: A publisher that delivers elements using the specified scheduler.
     
-    // Context.SchedulerOptions 是一个泛型类型. 当使用, 不同的 Scheduler 的时候, Options 的类型不会相同.
-    // 泛型的强大就在这里, 当真正进行业务逻辑处理的时候, 会发生类型绑定. 程序员可以快速, 使用正确的类型. 编译器保证了, 类型不匹配, 根本不能编译通过.
+    /*
+     这里又使用了泛型的类型绑定的机制.
+     传入的 scheduler 参数, 会限制住真正使用的类型, 泛型方法一定要在真正使用的时候, 能够确定具体的类型, 才能够编译通过.
+     scheduler 的确定, 就代表着 options 参数的确定. 如果传入的参数不匹配, 编译报错.
+     */
     public func receive<Context: Scheduler>(
         on scheduler: Context,
         options: Context.SchedulerOptions? = nil
@@ -66,9 +68,8 @@ extension Publisher {
 }
 
 extension Publishers {
-    
+
     /// A publisher that delivers elements to its downstream subscriber on a specific scheduler.
-    // Producer 的构建. 收集各个数据和 上游节点, 然后, 在 receive 里面, 创建真正的节点对象, 构建响应链路.
     public struct ReceiveOn<Upstream: Publisher, Context: Scheduler>: Publisher {
         
         public typealias Output = Upstream.Output
@@ -82,9 +83,11 @@ extension Publishers {
         public let upstream: Upstream
         
         /// The scheduler the publisher is to use for element delivery.
+        // 具体的调度器对象, 这是在 Operator 方法中传入的.
         public let scheduler: Context
         
         /// Scheduler options that customize the delivery of elements.
+        // 具体的调度器对象的 Option, 这是在 Operator 方法中传入的.
         public let options: Context.SchedulerOptions?
         
         public init(upstream: Upstream,
@@ -95,6 +98,7 @@ extension Publishers {
             self.options = options
         }
         
+        // 真正的生成 Subscription 节点. 真正的响应链路里面, 是该节点组成的处理链路.
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Upstream.Failure == Downstream.Failure,
               Upstream.Output == Downstream.Input
@@ -142,7 +146,8 @@ extension Publishers.ReceiveOn {
             downstreamLock.deallocate()
         }
         
-        // 标准的节点, 实现 receive(subscription:
+        // Subscriber 的实现.
+        // 对于上游节点的接收, 这里没有使用调度器.
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = state else {
@@ -159,6 +164,13 @@ extension Publishers.ReceiveOn {
             downstreamLock.unlock()
         }
         
+        // 对于, 上游节点数据的接收, 使用到了调度器.
+        /*
+         这也能结束, 为什么 ReceiveOn 会是一个 Subscription.
+         因为, 在 receive(_ input: Input) 中, 其实会有 Demand 的管理的. 所以这里要缓存一下上游节点 subscription, 在被调度的环境里面, 真正触发下游节点的 receive(_ input: Input) -> Subscribers.Demand, 然后使用返回值, 向上游进行 demand 的 request 操作.
+         而一旦在当前节点, 要用到上游节点的 subscription, 就要实现 Subscription 抽象, 哪怕是简单的转交工作.
+         在 Combine 的响应链中, 这种转交发生的非常频繁.
+         */
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = state else {
@@ -195,6 +207,7 @@ extension Publishers.ReceiveOn {
             lock.lock()
             let subscription = state.subscription
             lock.unlock()
+            // 在 Subscriber 的相关方法里面, 调用了上游节点 subscription 的方法, 所以, 该节点, 要实现 Subscription 抽象
             subscription?.request(newDemand)
         }
         
@@ -221,7 +234,8 @@ extension Publishers.ReceiveOn {
             downstreamLock.unlock()
         }
         
-        // 标准的节点, 完成 request(_ demand: Subscribers.Demand 的做法, 就是交给存储的 subscription.request 进行处理.
+        
+        // 对于, Subscription 的实现, 完全都是转交的工作. 
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = state else {

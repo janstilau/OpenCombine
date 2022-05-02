@@ -11,6 +11,7 @@ extension Publisher {
     /// The `delay(for:tolerance:scheduler:options:)` operator holds the delivery of
     /// the initial element for 3 seconds (±0.5 seconds), after which each element is
     /// delivered to the downstream on the main run loop after the specified delay:
+    
     ///
     ///     let df = DateFormatter()
     ///     df.dateStyle = .none
@@ -48,9 +49,11 @@ extension Publisher {
     ///     //    At 5:02:38 PM PDT received  Timestamp '5:02:35 PM PDT' sent: 3.00
     ///     //    secs ago
     ///
+
     /// The delay affects the delivery of elements and completion, but not of the original
     /// subscription.
-    ///
+    // subscription 不会被 Dealy, 各种 Event 事件的传递, 会被 Delay.
+    
     /// - Parameters:
     ///   - interval: The amount of time to delay.
     ///   - tolerance: The allowed tolerance in firing delayed events.
@@ -58,6 +61,10 @@ extension Publisher {
     ///   - options: Options relevant to the scheduler’s behavior.
     /// - Returns: A publisher that delays delivery of elements and completion to
     ///   the downstream receiver.
+    
+    // Publisher 的 Operator 方法, 是为了生成对应的 Publisher 对象.
+    // Publisher 对象的 Init 方法, 可以确定里面的类型参数.
+    // 但是, Publisher 的 Operator 方法的各个参数, 是被 Context 所限制的, 这是泛型的类型绑定的功劳. 所以, 在使用 delay 方法的时候, 要确保各个参数的类型, 是在同一个 Context 的定义条件下.
     public func delay<Context: Scheduler>(
         for interval: Context.SchedulerTimeType.Stride,
         tolerance: Context.SchedulerTimeType.Stride? = nil,
@@ -74,9 +81,11 @@ extension Publisher {
 
 extension Publishers {
     
-    // 惯例的 Publisher. 收集数据, 生成 Inner 节点. 
+    // 惯例的 Publisher. 收集数据, 生成 Inner 节点.
+    // Delay 的主要作用, 是 DownStream 的各种 receive 动作被 Delay 了.
     /// A publisher that delays delivery of elements and completion
     /// to the downstream receiver.
+    // Context 类型的确定, 是在 init 方法中确认的.
     public struct Delay<Upstream: Publisher, Context: Scheduler>: Publisher {
         
         public typealias Output = Upstream.Output
@@ -97,6 +106,7 @@ extension Publishers {
         
         public let options: Context.SchedulerOptions?
         
+        // 各种, Scheduler 所需要的环境数据, 都存到了 Operator 的 Subscription 的内部.
         public init(upstream: Upstream,
                     interval: Context.SchedulerTimeType.Stride,
                     tolerance: Context.SchedulerTimeType.Stride,
@@ -134,6 +144,8 @@ extension Publishers.Delay {
         typealias Input = Upstream.Output
         typealias Failure = Upstream.Failure
         
+        // 所有的数据, 都是在 Init 中传递过来的.
+        // 这充分表现了, Operator 的实现, 是隐藏起来的.
         private let lock = UnfairLock.allocate()
         private let downstream: Downstream
         private let interval: Context.SchedulerTimeType.Stride
@@ -160,6 +172,9 @@ extension Publishers.Delay {
             downstreamLock.deallocate()
         }
         
+        // 调度, 调度的是动作. 使用 scheduler 里面定义的接口, 来完成调度这件事.
+        // 这里可以看出, Scheduler 这个抽象, 是给 Operator 来使用的.
+        // 具体的使用方式, 所需要的参数, 都是在 Operator 生成的 Subscription 中环境中进行的保存.
         private func schedule(_ work: @escaping () -> Void) {
             scheduler
                 .schedule(after: scheduler.now.advanced(by: interval),
@@ -189,7 +204,7 @@ extension Publishers.Delay {
                 return .none
             }
             lock.unlock()
-            // 每次, 收到上游节点之后, 进行调度. 在调度完的环境, 进行下游节点数据的接受.
+            //
             schedule {
                 self.scheduledReceive(input)
             }
