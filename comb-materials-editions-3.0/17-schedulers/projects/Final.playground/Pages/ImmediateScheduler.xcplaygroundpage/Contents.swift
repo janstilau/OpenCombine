@@ -11,7 +11,7 @@ let source = Timer
 let setupPublisher = { recorder in
   source
     // 2
-    .recordThread(using: recorder)
+    . recordThread(using: recorder)
     // 3
     .receive(on: ImmediateScheduler.shared)
     // 4

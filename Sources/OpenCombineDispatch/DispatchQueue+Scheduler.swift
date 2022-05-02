@@ -1,9 +1,3 @@
-//
-//  DispatchQueue.swift
-//
-//
-//  Created by Sergej Jaskiewicz on 21.08.2019.
-//
 
 import Dispatch
 import OpenCombine
@@ -205,7 +199,7 @@ extension DispatchQueue {
                 ///
                 /// If `exactly` cannot convert to an `Int`, the resulting time interval
                 /// is `nil`.
-                /// 
+                ///
                 /// - Parameter exactly: A binary integer representing a time interval.
                 public init?<Source: BinaryInteger>(exactly source: Source) {
                     guard let value = Int(exactly: source) else { return nil }
@@ -366,6 +360,7 @@ extension DispatchQueue {
 }
 
 #if !canImport(Combine)
+// 使得, DispatchQueue 支持 Scheduler. 
 extension DispatchQueue: OpenCombine.Scheduler {
     
     /// Options that affect the operation of the dispatch queue scheduler.

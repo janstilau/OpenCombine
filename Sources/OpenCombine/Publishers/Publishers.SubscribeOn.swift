@@ -8,7 +8,8 @@ extension Publisher {
     
     /// Specifies the scheduler on which to perform subscribe, cancel, and request
     /// operations.
-    ///
+    
+    //
     /// In contrast with `receive(on:options:)`, which affects downstream messages,
     /// `subscribe(on:options:)` changes the execution context of upstream messages.
     
@@ -72,8 +73,7 @@ extension Publishers {
             self.scheduler = scheduler
             self.options = options
         }
-         
-        // 按照惯例, 生成了这个 Operator 对应的节点对象, 然后, 在使用 scheduler 将上游注册的这个操作, 进行了调度.
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Upstream.Failure == Downstream.Failure,
               Upstream.Output == Downstream.Input
@@ -81,7 +81,7 @@ extension Publishers {
             let inner = Inner(scheduler: scheduler,
                               options: options,
                               downstream: subscriber)
-            
+            // 在指定的调度器, 来完成 attach 这个行为.
             scheduler.schedule(options: options) {
                 self.upstream.subscribe(inner)
             }
@@ -136,7 +136,7 @@ extension Publishers.SubscribeOn {
             downstream.receive(subscription: self)
         }
         
-        // 收到, 上游节点的时间, 没有调度. 直接传递给下游节点, Forward 的逻辑.
+        // 收到, 上游节点 Next, 没有调度. 直接传递给下游节点, Forward 的逻辑.
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = state else {
@@ -161,6 +161,7 @@ extension Publishers.SubscribeOn {
         
         // 收到, 下游节点的 Request Demand 的时间.
         // 调度, 在对应的环境中, 完整真正的 Demand 管理.
+        // 一般来说, 真正的触发产生信号的逻辑, 就在该方法里面, 所以在这个方法里面调度, 其实才能将耗时操作转移到对应调度器环境.
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = state else {
