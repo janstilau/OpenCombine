@@ -41,10 +41,11 @@ extension Publisher {
 
 extension Publishers {
     
-    /// A publisher that measures and emits the time interval between events received from
-    /// an upstream publisher.
+    // 管理的 Operator, Publisher 的实现.
+    /// A publisher that measures and emits the time interval between events received from an upstream publisher.
     public struct MeasureInterval<Upstream: Publisher, Context: Scheduler>: Publisher {
         
+        // 输出信息, 是两次 receive 事件的时间差值.
         public typealias Output = Context.SchedulerTimeType.Stride
         
         public typealias Failure = Upstream.Failure
@@ -53,6 +54,7 @@ extension Publishers {
         public let upstream: Upstream
         
         /// The scheduler used for tracking the timing of events.
+        // 具体的类型, 会是在 Operator 的方法里面确定.
         public let scheduler: Context
         
         /// Creates a publisher that measures and emits the time interval between events
@@ -107,6 +109,7 @@ extension Publishers.MeasureInterval {
             lock.deallocate()
         }
         
+        // 惯例试下.
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = state else {
@@ -123,12 +126,13 @@ extension Publishers.MeasureInterval {
         func receive(_: Input) -> Subscribers.Demand {
             lock.lock()
             guard case let .subscribed(subscription) = state,
-                  let previousTime = last else
-                  {
+                  let previousTime = last else {
+                      // 第一次从上游节点, 接收到数据, 不会触发. 因为后续节点想要得到的, 是两次事件的差值.
                       lock.unlock()
                       return .none
                   }
             
+            // 使用 now 直接获取当前时间.
             let now = scheduler.now
             last = now
             lock.unlock()
@@ -140,6 +144,7 @@ extension Publishers.MeasureInterval {
             return .none
         }
         
+        // 惯例实现.
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard case .subscribed = state else {
@@ -152,6 +157,7 @@ extension Publishers.MeasureInterval {
             downstream.receive(completion: completion)
         }
         
+        // 惯例实现.
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = state else {
@@ -162,6 +168,7 @@ extension Publishers.MeasureInterval {
             subscription.request(demand)
         }
         
+        // 惯例实现.
         func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = state else {

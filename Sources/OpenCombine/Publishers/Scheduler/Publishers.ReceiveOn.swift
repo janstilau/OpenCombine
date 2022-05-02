@@ -235,7 +235,7 @@ extension Publishers.ReceiveOn {
         }
         
         
-        // 对于, Subscription 的实现, 完全都是转交的工作. 
+        // 对于, Subscription 的实现, 完全都是转交的工作.
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = state else {

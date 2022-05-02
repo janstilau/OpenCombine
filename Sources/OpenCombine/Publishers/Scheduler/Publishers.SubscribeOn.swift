@@ -9,7 +9,6 @@ extension Publisher {
     /// Specifies the scheduler on which to perform subscribe, cancel, and request
     /// operations.
     
-    //
     /// In contrast with `receive(on:options:)`, which affects downstream messages,
     /// `subscribe(on:options:)` changes the execution context of upstream messages.
     
@@ -25,8 +24,8 @@ extension Publisher {
     ///         .subscribe(on: backgroundQueue)
     ///         .receive(on: RunLoop.main)
     ///         .subscribe(uiUpdatingSubscriber)
-    ///
-    ///
+    
+    
     /// Using `subscribe(on:options:)` also causes the upstream publisher to perform
     /// `cancel()` using the specfied scheduler.
     
@@ -122,7 +121,8 @@ extension Publishers.SubscribeOn {
             lock.deallocate()
             upstreamLock.deallocate()
         }
-        
+            
+        // Subscriber 的实现.
         // 收到, 上游节点的事件, 没有调度.
         func receive(subscription: Subscription) {
             lock.lock()
@@ -136,7 +136,7 @@ extension Publishers.SubscribeOn {
             downstream.receive(subscription: self)
         }
         
-        // 收到, 上游节点 Next, 没有调度. 直接传递给下游节点, Forward 的逻辑.
+        // 收到上游的 Next 数据, 没有调度.
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = state else {
@@ -191,6 +191,8 @@ extension Publishers.SubscribeOn {
             }
             state = .terminal
             lock.unlock()
+            // 没太明白, 为什么这个需要调度.
+            // 不过, 就和 request(_ demand 一样, 上游节点接收数据, 统一需要调度. 
             scheduler.schedule(options: options) {
                 self.scheduledCancel(subscription)
             }
