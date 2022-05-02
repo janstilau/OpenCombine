@@ -193,6 +193,7 @@ extension Publishers {
     }
 }
 
+// 在这里, 定义了一个新的 Operator
 extension Publisher {
     public func recordThread(using observer: ThreadRecorder, context: String = "") -> Publishers.RecordThread<Self> {
         return Publishers.RecordThread(upstream: self, context: context, observer: observer)

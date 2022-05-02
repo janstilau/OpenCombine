@@ -2,126 +2,138 @@ import Foundation
 import Combine
 
 struct DispatchTimerConfiguration {
-  // 1
-  let queue: DispatchQueue?
-  // 2
-  let interval: DispatchTimeInterval
-  // 3
-  let leeway: DispatchTimeInterval
-  // 4
-  let times: Subscribers.Demand
+    // 1
+    let queue: DispatchQueue?
+    // 2
+    let interval: DispatchTimeInterval
+    // 3
+    let leeway: DispatchTimeInterval
+    // 4
+    let times: Subscribers.Demand
 }
 
 extension Publishers {
-  struct DispatchTimer: Publisher {
-    // 5
-    typealias Output = DispatchTime
-    typealias Failure = Never
-
-    // 6
-    let configuration: DispatchTimerConfiguration
-
-    init(configuration: DispatchTimerConfiguration) {
-      self.configuration = configuration
+    // 惯例 Publihser 实现.
+    struct DispatchTimer: Publisher {
+        // 5
+        typealias Output = DispatchTime
+        typealias Failure = Never
+        
+        // 6
+        let configuration: DispatchTimerConfiguration
+        
+        init(configuration: DispatchTimerConfiguration) {
+            self.configuration = configuration
+        }
+        
+        // 7
+        func receive<S: Subscriber>(subscriber: S)
+        where Failure == S.Failure, Output == S.Input {
+                  // 8
+                  let subscription = DispatchTimerSubscription(
+                    subscriber: subscriber,
+                    configuration: configuration
+                  )
+                  // 9
+                  subscriber.receive(subscription: subscription)
+              }
     }
-
-    // 7
-    func receive<S: Subscriber>(subscriber: S)
-      where Failure == S.Failure,
-            Output == S.Input {
-      // 8
-      let subscription = DispatchTimerSubscription(
-        subscriber: subscriber,
-        configuration: configuration
-      )
-      // 9
-      subscriber.receive(subscription: subscription)
-    }
-  }
 }
 
 private final class DispatchTimerSubscription<S: Subscriber>: Subscription
-  where S.Input == DispatchTime {
+where S.Input == DispatchTime {
     // 10
     let configuration: DispatchTimerConfiguration
-    // 11
+    // 11 Demand 管理. 当前的 Publisher 可以产生多少出具.
     var times: Subscribers.Demand
-    // 12
+    // 12 Demand 管理, 下游要求多少个数据.
     var requested: Subscribers.Demand = .none
     // 13
     var source: DispatchSourceTimer? = nil
     // 14
     var subscriber: S?
-
+    
     init(subscriber: S,
          configuration: DispatchTimerConfiguration) {
-      self.configuration = configuration
-      self.subscriber = subscriber
-      self.times = configuration.times
+        self.configuration = configuration
+        self.subscriber = subscriber
+        self.times = configuration.times
     }
-
+    
     // 15
     func request(_ demand: Subscribers.Demand) {
-      // 16
-      guard times > .none else {
-        // 17
-        subscriber?.receive(completion: .finished)
-        return
-      }
-
-      // 18
-      requested += demand
-
-      // 19
-      if source == nil, requested > .none {
-        // 20
-        let source = DispatchSource.makeTimerSource(queue: configuration.queue)
-        // 21
-        source.schedule(deadline: .now() + configuration.interval,
-                        repeating: configuration.interval,
-                        leeway: configuration.leeway)
-
-        // 22
-        source.setEventHandler { [weak self] in
-          // 23
-          guard let self = self,
-                self.requested > .none else { return }
-
-          // 24
-          self.requested -= .max(1)
-          self.times -= .max(1)
-          // 25
-          _ = self.subscriber?.receive(.now())
-          // 26
-          if self.times == .none {
-            self.subscriber?.receive(completion: .finished)
-          }
+        // 16
+        guard times > .none else {
+            // 17
+            // 只有, 当 configure 的初始值直接是 .none 的时候, 才会触发这样的事情.
+            // 或者是, 当前的 Publihser 被 share 了. 这样的话, 这个 Subscription 可能会被多次进行 request demand.
+            // 不过这也说不准, 在喵神的博客里面, 其实是重新定义了一个, 可以在 Subscriber 中主动控制 Pull 行为的 Subscriber.
+            subscriber?.receive(completion: .finished)
+            return
         }
-
-        self.source = source
-        source.activate()
-      }
+        
+        // 18
+        // 在 request(_ demand 内, 根据传递过来的 demand 的值, 来调整当前
+        requested += demand
+        
+        // 19
+        // 真正触发, 信号产生的逻辑, 只会触发一次.
+        if source == nil, requested > .none {
+            // 20
+            let source = DispatchSource.makeTimerSource(queue: configuration.queue)
+            // 21
+            source.schedule(deadline: .now() + configuration.interval,
+                            repeating: configuration.interval,
+                            leeway: configuration.leeway)
+            
+            // 22
+            source.setEventHandler { [weak self] in
+                // 23
+                // 这个定时器, 其实一直在触发. 如果下游所需要的 demand 已经没有了, 直接 return, 不会触发下游的 receive 的事件.
+                // 在 request Demand 里面, self.requested 会被更新.
+                // 通过这个机制, 完成了 Subscription 对于 Demand 的管理.
+                guard let self = self,
+                      self.requested > .none else { return }
+                
+                // 24
+                self.requested -= .max(1)
+                self.times -= .max(1)
+                // 25
+                _ = self.subscriber?.receive(.now())
+                // 26
+                if self.times == .none {
+                    // 当, 发射完了所有的数据, 主动向下游进行 finished 的发送. 
+                    self.subscriber?.receive(completion: .finished)
+                }
+            }
+            
+            self.source = source
+            source.activate()
+        }
     }
-
+    
     func cancel() {
-      source = nil
-      subscriber = nil
+        // cancel 的时候, 确保释放自己的资源.
+        // 1 内存资源.
+        // 2 自己相关的机制资源.
+        source = nil
+        subscriber = nil
     }
 }
 
 extension Publishers {
-  static func timer(queue: DispatchQueue? = nil,
-                    interval: DispatchTimeInterval,
-                    leeway: DispatchTimeInterval = .nanoseconds(0),
-                    times: Subscribers.Demand = .unlimited)
-                    -> Publishers.DispatchTimer {
-    return Publishers.DispatchTimer(
-      configuration: .init(queue: queue,
-                           interval: interval,
-                           leeway: leeway,
-                           times: times)
-                      )
-  }
+    static func timer(queue: DispatchQueue? = nil,
+                      interval: DispatchTimeInterval,
+                      leeway: DispatchTimeInterval = .nanoseconds(0),
+                      times: Subscribers.Demand = .unlimited)
+    -> Publishers.DispatchTimer {
+        return Publishers.DispatchTimer(
+            configuration: .init(queue: queue,
+                                 interval: interval,
+                                 leeway: leeway,
+                                 times: times)
+        )
+    }
 }
 
 // 27
@@ -131,40 +143,10 @@ let publisher = Publishers.timer(interval: .seconds(1),
                                  times: .max(6))
 // 29
 let subscription = publisher.sink { time in
-  print("Timer emits: \(time)", to: &logger)
+    print("Timer emits: \(time)", to: &logger)
 }
 
 DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
-  subscription.cancel()
+    subscription.cancel()
 }
 
-//: [Next](@next)
-/*:
- Copyright (c) 2021 Razeware LLC
-
- Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights
- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- copies of the Software, and to permit persons to whom the Software is
- furnished to do so, subject to the following conditions:
-
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
-
- Notwithstanding the foregoing, you may not use, copy, modify, merge, publish,
- distribute, sublicense, create a derivative work, and/or sell copies of the
- Software in any work that is designed, intended, or marketed for pedagogical or
- instructional purposes related to programming, coding, application development,
- or information technology.  Permission for such use, copying, modification,
- merger, publication, distribution, sublicensing, creation of derivative works,
- or sale is expressly withheld.
-
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- THE SOFTWARE.
- */
