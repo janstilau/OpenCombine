@@ -7,7 +7,8 @@
 
 import UIKit
 import OpenCombine
-//import Combine
+import OpenCombineFoundation
+import OpenCombineDispatch
 
 protocol SomeProtocol {
     func doSth()
@@ -57,7 +58,7 @@ class ViewController: UIViewController {
         let pub =
         (1...3).publisher
             .map( { _ in return Int.random(in: 0...100) } )
-            .print("Random")
+//            .delay(for: .seconds(2), scheduler: RunLoop.main, options: .none)
             .multicast(subject: PassthroughSubject())
 
         cancellable1 = pub
