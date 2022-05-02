@@ -37,8 +37,13 @@ public protocol SchedulerTimeIntervalConvertible {
 /// Schedulers express this as their `SchedulerTimeType`. Since this type
 /// conforms to `SchedulerTimeIntervalConvertible`, you can always express these times
 /// with the convenience functions like `.milliseconds(500)`.
+// 每一种, 调度器, 都有自己的时间单位. 但这些时间单位, 都满足统一的抽象, 就是 SchedulerTimeIntervalConvertible.
+// 每种调度器的时间单位, 都能换算成为符合人类认知的单位表示, 这样, 在使用的时候, 其实是使用 SchedulerTimeIntervalConvertible 提供的接口, 来表示时间就可以了.
 
 // 这个 Option 是泛型的, 每个不同的 SchedulerImp 可以指定自己的 Options
+// .delay(for: .seconds(3), scheduler: RunLoop.main, options: .none)
+// Scheduler 这个类型, 不是直接给 Combine 使用的, 他的各项方法的调用, 其实是给 Operator 的设计者来使用.
+// 比如, 上面的 Delay 方法, 在 Delay 的 Subscrption 对象里面, 是会真正的存储这个传入的 scheduler 的. 然后在
 /// Schedulers can accept options to control how they execute the actions passed to them. These options may
 /// control factors like which threads or dispatch queues execute the actions.
 public protocol Scheduler {
