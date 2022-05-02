@@ -1,13 +1,5 @@
-//
-//  Publishers.Throttle.swift
-//  
-//
-//  Created by Stuart Austin on 14/11/2020.
-//
 
 extension Publisher {
-    // swiftlint:disable generic_type_name line_length
-    
     /// Publishes either the most-recent or first element published by the upstream
     /// publisher in the specified time interval.
     ///

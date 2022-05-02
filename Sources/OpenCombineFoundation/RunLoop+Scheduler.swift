@@ -140,6 +140,7 @@ extension RunLoop {
             runLoop.performBlockPortably(action)
         }
         
+        // Runloop 就是使用 Timer 来实现的. 
         public func schedule(after date: SchedulerTimeType,
                              tolerance: SchedulerTimeType.Stride,
                              options: SchedulerOptions?,

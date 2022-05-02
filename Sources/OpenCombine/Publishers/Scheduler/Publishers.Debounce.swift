@@ -1,19 +1,14 @@
-//
-//  Publishers.Debounce.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 17.12.2019.
-//
 
 extension Publisher {
     
     /// Publishes elements only after a specified time interval elapses between events.
-    ///
+    // 只有, 当上游节点一段时间不发送新的信号了, 才将上游节点的最后一个数据, 发送给下游节点.
+    
     /// Use the `debounce(for:scheduler:options:)` operator to control the number of
     /// values and time between delivery of values from the upstream publisher. This
     /// operator is useful to process bursty or high-volume event streams where you need
     /// to reduce the number of values delivered to the downstream to a rate you specify.
-    ///
+    
     /// In this example, a `PassthroughSubject` publishes elements on a schedule defined
     /// by the `bounces` array. The array is composed of tuples representing a value sent
     /// by the `PassthroughSubject`, and a `TimeInterval` ranging from one-quarter second
@@ -81,6 +76,7 @@ extension Publisher {
 
 extension Publishers {
     
+    // 惯例实现, 就是收集信息.
     /// A publisher that publishes elements only after a specified time interval elapses
     /// between events.
     public struct Debounce<Upstream: Publisher, Context: Scheduler>: Publisher {
@@ -164,6 +160,7 @@ extension Publishers.Debounce {
         
         private var state = SubscriptionStatus.awaitingSubscription
         
+        // 不是很明白, 为什么要多存. 每次来了新数据, 把原来的清了不得了. 怎么会出现, 多次需要 cancel 的情形. 
         private var currentCancellers = [Generation : CancellerState]()
         
         private var currentValue: Output?
@@ -199,6 +196,7 @@ extension Publishers.Debounce {
             downstreamLock.lock()
             downstream.receive(subscription: self)
             downstreamLock.unlock()
+            // 无限 Demand. 因为该节点, 是需要上游节点的 exhanust 行为去决定下游节点的数据的.
             subscription.request(.unlimited)
         }
         
@@ -296,7 +294,8 @@ extension Publishers.Debounce {
             
             // If this condition holds, it means that no values were received
             // in this time frame => we should propagate the current value downstream.
-            guard generation == currentGeneration, let value = currentValue else {
+            guard generation == currentGeneration,
+                  let value = currentValue else {
                 let canceller = currentCancellers[generation]
                 lock.unlock()
                 canceller?.cancel()

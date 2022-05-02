@@ -3,21 +3,6 @@ import Foundation
 import OpenCombine
 
 extension OperationQueue {
-    
-    /// A namespace for disambiguation when both OpenCombine and Combine are imported.
-    ///
-    /// Foundation overlay for Combine extends `OperationQueue` with new methods and
-    /// nested types.
-    /// If you import both OpenCombine and Foundation, you will not be able
-    /// to write `OperationQueue.SchedulerTimeType`,
-    /// because Swift is unable to understand which `SchedulerTimeType`
-    /// you're referring to.
-    ///
-    /// So you have to write `OperationQueue.OCombine.SchedulerTimeType`.
-    ///
-    /// This bug is tracked [here](https://bugs.swift.org/browse/SR-11183).
-    ///
-    /// You can omit this whenever Combine is not available (e. g. on Linux).
     public struct OCombine: Scheduler {
         
         // 使用. OperationQueue 来完成调度相关的程序.
@@ -315,6 +300,7 @@ extension OperationQueue {
                              tolerance: SchedulerTimeType.Stride,
                              options: SchedulerOptions?,
                              _ action: @escaping () -> Void) -> Cancellable {
+            // 对于 Delay, 有这个更加精细的实现. 
             let context = DelayReadyOperation.CancellationContext()
             let op = DelayReadyOperation.repeating(action: action,
                                                    after: date,

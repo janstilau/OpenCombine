@@ -4,22 +4,9 @@ import OpenCombine
 
 extension DispatchQueue {
     
-    /// A namespace for disambiguation when both OpenCombine and Combine are imported.
-    ///
-    /// Combine extends `DispatchQueue` with new methods and nested types.
-    /// If you import both OpenCombine and Combine (either explicitly or implicitly,
-    /// e. g. when importing Foundation), you will not be able
-    /// to write `DispatchQueue.SchedulerTimeType`,
-    /// because Swift is unable to understand which `SchedulerTimeType`
-    /// you're referring to.
-    ///
-    /// So you have to write `DispatchQueue.OCombine.SchedulerTimeType`.
-    ///
-    /// This bug is tracked [here](https://bugs.swift.org/browse/SR-11183).
-    ///
-    /// You can omit this whenever Combine is not available (e. g. on Linux).
     public struct OCombine: Scheduler {
         
+        // 存储一个 DispatchQueue, 所有的调度, 都是使用 DispatchQueue 来完成的.
         public let queue: DispatchQueue
         
         public init(_ queue: DispatchQueue) {
