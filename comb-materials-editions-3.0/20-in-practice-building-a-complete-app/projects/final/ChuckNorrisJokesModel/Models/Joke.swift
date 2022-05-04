@@ -6,25 +6,6 @@ public struct Joke: Codable, Identifiable, Equatable {
         case id, value, categories
     }
     
-    static let error = Joke(
-        id: "error",
-        value: "Houston we have a problem — no joke!\n\nCheck your Internet connection and try again.",
-        categories: []
-    )
-    
-    public static let starter: Joke = {
-        guard let url = Bundle.main.url(forResource: "SampleJoke", withExtension: "json"),
-              var data = try? Data(contentsOf: url),
-              let joke = try? JSONDecoder().decode(Joke.self, from: data)
-        else { return error }
-        
-        return Joke(
-            id: joke.id,
-            value: joke.value,
-            categories: joke.categories
-        )
-    }()
-    
     public let id: String
     public let value: String
     public let categories: [String]
@@ -41,4 +22,25 @@ public struct Joke: Codable, Identifiable, Equatable {
         value = try container.decode(String.self, forKey: .value)
         categories = try container.decode([String].self, forKey: .categories)
     }
+}
+
+public extension Joke {
+    static let error = Joke(
+        id: "error",
+        value: "Houston we have a problem — no joke!\n\nCheck your Internet connection and try again.",
+        categories: []
+    )
+    
+    static let starter: Joke = {
+        guard let url = Bundle.main.url(forResource: "SampleJoke", withExtension: "json"),
+              var data = try? Data(contentsOf: url),
+              let joke = try? JSONDecoder().decode(Joke.self, from: data)
+        else { return error }
+        
+        return Joke(
+            id: joke.id,
+            value: joke.value,
+            categories: joke.categories
+        )
+    }()
 }

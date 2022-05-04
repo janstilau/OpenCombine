@@ -4,6 +4,7 @@ import SwiftUI
 @testable import ChuckNorrisJokesModel
 
 final class JokesViewModelTests: XCTestCase {
+    
     private lazy var testJoke = self.testJoke(forResource: "TestJoke")
     private lazy var error = URLError(.badServerResponse)
     private var subscriptions = Set<AnyCancellable>()

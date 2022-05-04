@@ -11,6 +11,7 @@ struct MockJokesService: JokeServiceDataPublisher {
         self.error = error
     }
     
+    // 使用, PassthroughSubject 来创建一个 Publisher, 是最最快捷的方式. 
     func publisher() -> AnyPublisher<Data, URLError> {
         // 1
         let publisher = PassthroughSubject<Data, URLError>()

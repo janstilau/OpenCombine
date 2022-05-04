@@ -3,6 +3,7 @@ import Combine
 import SwiftUI
 
 public final class JokesViewModel: ObservableObject {
+    
     public enum DecisionState {
         case disliked, undecided, liked
     }
@@ -14,11 +15,14 @@ public final class JokesViewModel: ObservableObject {
     @Published public var backgroundColor = Color("Gray")
     @Published public var decisionState = DecisionState.undecided
     
+    // 依赖注入, 将真正的接口请求对象, 通过构造函数传递过来.
+    // 可以在构造函数里面, 将默认的类型写死. 
     private let jokesService: JokeServiceDataPublisher
     
     public init(jokesService: JokeServiceDataPublisher = JokesService()) {
         self.jokesService = jokesService
         
+        // Joke 一旦, 数据发生了改变, 就可以认为是请求结束了. 
         $joke
             .map { _ in false }
             .assign(to: &$fetching)
