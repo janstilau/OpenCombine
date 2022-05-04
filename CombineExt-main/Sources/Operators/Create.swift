@@ -1,10 +1,3 @@
-//
-//  Create.swift
-//  CombineExt
-//
-//  Created by Shai Mishali on 13/03/2020.
-//  Copyright © 2020 Combine Community. All rights reserved.
-//
 
 #if canImport(Combine)
 import Combine
@@ -46,7 +39,7 @@ public extension AnyPublisher {
     init(_ factory: @escaping Publishers.Create<Output, Failure>.SubscriberHandler) {
         self = Publishers.Create(factory: factory).eraseToAnyPublisher()
     }
-
+    
     /// Create a publisher which accepts a closure with a subscriber argument,
     /// to which you can dynamically send value or completion events.
     ///
@@ -79,7 +72,7 @@ public extension AnyPublisher {
     ///    }
     ///
     static func create(_ factory: @escaping Publishers.Create<Output, Failure>.SubscriberHandler)
-        -> AnyPublisher<Output, Failure> {
+    -> AnyPublisher<Output, Failure> {
         AnyPublisher(factory)
     }
 }
@@ -96,7 +89,7 @@ public extension Publishers {
     struct Create<Output, Failure: Swift.Error>: Publisher {
         public typealias SubscriberHandler = (Subscriber) -> Cancellable
         private let factory: SubscriberHandler
-
+        
         /// Initialize the publisher with a provided factory
         ///
         /// - parameter factory: A factory with a closure to which you can
@@ -104,7 +97,7 @@ public extension Publishers {
         public init(factory: @escaping SubscriberHandler) {
             self.factory = factory
         }
-
+        
         public func receive<S: Combine.Subscriber>(subscriber: S) where Failure == S.Failure, Output == S.Input {
             subscriber.receive(subscription: Subscription(factory: factory, downstream: subscriber))
         }
@@ -114,24 +107,25 @@ public extension Publishers {
 // MARK: - Subscription
 @available(OSX 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
 private extension Publishers.Create {
+    
     class Subscription<Downstream: Combine.Subscriber>: Combine.Subscription where Output == Downstream.Input, Failure == Downstream.Failure {
         private let buffer: DemandBuffer<Downstream>
         private var cancelable: Cancellable?
-
+        
         init(factory: @escaping SubscriberHandler,
              downstream: Downstream) {
             self.buffer = DemandBuffer(subscriber: downstream)
-
+            
             let subscriber = Subscriber(onValue: { [weak self] in _ = self?.buffer.buffer(value: $0) },
                                         onCompletion: { [weak self] in self?.buffer.complete(completion: $0) })
-
+            
             self.cancelable = factory(subscriber)
         }
-
+        
         func request(_ demand: Subscribers.Demand) {
             _ = self.buffer.demand(demand)
         }
-
+        
         func cancel() {
             self.cancelable?.cancel()
         }
@@ -150,20 +144,20 @@ public extension Publishers.Create {
     struct Subscriber {
         private let onValue: (Output) -> Void
         private let onCompletion: (Subscribers.Completion<Failure>) -> Void
-
+        
         fileprivate init(onValue: @escaping (Output) -> Void,
                          onCompletion: @escaping (Subscribers.Completion<Failure>) -> Void) {
             self.onValue = onValue
             self.onCompletion = onCompletion
         }
-
+        
         /// Sends a value to the subscriber.
         ///
         /// - Parameter value: The value to send.
         public func send(_ input: Output) {
             onValue(input)
         }
-
+        
         /// Sends a completion event to the subscriber.
         ///
         /// - Parameter completion: A `Completion` instance which indicates whether publishing has finished normally or failed with an error.

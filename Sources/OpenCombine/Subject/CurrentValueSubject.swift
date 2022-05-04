@@ -1,5 +1,6 @@
 /// A subject that wraps a single value and publishes a new element whenever the value
 /// changes.
+// 初始化的时候, 必须要有一个数据, 每次更新, 都替换该数据. 这个 Subject 和 UI 很相配.
 
 /// Unlike `PassthroughSubject`, `CurrentValueSubject` maintains a buffer of the most
 /// recently published element.
@@ -24,8 +25,12 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     private var completion: Subscribers.Completion<Failure>?
     
     // 存储一下, 上游节点. 上游节点, 只会在 Deinit 的时候, 对于所有的上游节点进行 cancel.
+    // Subject 的 Deinit Cancel 其实没有太大的问题. Subject 其实是两条响应链条的中间 Pivot.
+    // 所以, 他在前面的响应链条中, 其实是尾节点. 所以, 它的生命周期, 其实影响到了前半程链条的存在是否有意义.
+    // 就算前半程是共享的, 那么 Subject 的析构, 影响到的也是 Begin --- SharePivot --- Subject 中, SharePivot --- Subject 这条线. 这样其实不会影响到 Begin 的逻辑. 所以, 不同担心会影响到别的响应链条.
+    
     // 一个 Subject 对象, 可能会有很多的上游节点. 因为, 可能会有很多的信号, 触发 Object 的修改.
-    // 一个 Subject 对象, 可能会有很多的下游节点. 每次自己修改之后, 都会把修改信号, 发送给所有的下游节点. 
+    // 一个 Subject 对象, 可能会有很多的下游节点. 每次自己修改之后, 都会把修改信号, 发送给所有的下游节点.
     private var upstreamSubscriptions: [Subscription] = []
     
     // 所以, 实际上, Subject 是天然的分发器.
@@ -37,6 +42,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     private var currentValue: Output
     
     /// The value wrapped by this subject, published as a new element whenever it changes.
+    //
     public var value: Output {
         get {
             lock.lock()
@@ -52,6 +58,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         }
     }
     
+    // 命名很明确, 里面应该进行 Lock 的 Unlock 的操作才可以.
     private func sendValueAndConsumeLock(_ newValue: Output) {
         // 必须要做这样的判断. 因为 Subject 的各个函数, 其实是手动触发的.
         // 如果使用者 sendComplete 之后, 又进行了 send value, 其实有可能的. 业务逻辑复杂了之后, 类的设计者应该保证自己类的健壮性.
@@ -59,7 +66,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
             lock.unlock()
             return
         }
-        
+        // 先是记录一下当前值.
         currentValue = newValue
         let downstreams = self.downstreams
         lock.unlock()
@@ -77,8 +84,9 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     }
     
     deinit {
-        // 要记住, 每个响应链条都是独立的. Subject Deinit 触发了上游链条的 cancel. 但是也是和自己相关的那个链条.
-        // 哪怕是共享链条, 也仅仅是在 dispatch 的节点里面, 将自己所在的链条, 从节点的分发存储中进行了删除而已.
+        // Subject, 在响应链条中, 是作为尾节点存在的.
+        // 所以, 它的消失, 应该影响到整个链条.
+        // 整个 upstreamSubscriptions 仅仅在这里, 被使用到了.
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
@@ -95,10 +103,14 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         lock.unlock()
         
         /*
-         Subject, 是一个分发器. 可以认为它是一段相应链条的终点.
-         它所管理的几条后续链条, 它所管理的 ConduiteList 是各个链条的起始节点, 在这些节点里面, 进行了 Demand 的管理.
+         Subject, 是一个 Pivot
+         作为尾结点, 收集上游节点的各种数据.
+         作为头节点, 当自身的 Value 发生变化后, 给所有自己记录的 Subscriber 发送新的信号.
+         
+         它所管理的几条后续链条, 它所管理的 ConduiteList 是各个链条的起始节点
+         这些各自独立的链条的 Demand, 是在 Subject 中独立进行的管理.
          作为上一段链条的终点, 它不做 Demand 管理, 上游 Publisher 的 Next 事件全部接受.
-         但是转发个给下游节点的时候, 根据 Demand 进行的发送.
+         但是转发个给下游节点的时候, 如果这个链路上的 Demand 不足, 那么这个链路, 就失去了 Current Value 的值.
          */
         subscription.request(.unlimited)
     }
@@ -108,13 +120,14 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     {
         lock.lock()
         if active {
-            // 当, 发送了 Completion 事件之后, 才会
+            //  作为头结点, 自己管理的各个子响应链条的挂载操作.
             let conduit = Conduit(parent: self, downstream: subscriber)
             downstreams.insert(conduit)
             lock.unlock()
             subscriber.receive(subscription: conduit)
         } else {
-            // 如果, 当前自己已经 cancel 过了, 直接交给后方 stopEvent.
+            // 如果, Subject 已经接受过了结束事件.
+            // 那么对于新的 Subscriber, 应该让他知道这件事.
             let completion = self.completion!
             lock.unlock()
             // 一定要给后续的节点, 发送一个 subscription. 因为并不知道, 后续节点, 会根据这个做什么处理.
@@ -147,6 +160,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         }
     }
     
+    // 作为头结点, 所管理的各个子响应联调的卸载操作.
     private func disassociate(_ conduit: ConduitBase<Output, Failure>) {
         lock.lock()
         guard active else {
@@ -159,8 +173,9 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     }
 }
 
+// 这里面, 最最主要的, 应该就是 Demand 的管理相关的逻辑.
+// 在 Combine 里面, Demande 管理, 使得各个 Producer 都应该考虑下, 是否应该创建一个自己的 Subscription, 来专门做这件事.
 extension CurrentValueSubject {
-    
     private final class Conduit<Downstream: Subscriber>
     : ConduitBase<Output, Failure>,
       CustomStringConvertible,
@@ -169,11 +184,12 @@ extension CurrentValueSubject {
     where Downstream.Input == Output, Downstream.Failure == Failure
     {
         // 这里有强引用.
+        // 这里的循环引用没有太大的含义, 主要是为了调用 CurrentValueSubject 的卸载方法.
         fileprivate var parent: CurrentValueSubject?
         
         // 在每个 Conduit 里面, 记录下游节点. 当上游节点发送数据过来的时候, 交给各个 Conduit 传递给后续节点上.
         fileprivate var downstream: Downstream?
-        // 记录下游节点, 对于自己的需求.
+        // 记录下游节点, 对于自己的需求. 这个类存在的最主要的原因.
         fileprivate var demand = Subscribers.Demand.none
         
         private var lock = UnfairLock.allocate()
@@ -203,6 +219,7 @@ extension CurrentValueSubject {
                 lock.unlock()
                 return
             }
+            
             // demand 的管理.
             demand -= 1
             deliveredCurrentValue = true
@@ -234,6 +251,8 @@ extension CurrentValueSubject {
         }
         
         // Request, 可以算作是, 下游节点, 触发上游节点逻辑的起点.
+        // 这里有一点, 就是如果原来是没有需求的, 现在变为了有需求的了, 那么要主动的将现在 Current 的值, 传递过去.
+        // 这是 Current 具有缓存功能的体现.
         override func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()

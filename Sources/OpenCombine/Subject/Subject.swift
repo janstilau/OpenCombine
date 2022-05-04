@@ -5,12 +5,9 @@
 /// its `send()` method. This can be useful for adapting existing imperative code to the
 /// Combine model.
 
-// 虽然上面这样说, 但是看源码, 很多地方都进行了 Inner 节点的自定义.
-// 其中, 非常关键的一点就是, request Demand 的管理. 在 Combine 的 Pull 模型下, 是需要下游节点明确的 Request 之后, Publisher 才主动地进行信号创建逻辑的触发的. 这单纯的使用 Subject 类型的包装, 是达不到该目的的.
-
 // 注意, Combine 中的 Subject, 仅仅是一个 Publisher, 并不是一个 Subscriber.
 // 如果是使用 Subject 当做 Subscriber, 其实是使用了一个包装类型-SubjectSubscriber, 在里面, 是使用一个弱指针, 来指引着 Subject 对象.
-// 如果 Subject 对象 deinit 了, 弱指针为 nil. 这个响应链条也就断了.
+
 public protocol Subject: AnyObject, Publisher {
     
     /// Sends a value to the subscriber.
@@ -24,6 +21,8 @@ public protocol Subject: AnyObject, Publisher {
     ///
     /// - Parameter completion: A `Completion` instance which indicates whether publishing
     ///   has finished normally or failed with an error.
+    
+    // 这是, 命令式触发结束事件的基础. 在照片合成的那个例子里面, 就是在 ImagePicker 的 ViewDidDisappear 里面, 主动地触发了一次 Subject 的结束事件.
     func send(completion: Subscribers.Completion<Failure>)
     
     /// Sends a subscription to the subscriber.
@@ -31,12 +30,13 @@ public protocol Subject: AnyObject, Publisher {
     /// upstream subscriptions.
     /// - Parameter subscription: The subscription instance through which the subscriber
     ///   can request elements.
-    //
+    
+    // 目前, 只会在 Subject 作为响应链条的前半段终点的时候使用到了.
+    // 在 Subject 里面, 会强引用到这个 Subscription. 并且, request Unlimited 个数据.
     func send(subscription: Subscription)
 }
 
 extension Subject where Output == Void {
-    
     /// Sends a void value to the subscriber.
     ///
     /// Use `Void` inputs and outputs when you want to signal that an event has occurred,

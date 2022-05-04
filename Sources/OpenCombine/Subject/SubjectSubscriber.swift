@@ -1,10 +1,7 @@
 
-// 专门, 找了一个类型, 来包装 Subject.
-// Subject 并不天然是 Subscriber, 所以不能直接被 Publisher 进行 Subscribe.
-
-// 所以, 实际上是增加了一个节点, 这个节点里面, 包装了 Subject 对象. 而这个几点, 是用弱引用的方式, 包装的 Subject 对象.
-// 所以, Subject 的声明周期, 其实是不受这个响应联调的影响的.
-
+/*
+ Subject 并不天然是一个 Subscriber, 每次使用 Publisher receive 一个 Subject 的时候, 其实都是用下面的类型, 进行了一次包装.
+ */
 
 internal final class SubjectSubscriber<Downstream: Subject>
 : Subscriber,
@@ -17,6 +14,7 @@ internal final class SubjectSubscriber<Downstream: Subject>
     
     // 记录下游 Subject 节点.
     // 这是一个弱引用, 所以, 当 Subject 节点析构了之后, 上游节点, 是不会触发到下游的 Subject 的.
+    // 这符合了 Combine 里面, 最后的一个节点数据, 自动是 cancel 的通用设计.
     private weak var downstreamSubject: Downstream?
     // 记录上游 Subscription 节点. 这是惯例的实现, 和上游节点, 形成的了循环引用的关系.
     private var upstreamSubscription: Subscription?
@@ -33,14 +31,15 @@ internal final class SubjectSubscriber<Downstream: Subject>
     
     internal func receive(subscription: Subscription) {
         lock.lock()
-        guard upstreamSubscription == nil, let subject = downstreamSubject else {
+        guard upstreamSubscription == nil,
+              let subject = downstreamSubject else {
             lock.unlock()
             return
         }
         // 记录上游节点. 这里会有循环引用.
         upstreamSubscription = subscription
         lock.unlock()
-        // 然后把自己, 当做 Subject 的上游节点. Subject 在析构的时候, 会触发 self.cancel 方法, 通知上游节点, 进行 cancel.
+        // 这是在库里面, 唯一的一个 Subject 调用 send(subscription 的场景.
         subject.send(subscription: self)
     }
     
@@ -63,8 +62,8 @@ internal final class SubjectSubscriber<Downstream: Subject>
             return
         }
         lock.unlock()
-        // 当, 收到上游节点的完成事件之后, 交给下游节点.
-        // 然后主动释放资源. 其实感觉, 应该是上下游节点都释放. 不过, 因为是上游主动发送过来的 CompletionEvent, 所以应该是上游节点, 已经主动打破了循环引用才是.
+        // 直接把结束事件, 给到链接的 Subject 对象.
+        // 因为这是一个结束的事件, 所以, 应该在方法内, 做资源的回收工作.
         subject.send(completion: completion)
         downstreamSubject = nil
     }
