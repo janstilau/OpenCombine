@@ -106,6 +106,7 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
 #endif
 
 /// A publisher that publishes changes from observable objects.
+// 一个类似 Subject 的类. 
 public final class ObservableObjectPublisher: Publisher {
     
     // 仅仅是, 值发生了改变, 并不告诉当前的值是什么.

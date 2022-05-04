@@ -10,6 +10,7 @@ extension Publisher where Failure == Never {
     /// automatically when the `Published` instance deinitializes. Because of this,
     /// the `assign(to:)` operator doesn't return an `AnyCancellable` that you're
     /// responsible for like `assign(to:on:)` does.
+    
     // Published 作为 downstream, 是一个弱指针. 当 Published 对象消失之后, 该指针消失, 也就无法向后进行事件的传送了.
     
     /// The example below shows a model class that receives elements from an internal
@@ -107,6 +108,8 @@ public struct Published<Value> {
         }
     }
     
+    // 这里其实写的有点复杂了, 就是直接创建一个 PublishedPublisher 更加的清晰.
+    // 目前应该是性能的考虑, 当不需要 Publisher 的功能的时候, 就使用值语义的存储.
     private enum Storage {
         case value(Value)
         case publisher(PublishedPublisher)
@@ -121,7 +124,7 @@ public struct Published<Value> {
     }
     
     // 这里实现的有点复杂啊.
-    // 如果我实现, 可能里面就一个 PublishedSubject 属性就完事了. 
+    // 如果我实现, 可能里面就一个 PublishedSubject 属性就完事了.
     @PublishedBox private var storage: Storage
     
     internal var objectWillChange: ObservableObjectPublisher? {
@@ -165,6 +168,7 @@ public struct Published<Value> {
     }
     
     /// Note: This method can mutate `storage`
+    // 一个带有副作用的 Get 方法, 将原本存储, 从值语义, 变为了引用语义.
     internal func getPublisher() -> PublishedPublisher {
         switch storage {
         case .value(let value):
@@ -175,6 +179,8 @@ public struct Published<Value> {
             return publisher
         }
     }
+    
+    // 这是什么意思.
     // swiftlint:disable let_var_whitespace
     @available(*, unavailable, message: """
                @Published is only available on properties of classes
@@ -200,6 +206,7 @@ public struct Published<Value> {
             }
         }
         set {
+            // 每次赋值, 都会触发内部真正的 Subject 对象, 相关信号的发射.
             switch object[keyPath: storageKeyPath].storage {
             case .value:
                 object[keyPath: storageKeyPath].storage = .publisher(PublishedPublisher(newValue))

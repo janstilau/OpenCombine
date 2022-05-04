@@ -14,6 +14,8 @@ internal final class PublishedSubject<Output>: Subject {
     private var upstreamSubscriptions: [Subscription] = []
     // 记录了所有的下游节点.
     private var downstreams = ConduitList<Output, Failure>.empty
+    
+    // 为什么, ObservableObject 可以直接因为 @Published 属性的改变, 发射信号, 就是一位有 changePublisher 存在.
     // 这是 ObservableObject 赋值的 Publisher.
     // 每次值改动的时候, 主动调用一下.
     private var changePublisher: ObservableObjectPublisher?
@@ -35,6 +37,7 @@ internal final class PublishedSubject<Output>: Subject {
             defer { lock.unlock() }
             return changePublisher
         }
+        // 从 ObservableObject.swift 里面的实现, 可以看到是, 对于一个对象里面, 所有的 @Published 属性, 里面都会存储一个 PublishedSubject 对象, 而PublishedSubject的 objectWillChange, 懒加载生成, 会是同一个对象.
         set {
             lock.lock()
             defer { lock.unlock() }
@@ -47,14 +50,15 @@ internal final class PublishedSubject<Output>: Subject {
         self.currentValue = value
     }
     
+    // 和, CurrentObject 完全一直.
     deinit {
-        // 存储, upstreamSubscriptions 主要就是为了, 在 deinit 的时候, 调用 cancel
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
         lock.deallocate()
     }
     
+    // 和, CurrentObject 完全一直.
     internal func send(subscription: Subscription) {
         lock.lock()
         // 存储上游节点.
@@ -63,6 +67,7 @@ internal final class PublishedSubject<Output>: Subject {
         subscription.request(.unlimited)
     }
     
+    // 和, CurrentObject 完全一直.
     internal func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Downstream.Input == Output, Downstream.Failure == Never
     {
@@ -80,10 +85,13 @@ internal final class PublishedSubject<Output>: Subject {
         let downstreams = self.downstreams
         let changePublisher = self.changePublisher
         lock.unlock()
-        // 这是为了实现, 外界监控变化的需求.
-        // 也就是 objectWillChange: ObservableObjectPublisher 
+        
+        // 这个类存在的最大的意义, 就是 @Published 属性, 每次修改的时候, 都会主动的触发存储的 changePublisher 的信号发送.
         changePublisher?.send()
+        
+        
         // 然后, 才是真正的后续监听者, 收到发生改变的值.
+        // 和, CurrentObject 完全一直.
         downstreams.forEach { conduit in
             conduit.offer(input)
         }
