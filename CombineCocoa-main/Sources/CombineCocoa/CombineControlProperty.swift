@@ -1,10 +1,3 @@
-//
-//  CombineControlProperty.swift
-//  CombineCocoa
-//
-//  Created by Shai Mishali on 01/08/2019.
-//  Copyright © 2020 Combine Community. All rights reserved.
-//
 
 #if !(os(iOS) && (arch(i386) || arch(arm)))
 import Combine
@@ -14,6 +7,8 @@ import UIKit.UIControl
 // MARK: - Publisher
 @available(iOS 13.0, *)
 public extension Combine.Publishers {
+    // 仅仅是 Publisher, 没有作为 Subscriber 的能力.
+    // 难道是因为, 有 assign on, 已经不需要了. 
     /// A Control Property is a publisher that emits the value at the provided keypath
     /// whenever the specific control events are triggered. It also emits the keypath's
     /// initial value upon subscription.
@@ -21,6 +16,7 @@ public extension Combine.Publishers {
         public typealias Output = Value
         public typealias Failure = Never
 
+        // 根据, Keypath 来确定 Output 的值的类型.
         private let control: Control
         private let controlEvents: Control.Event
         private let keyPath: KeyPath<Control, Value>
@@ -39,12 +35,12 @@ public extension Combine.Publishers {
             self.keyPath = keyPath
         }
 
+        // Publihser 的内力, 他能够创建节点, 来面对后续节点的 Attach 请求.
         public func receive<S: Subscriber>(subscriber: S) where S.Failure == Failure, S.Input == Output {
             let subscription = Subscription(subscriber: subscriber,
                                             control: control,
                                             event: controlEvents,
                                             keyPath: keyPath)
-
             subscriber.receive(subscription: subscription)
         }
     }
@@ -62,14 +58,23 @@ extension Combine.Publishers.ControlProperty {
 
         init(subscriber: S, control: Control, event: Control.Event, keyPath: KeyPath<Control, Value>) {
             self.subscriber = subscriber
-            self.control = control
+            
             self.keyPath = keyPath
+            self.control = control
             self.event = event
             control.addTarget(self, action: #selector(handleEvent), for: event)
+        }
+        
+        // Publihser 的责任, 就是它所创造的节点, 能够主动地发送信号, 给它的后续节点.
+        // 这里就是 Porperty 可以作为 Publisher 的原因. 主动地处理了 TargetAction, 每次触发, 都把当前的最新值, 传递出去.
+        @objc private func handleEvent() {
+            guard let control = control else { return }
+            _ = subscriber?.receive(control[keyPath: keyPath])
         }
 
         func request(_ demand: Subscribers.Demand) {
             // Emit initial value upon first demand request
+            // 在第一次, Subscriber 需要数据的时候, 把当前的数据传递过去.
             if !didEmitInitial,
                 demand > .none,
                 let control = control,
@@ -85,11 +90,6 @@ extension Combine.Publishers.ControlProperty {
         func cancel() {
             control?.removeTarget(self, action: #selector(handleEvent), for: event)
             subscriber = nil
-        }
-
-        @objc private func handleEvent() {
-            guard let control = control else { return }
-            _ = subscriber?.receive(control[keyPath: keyPath])
         }
     }
 }
