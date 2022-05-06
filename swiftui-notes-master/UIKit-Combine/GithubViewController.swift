@@ -10,6 +10,7 @@ import Combine
 import UIKit
 
 class GithubViewController: UIViewController {
+    
     @IBOutlet var github_id_entry: UITextField!
     @IBOutlet var activityIndicator: UIActivityIndicatorView!
     @IBOutlet var repositoryCountLabel: UILabel!
@@ -34,7 +35,6 @@ class GithubViewController: UIViewController {
 
     @IBAction func githubIdChanged(_ sender: UITextField) {
         username = sender.text ?? ""
-        print("Set username to ", username)
     }
 
     @IBAction func poke(_: Any) {}
@@ -77,6 +77,7 @@ class GithubViewController: UIViewController {
 
         // using .assign() on the other hand (which returns an
         // AnyCancellable) *DOES* require a Failure type of <Never>
+        // 数据的改变, 引起 UI 的变化.
         repositoryCountSubscriber = $githubUserData
             .print("github user data: ")
             .map { userData -> String in
@@ -101,6 +102,7 @@ class GithubViewController: UIViewController {
             //     possibleUser != nil
             // })
             // .print("avatar image for user") // debugging output
+        // 数据的改变, 引起 UI 的变化.
             .map { userData -> AnyPublisher<UIImage, Never> in
                 guard let firstUser = userData.first else {
                     // my placeholder data being returned below is an empty
@@ -111,6 +113,7 @@ class GithubViewController: UIViewController {
                 }
                 return URLSession.shared.dataTaskPublisher(for: URL(string: firstUser.avatar_url)!)
                     // ^^ this hands back (Data, response) objects
+                // 垃圾代码. 
                     .handleEvents(receiveSubscription: { _ in
                         DispatchQueue.main.async {
                             self.activityIndicator.startAnimating()

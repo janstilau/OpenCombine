@@ -27,10 +27,10 @@ enum GithubAPI {
     // object set up with with a class and static methods on the class.
     // I don't know that there's a specific benefit to make this a value
     // type/struct with a function on it.
-
+    
     /// externally accessible publsher that indicates that network activity is happening in the API proxy
     static let networkActivityPublisher = PassthroughSubject<Bool, Never>()
-
+    
     /// creates a one-shot publisher that provides a GithubAPI User
     /// object as the end result. This method was specifically designed to
     /// return a list of 1 object, as opposed to the object itself to make
@@ -50,6 +50,8 @@ enum GithubAPI {
         }
         let assembledURL = String("https://api.github.com/users/\(username)")
         let publisher = URLSession.shared.dataTaskPublisher(for: URL(string: assembledURL)!)
+        // 利用了, handleEvents 的副作用, 在网络请求的开始结束, 进行了相关信号的发送.
+        // 外界使用了该值, 做 loading 的变化.
             .handleEvents(receiveSubscription: { _ in
                 networkActivityPublisher.send(true)
             }, receiveCompletion: { _ in
@@ -61,21 +63,24 @@ enum GithubAPI {
                 guard let httpResponse = response as? HTTPURLResponse,
                       httpResponse.statusCode == 200
                 else {
+                    // 当, 可能发生错误的时候, 应该使用 TryMap 进行相关数据的映射.
                     throw APIFailureCondition.invalidServerResponse
                 }
                 return data
             }
             .decode(type: GithubAPIUser.self, decoder: JSONDecoder())
             .map {
+                // 将, 数据变为数据类型.
                 [$0]
             }
+            // 如果, 上面的操作, 产生了错误, 那么就使用 [] 进行替换. 这样, 这就是一个永远不会产生错误的 Publisher 了
             .replaceError(with: [])
-            // ^^ when I originally wrote this method, I was returning
-            // a GithubAPIUser? optional, and then a GithubAPIUser without
-            // optional. I ended up converting this to return an empty
-            // list as the "error output replacement" so that I could
-            // represent that the current value requested didn't *have* a
-            // correct github API response.
+        // ^^ when I originally wrote this method, I was returning
+        // a GithubAPIUser? optional, and then a GithubAPIUser without
+        // optional. I ended up converting this to return an empty
+        // list as the "error output replacement" so that I could
+        // represent that the current value requested didn't *have* a
+        // correct github API response.
             .eraseToAnyPublisher()
         return publisher
     }
