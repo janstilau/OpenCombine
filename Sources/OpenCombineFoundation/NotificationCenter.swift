@@ -62,6 +62,7 @@ extension NotificationCenter {
         public func publisher(for name: Notification.Name,
                               object: AnyObject? = nil) -> Publisher {
             // 这里返回的, 就是 Publisher 对象. 绑定了类型, 就可以直接使用 init 函数了.
+            // 是
             return .init(center: center, name: name, object: object)
         }
     }
@@ -74,19 +75,7 @@ extension NotificationCenter {
 
 extension NotificationCenter {
     
-    /// A namespace for disambiguation when both OpenCombine and Foundation are imported.
-    ///
-    /// Foundation extends `NotificationCenter` with new methods and nested types.
-    /// If you import both OpenCombine and Foundation, you will not be able
-    /// to write `NotificationCenter.default.publisher(for: name)`,
-    /// because Swift is unable to understand which `publisher` method
-    /// you're referring to — the one declared in Foundation or in OpenCombine.
-    ///
-    /// So you have to write `NotificationCenter.default.ocombine.publisher(for: name)`.
-    ///
-    /// This bug is tracked [here](https://bugs.swift.org/browse/SR-11183).
-    ///
-    /// You can omit this whenever Combine is not available (e. g. on Linux).
+    // 这种方式, 就是各种 Extensnion 的处理方式. 各种 Extension, 都是一个值语义的对象, 每次使用的时候, 都是随用随创建.
     public var ocombine: OCombine { return .init(self) }
     
 #if !canImport(Combine)
@@ -126,12 +115,16 @@ extension Notification {
     where Downstream.Input == Notification,
           Downstream.Failure == Never
     {
+        // 大量的, Private 的权限控制. 甚至整个类型, 都是 Private 的.
+        // 这是一个非常好的习惯.
         private let lock = UnfairLock.allocate()
         
         fileprivate let downstreamLock = UnfairRecursiveLock.allocate()
         
         fileprivate var demand = Subscribers.Demand.none
         
+        
+        // 各种, 需要外界传入进来的对象, 直接就是 Init 方法里面传递进来就好了
         private var center: NotificationCenter?
         
         private let name: Name
@@ -159,11 +152,13 @@ extension Notification {
             downstreamLock.deallocate()
         }
         
-        // 因为, 在 Combine 里面, 必须要尊重 Pull 原型, 所以在真正的接收到 NotificaiotnCenter 的回调之后, 其实要到这里, 进行 Demand 相关的判断的.
+        // 实际上, 每次通知发送的时候, 该方法都会被调用. 这是利用了原始的 API 的功能.
+        // 但是, 为了尊重 Pull, 专门的设计一个 Notification 的 Subscription 出来.
+        // 在这个类里面, 进行了 Demand 的管理. 当新的 Notification 来临的时候, 只有 Demand 符合管理预期, 才会传给自己的 Downstream.
         private func didReceiveNotification(_ notification: Notification,
                                             downstream: Downstream) {
             lock.lock()
-            // 如果, demand 已经降低到 0 了, 那么就不会给后续发射信号了. 
+            // 如果, demand 已经降低到 0 了, 那么就不会给后续发射信号了.
             guard demand > 0 else {
                 lock.unlock()
                 return
@@ -187,7 +182,7 @@ extension Notification {
             lock.unlock()
         }
         
-        // Cancel, 则是将自己从 NotificaitonCenter 里面移除. 
+        // Cancel, 则是将自己从 NotificaitonCenter 里面移除.
         func cancel() {
             lock.lock()
             guard let center = self.center.take(),
@@ -198,7 +193,7 @@ extension Notification {
             
             self.object = nil
             lock.unlock()
-            // 这里, 对于 downStream 进行了强引用的解除. 
+            // 这里, 对于 downStream 进行了强引用的解除.
             center.removeObserver(observation)
         }
         

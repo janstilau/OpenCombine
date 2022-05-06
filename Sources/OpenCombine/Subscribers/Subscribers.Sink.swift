@@ -34,6 +34,9 @@ extension Publisher where Failure == Never {
     ) -> AnyCancellable {
         // receiveCompletion 必然有值, 因为, Subscribers.Sink 里面这个成员变量并不是 Optional 的.
         // 坦率的说, 给很多成员变量, 添加一个默认的无效值, 可以大大简化类型的处理逻辑 .
+        
+        // Never 其实是一个特殊的类型, 可以认为是泛型特化.
+        // 当, Error 是 Never 的时候, 该类型就可以调用这个特殊版本的方法了.
         let subscriber = Subscribers.Sink<Output, Failure>(
             receiveCompletion: { _ in },
             receiveValue: receiveValue
@@ -56,14 +59,15 @@ extension Subscribers {
     public final class Sink<Input, Failure: Error>
     : Subscriber,
       Cancellable, // 因为, SINK 对象就是最后的节点对象了, 不会再次向后方传递. 所以, Sink 对象, 仅仅是 Cancellable 而不是 Subscription
-      CustomStringConvertible,
-      CustomReflectable,
-      CustomPlaygroundDisplayConvertible {
+    // Subscription 相比较于 Cancellable, 多了一个后续节点 requestDemand 的需求.
+    CustomStringConvertible,
+    CustomReflectable,
+    CustomPlaygroundDisplayConvertible {
         
         // 记录了, Next Event 应该触发的闭包.
         public var receiveValue: (Input) -> Void
         
-        // 记录了, Complete Event 应该触发的闭包. 
+        // 记录了, Complete Event 应该触发的闭包.
         public var receiveCompletion: (Subscribers.Completion<Failure>) -> Void
         
         /*
@@ -75,6 +79,8 @@ extension Subscribers {
          存储 Subscription, 可以进行 Demand 的动态管理. 不过, 在 Sink 中没有使用该技巧.
          还可以进行 Subscription 的 cancel 操作. 这是 Cancellable 应该做的事情, 在做完自己的资源释放之后, 要触发上游的 cancel
          */
+        // 这个一个通用的设计, 各个 Operator 的 Subscription, 基本内部都有着这样的一个值.
+        // 这可以认为是, enum 当做存储类型来使用的一个例子. 既可以当做标识类型, 也可以当做存储类型. 并且, 具有内存管理的作用.
         private var status = SubscriptionStatus.awaitingSubscription
         
         private let lock = UnfairLock.allocate()
@@ -111,15 +117,11 @@ extension Subscribers {
                 subscription.cancel()
                 return
             }
-            // 存储了一下, 当前的 subscription, 形成了 Subscription 和 Subscriber 之间的循环引用.
-            // 同时, 这里也管理了下状态. Swift 的 Enum 当做数据盒子, 使得业务数据和状态数据统一, 让逻辑更加清晰.
-            // 在切换状态的时候, 自动进行内存的管理
             status = .subscribed(subscription)
             lock.unlock()
             
-            // 然后, 触发 subscription 的 Demand 管理.
-            // 如果使用 unlimited 进行管理, 那么就是 Rx 没有太大区别了. 也就是这个位置的 Subscriber 不做背压管理. 上游只要事件完成了, 就可以触发下游信号的接受.
-            // 是否给下游节点, 发送信号, 是上游节点控制的. 如果上游节点不尊重下游节点的 RequestDemand 的意图, 就是上游节点的设计有问题.
+            // 必须触发上游的背压管理.
+            // 这是 Combine 的设计思路.
             subscription.request(.unlimited)
         }
         
@@ -141,24 +143,16 @@ extension Subscribers {
         public func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             // 这里, 对 Subscription 的强引用解除了. 同时, 进行了状态的管理.
-            
-            // 当, 一个节点认为自己该结束了, 一般
             status = .terminal
             let receiveCompletion = self.receiveCompletion
             self.receiveCompletion = { _ in }
             
-            // We MUST release the closures AFTER unlocking the lock,
-            // since releasing a closure may trigger execution of arbitrary code,
-            // for example, if the closure captures an object with a deinit.
-            // When closure deallocates, the object's deinit is called, and holding
-            // the lock at that moment can lead to deadlocks.
-            // See https://github.com/OpenCombine/OpenCombine/issues/208
-            // 这里没太明白, 不重要.
+            // 当, 一个节点收到了 Cancel, 或者 Complete 的时候, 应该做好自己的资源的释放工作.
+            // 当, 所有的节点, 都能做好自己的资源释放的时候, 各个节点完成自己的任务就可以了, 因为可以默认, 自己被调用的时候, 自己的上层或者下层, 都会完成自己层级的资源释放.
             withExtendedLifetime(receiveValue) {
                 receiveValue = { _ in }
                 lock.unlock()
             }
-            
             receiveCompletion(completion)
         }
         
@@ -171,21 +165,11 @@ extension Subscribers {
                 return
             }
             status = .terminal
-            
-            // We MUST release the closures AFTER unlocking the lock,
-            // since releasing a closure may trigger execution of arbitrary code,
-            // for example, if the closure captures an object with a deinit.
-            // When closure deallocates, the object's deinit is called, and holding
-            // the lock at that moment can lead to deadlocks.
-            // See https://github.com/OpenCombine/OpenCombine/issues/208
-            
-            // Evaluates a closure while ensuring that the given instance is not destroyed before the closure returns.
             withExtendedLifetime((receiveValue, receiveCompletion)) {
                 receiveCompletion = { _ in }
                 receiveValue = { _ in }
                 lock.unlock()
             }
-            // 最终, 是要执行, subscription.cancel 方法的.
             subscription.cancel()
         }
     }
@@ -195,16 +179,18 @@ extension Subscribers {
 // 返回的时候, 应该使用 Any 进行类型的隐藏.
 extension Publisher {
     
+    // Attach, 一定要多使用这个词, 这是 Combine 里面, 非常重要的一个词.
     /// Attaches a subscriber with closure-based behavior.
-    ///
+    
     /// Use `sink(receiveCompletion:receiveValue:)` to observe values received by
     /// the publisher and process them using a closure you specify.
-    ///
+    
     /// In this example, a `Range` publisher publishes integers to
     /// a `sink(receiveCompletion:receiveValue:)` operator’s `receiveValue` closure that
     /// prints them to the console. Upon completion
     /// the `sink(receiveCompletion:receiveValue:)` operator’s `receiveCompletion` closure
     /// indicates the successful termination of the stream.
+    
     ///
     ///     let myRange = (0...3)
     ///     cancellable = myRange.publisher
@@ -218,6 +204,7 @@ extension Publisher {
     ///     //  value: 3
     ///     //  completion: finished
     ///
+    
     /// This method creates the subscriber and immediately requests an unlimited number
     /// of values, prior to returning the subscriber.
     

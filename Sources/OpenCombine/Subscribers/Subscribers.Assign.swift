@@ -2,10 +2,10 @@
 extension Publisher where Failure == Never {
     
     /// Assigns each element from a publisher to a property on an object.
-    ///
+    
     /// Use the `assign(to:on:)` subscriber when you want to set a given property each
     /// time a publisher produces a value.
-    ///
+    
     /// In this example, the `assign(to:on:)` sets the value of the `anInt` property on
     /// an instance of `MyClass`:
     ///
@@ -23,7 +23,8 @@ extension Publisher where Failure == Never {
     ///         .assign(to: \.anInt, on: myObject)
     ///
     ///     // Prints: "anInt was set to: 0; anInt was set to: 1; anInt was set to: 2"
-    ///
+    
+    // 这个 Subscriber 有着循环引用.
     ///  > Important: The `Subscribers.Assign` instance created by this operator maintains
     ///  a strong reference to `object`, and sets it to `nil` when the upstream publisher
     ///  completes (either normally or with an error).
@@ -97,19 +98,12 @@ extension Subscribers {
         
         /// Creates a subscriber to assign the value of a property indicated by
         /// a key path.
-        ///
-        /// - Parameters:
-        ///   - object: The object that contains the property. The subscriber assigns
-        ///     the object’s property every time it receives a new value.
-        ///   - keyPath: A key path that indicates the property to assign. See
-        ///     [Key-Path Expression](https://docs.swift.org/swift-book/ReferenceManual/Expressions.html#ID563)
-        ///     in _The Swift Programming Language_ to learn how to use key paths to
-        ///     specify a property of an object.
         public init(object: Root, keyPath: ReferenceWritableKeyPath<Root, Input>) {
             self.object = object
             self.keyPath = keyPath
         }
         
+        // Subscriber 的内存其实不会和 Cancel 进行绑定, 真正的绑定的, 是 Cancelable 对象 .
         deinit {
             lock.deallocate()
         }

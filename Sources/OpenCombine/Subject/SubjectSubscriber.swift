@@ -33,13 +33,14 @@ internal final class SubjectSubscriber<Downstream: Subject>
         lock.lock()
         guard upstreamSubscription == nil,
               let subject = downstreamSubject else {
-            lock.unlock()
-            return
-        }
+                  lock.unlock()
+                  return
+              }
         // 记录上游节点. 这里会有循环引用.
         upstreamSubscription = subscription
         lock.unlock()
         // 这是在库里面, 唯一的一个 Subject 调用 send(subscription 的场景.
+        // Subject, 对于上游其实是 unlimited Demand 管理的.
         subject.send(subscription: self)
     }
     
@@ -81,10 +82,10 @@ internal final class SubjectSubscriber<Downstream: Subject>
     internal func cancel() {
         lock.lock()
         guard !isCancelled,
-                let subscription = upstreamSubscription else {
-            lock.unlock()
-            return
-        }
+              let subscription = upstreamSubscription else {
+                  lock.unlock()
+                  return
+              }
         // 上游资源的释放, 是打破和上游资源一起构成的循环引用
         upstreamSubscription = nil
         // 下游资源的示范, 是打破下游资源一起构成的循环引用

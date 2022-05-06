@@ -1,21 +1,22 @@
-
 /// A protocol that declares a type that can receive input from a publisher.
-//
 
 /// A `Subscriber` instance receives a stream of elements from a `Publisher`, along with
 /// life cycle events describing changes to their relationship. A given subscriber’s
 /// `Input` and `Failure` associated types must match the `Output` and `Failure` of its
 /// corresponding publisher.
-//
 
 /// You connect a subscriber to a publisher by calling the publisher’s `subscribe(_:)`
 /// method.
+// 这里说的很清楚, Publihser 有责任, 去调用 Receiver 的 receive(subscription:) 方法.
+// Publihser 内部, 生成了 Subscription 节点, 然后, 主动调用 receiver 的 receive(subscription:), 将生成的上游节点, 传递给 Subscriber 对象.
+// 在 Subscriber 对象内, 一般会存储 Subscription 对象, 进行 Demand 的管理, 或者, 进行上游节点的 cancle 调用.
 /// After making this call, the publisher invokes the subscriber’s
 /// `receive(subscription:)` method. This gives the subscriber a `Subscription` instance,
 /// which it uses to demand elements from the publisher, and to optionally cancel
 /// the subscription.
 // 有着固定的行为流程, 这在实现 Publisher 的时候, 一定要遵守.
 
+// 上游及诶单, 主动调用下游节点的 receive value, 来进行数据的传输. 
 /// After the subscriber makes an initial demand, the publisher calls
 /// `receive(_:)`, possibly asynchronously, to deliver newly-published elements.
 /// If the publisher stops publishing, it calls `receive(completion:)`, using a parameter
