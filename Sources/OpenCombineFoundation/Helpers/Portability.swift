@@ -106,7 +106,7 @@ internal struct Timer {
         // https://github.com/apple/swift-corelibs-foundation/blob/4cd3bf083b4705d25ac76ef8d038a06bc586265a/Foundation/Timer.swift#L18-L29
         
         // The first 2 words are reserved for reference counting
-        let firstFieldOffset = MemoryLayout<Int>.size * 2
+        let firstFieldOffset = MemoryLayout<Int>.prefetchSize * 2
         
         return Unmanaged
             .passUnretained(underlyingTimer)

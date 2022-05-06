@@ -12,9 +12,13 @@ extension Publisher {
     /// the elements from one kind of publisher into a new publisher that is sent
     /// to subscribers.
     
+    // 这是一个异步操作联合的操作符. 能够实现, Promise 串联的效果.
     /// Use `flatMap(maxPublishers:_:)` when you want to create a new
     /// series of events for downstream subscribers based on the received value.
     /// The closure creates the new `Publisher` based on the received value.
+    
+    // 是每一个原始的 Publihser 的数据, 都会生成一个新的 Publisher, 然后新的 Publihser 的数据, 是后方节点的数据.
+    // 所有, 原始的 Publihser 的数据, 还是在正常的流转着.
     /// The new `Publisher` can emit more than one event, and successful completion of
     /// the new `Publisher` does not complete the overall stream.
     /// Failure of the new `Publisher` will fail the overall stream.
@@ -32,7 +36,9 @@ extension Publisher {
     ///     var weatherPublisher = PassthroughSubject<WeatherStation, URLError>()
     ///
     ///     cancellable = weatherPublisher
-    ///         .flatMap { station -> URLSession.DataTaskPublisher in
+    ///         .flatMap {
+    ///         接收到一个 WeatherStation 数据, 然后触发一个网络请求, 后续的节点, 是直接处理网络请求相关的数据信号.
+    ///         station -> URLSession.DataTaskPublisher in
     ///             let url = URL(string: """
     ///             https://weatherapi.example.com/stations/\(station.stationID)\
     ///             /observations/latest
@@ -51,7 +57,7 @@ extension Publisher {
     ///     weatherPublisher.send(WeatherStation(stationID: "KSFO")) // San Francisco, CA
     ///     weatherPublisher.send(WeatherStation(stationID: "EGLC")) // London, UK
     ///     weatherPublisher.send(WeatherStation(stationID: "ZBBB")) // Beijing, CN
-    ///
+    
     /// - Parameters:
     ///   - maxPublishers: Specifies the maximum number of concurrent publisher
     ///     subscriptions, or `Subscribers.Demand.unlimited` if unspecified.
@@ -138,7 +144,8 @@ extension Publishers {
     
     /// A publisher that transforms elements from an upstream publisher into a new
     /// publisher.
-    public struct FlatMap<Child: Publisher, Upstream: Publisher>: Publisher
+    public struct FlatMap<Child: Publisher,
+                          Upstream: Publisher>: Publisher
     where Child.Failure == Upstream.Failure
     {
         public typealias Output = Child.Output
@@ -212,12 +219,15 @@ extension Publishers.FlatMap {
         private var downstreamRecursive = false
         
         private var innerRecursive = false
-        private var subscriptions = [SubscriptionIndex : Subscription]()
+        
         private var nextInnerIndex: SubscriptionIndex = 0
         private var pendingSubscriptions = 0
+        // 中间节点的管理器.
+        private var subscriptions = [SubscriptionIndex : Subscription]()
+        // 中间节点产生的数据的管理器.
         private var buffer = [(SubscriptionIndex, Child.Output)]()
         private let maxPublishers: Subscribers.Demand
-        private let map: (Input) -> Child
+        private let childPublisherGenerator: (Input) -> Child
         private var cancelledOrCompleted = false
         private var outerFinished = false
         
@@ -226,7 +236,7 @@ extension Publishers.FlatMap {
              map: @escaping (Upstream.Output) -> Child) {
             self.downstream = downstream
             self.maxPublishers = maxPublishers
-            self.map = map
+            self.childPublisherGenerator = map
         }
         
         deinit {
@@ -245,9 +255,11 @@ extension Publishers.FlatMap {
                 subscription.cancel()
                 return
             }
+            // 存储原始的 Upstream 生成的 Subscription 节点.
             outerSubscription = subscription
             lock.unlock()
             // 原始 UpStream 的 Demand, 受 maxPublishers 的控制.
+            // 原始的 Upstream 应该尊重该值. maxPublishers 就是在这里, 起到了控制上游节点发送数据数量的逻辑.
             subscription.request(maxPublishers)
         }
         
@@ -259,7 +271,7 @@ extension Publishers.FlatMap {
                 return .none
             }
             // 在这里, 产生了 新的 Publisher.
-            let child = map(input)
+            let child = childPublisherGenerator(input)
             lock.lock()
             let innerIndex = nextInnerIndex
             nextInnerIndex += 1
@@ -281,6 +293,7 @@ extension Publishers.FlatMap {
             case .failure:
                 let wasAlreadyCancelledOrCompleted = cancelledOrCompleted
                 cancelledOrCompleted = true
+                // 如果发生了错误, 那么后续节点, 接收到错误时间. 并且, 把之前所有的中间节点释放.
                 for (_, subscription) in subscriptions {
                     // Cancelling subscriptions with the lock acquired. Not good,
                     // but that's what Combine does. This code path is tested.
@@ -299,8 +312,13 @@ extension Publishers.FlatMap {
         
         // MARK: - Subscription
         
+        // 这个是, Downstream 对于管控节点的 Demand 的控制.
         fileprivate func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
+            // downstreamRecursive = true
+            // 会在 Downstream.receiveInput 的时候触发.
+            // 而 Downstream.receiveInput 中, downstream 会触发该方法.
+            // 所以, 在这里应该做阻断, 不然就递归循环了.
             if downstreamRecursive {
                 // downstreamRecursive being true means that downstreamLock
                 // is already acquired.
@@ -485,9 +503,6 @@ extension Publishers.FlatMap {
         private func releaseLockThenSendCompletionDownstreamIfNeeded(
             outerFinished: Bool
         ) -> Bool {
-#if DEBUG
-            lock.assertOwner() // Sanity check
-#endif
             if !cancelledOrCompleted && outerFinished && buffer.isEmpty &&
                 subscriptions.count + pendingSubscriptions == 0 {
                 cancelledOrCompleted = true
@@ -517,6 +532,7 @@ extension Publishers.FlatMap {
                 self.inner = inner
             }
             
+            // 所有的, Subscriber 的实现, 都是调用 InnerManager 的相对应的方法.
             fileprivate func receive(subscription: Subscription) {
                 inner.receiveInner(subscription: subscription, index)
             }

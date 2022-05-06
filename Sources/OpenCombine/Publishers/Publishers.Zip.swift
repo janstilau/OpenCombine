@@ -3,18 +3,24 @@
 import COpenCombineHelpers
 #endif
 
+/*
+ Use Publishers.Zip to combine the latest elements from two publishers and emit a tuple to the downstream. The returned publisher waits until both publishers have emitted an event, then delivers the oldest unconsumed event from each publisher together as a tuple to the subscriber.
+ Much like a zipper or zip fastener on a piece of clothing pulls together rows of teeth to link the two sides, Publishers.Zip combines streams from two different publishers by linking pairs of elements from each side.
+ If either upstream publisher finishes successfully or fails with an error, so too does the zipped publisher.
+ */
+// Zip Publihser, 主要用来进行数据的收集工作 .
 extension Publishers {
     
     /// A publisher created by applying the zip function to two upstream publishers.
+    // 必须, UpstreamA UpstreamB 的 Failure 是一致的.
+    // 而 Output, 则是各个 Publisher 的 Output 组成的 Tuple
     public struct Zip<UpstreamA: Publisher, UpstreamB: Publisher>: Publisher
     where UpstreamA.Failure == UpstreamB.Failure
     {
-        
         /// The kind of values published by this publisher.
         public typealias Output = (UpstreamA.Output, UpstreamB.Output)
         
         /// The kind of errors this publisher might publish.
-        ///
         /// Use `Never` if this `Publisher` does not publish errors.
         public typealias Failure = UpstreamA.Failure
         
@@ -34,6 +40,8 @@ extension Publishers {
         /// - Parameters:
         ///     - subscriber: The subscriber to attach to this `Publisher`.
         ///                   once attached it can begin to receive values.
+        
+        // Zip 是一个 Container, 所以其实他并不需要, Upstream 进行 Subscribe.
         public func receive<Downstream: Subscriber>(subscriber: Downstream) where
         UpstreamB.Failure == Downstream.Failure,
         Downstream.Input == (UpstreamA.Output, UpstreamB.Output)
@@ -148,9 +156,9 @@ extension Publishers {
 }
 
 extension Publisher {
-    
+    // Zip 的 Publisher 方法, 隐藏真正的 Publihser 的生成.
     /// Combine elements from another publisher and deliver pairs of elements as tuples.
-    ///
+    
     /// The returned publisher waits until both publishers have emitted an event, then
     /// delivers the oldest unconsumed event from each publisher together as a tuple to
     /// the subscriber.
@@ -289,6 +297,7 @@ Other3: Publisher,
         return Publishers.Zip4(self, publisher1, publisher2, publisher3)
     }
     
+    
     /// Combine elements from three other publishers and deliver a transformed output.
     ///
     /// The returned publisher waits until all four publishers have emitted an event, then
@@ -333,10 +342,12 @@ Other3: Publisher,
 }
 
 extension Publishers.Zip {
+    // 真正的 Subscription 对象.
     private class Inner<Downstream: Subscriber>: InnerBase<Downstream>
     where Downstream.Failure == Failure,
           Downstream.Input == (UpstreamA.Output, UpstreamB.Output)
     {
+        // 在, Zip 的 Subscription 的构造函数里面, 将对应的 ChildSubscriber 生成了.
         private lazy var aSubscriber = ChildSubscriber<UpstreamA, Downstream>(self, 0)
         private lazy var bSubscriber = ChildSubscriber<UpstreamB, Downstream>(self, 1)
         
@@ -386,6 +397,7 @@ extension Publishers.Zip3 {
     }
 }
 
+// 各种 Zip, 都有着固定的实现的逻辑.
 extension Publishers.Zip4 {
     private class Inner<Downstream: Subscriber>: InnerBase<Downstream>
     where Downstream.Failure == Failure,
@@ -469,9 +481,14 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
         abstractMethod()
     }
     
+    // ChildReceiver 会触发该方法, 当原有的 Publihser, 发送 ChildSubscription 给 ChildReceiver 的时候触发.
+    // 主要逻辑在于, 修改 ChildSubscription 的状态, 以及判断是否所有的节点都已经收到了上游节点, 如果是的话, 给 Zip 的下游节点, 发送 Zip 节点为 Subscription.
     fileprivate final func receivedSubscription(for child: ChildSubscription) {
         lock.lock()
+        // Child 的状态改变, 感觉还是应该放到自己的类里面比较合适.
         child.state = .active
+        // 当, 所有的中转 Subscription 都已经接收到了上级的 Subscription 之后, 才将自己传递给后方节点.
+        // 不然, 后方节点 Request Demand 没有太大的意义. 因为 Zip 的定义是, 必须所有的中转节点, 都有数据, 才会给后方发送数据.
         let sendSubscriptionDownstream = upstreamSubscriptions
             .filter { $0.state == .waitingForSubscription }
             .isEmpty
@@ -482,6 +499,8 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
         }
     }
     
+    // 子节点, 收取到 Value 之后, 调用 Zip 管理者的该逻辑.
+    // lockedStoreValue 之所以要传递过来, 是因为, 要在统一的锁的管理下.
     fileprivate final func receivedChildValue(
         child: ChildSubscription,
         _ lockedStoreValue: () -> Void
@@ -492,6 +511,9 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
             checkShouldFinish()
             lock.unlock()
         }
+        
+        // 当, 子节点收到数据之后, 判断是否所有的节点都有数据了.
+        // 如果是的话, 抽取数据, 然后发送给后方 .
         if let dequeuedValue = maybeDequeueValue() {
             value = dequeuedValue
             assert(processingValueForChild == nil)
@@ -505,15 +527,16 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
     
     fileprivate final func receivedCompletion(
         _ completion: Subscribers.Completion<Downstream.Failure>,
-        forChild child: ChildSubscription)
-    {
+        forChild child: ChildSubscription) {
         switch completion {
         case .failure:
+            // 如果, 是出错了, 那么直接就传输给后续的节点.
             downstream.receive(completion: completion)
             lock.lock()
             child.state = .failed
             let subscriptionsToCancel = upstreamSubscriptions
             lock.unlock()
+            // 并且, 通知所有的子节点, 进行取消的操作.
             subscriptionsToCancel.forEach { $0.cancel() }
         case .finished:
             lock.lock()
@@ -547,6 +570,8 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
         downstream.receive(subscription: self)
     }
     
+    // 如果, 所有的 Zip 节点中都有值了.
+    // 这时候, 会在锁的环境下.
     private var hasCompleteValueAvailable: Bool {
         return upstreamSubscriptions.allSatisfy { $0.hasValue }
     }
@@ -557,6 +582,7 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
             .allSatisfy { $0.state == .active || $0.hasValue }
     }
     
+    // 给后方节点传值, 并且, 接收到后方节点发挥来的 demand 数据.
     @discardableResult
     private func processValue() -> Subscribers.Demand? {
         assert(valueIsBeingProcessed)
@@ -608,6 +634,7 @@ extension InnerBase: Subscription {
         }
         lock.lock()
         downstreamDemand += demand
+        // 当, Zip 节点, 收到 Demand 的请求之后, 将请求转发给所有的 zip 子节点.
         sendRequestUpstream(demand: demand)
         if valueIsBeingProcessed {
             demandReceivedWhileProcessing = demand
@@ -628,8 +655,7 @@ extension InnerBase: Subscription {
 
 extension Array where Element == ChildSubscription {
     func shouldFinish() -> Bool {
-        for subscription in self
-        where subscription.state == .finished && !subscription.hasValue{
+        for subscription in self where subscription.state == .finished && !subscription.hasValue{
             return true
         }
         return false
@@ -654,6 +680,7 @@ private protocol ChildSubscription: AnyObject, Subscription {
     var hasValue: Bool { get }
 }
 
+// 真正的, 每个 Zip 里面的 Subscriber 是 ChildSubscriber.
 fileprivate final class ChildSubscriber<Upstream: Publisher, Downstream: Subscriber>
 where Upstream.Failure == Downstream.Failure
 {
@@ -663,8 +690,9 @@ where Upstream.Failure == Downstream.Failure
     fileprivate final var state: ChildState = .waitingForSubscription
     fileprivate final var upstreamSubscription: Subscription?
     private var values = [Upstream.Output]()
-    private unowned let parent: InnerBase<Downstream>
     fileprivate let childIndex: Int
+    
+    private unowned let parent: InnerBase<Downstream>
     
     init(_ parent: InnerBase<Downstream>, _ childIndex: Int) {
         self.parent = parent
@@ -689,12 +717,14 @@ extension ChildSubscriber: Subscription {
 }
 
 extension ChildSubscriber: Cancellable {
+    // 通知上游节点取消.
     fileprivate final func cancel() {
         upstreamSubscription?.cancel()
         upstreamSubscription = nil
     }
 }
 
+// 对于, 这种联系非常非常紧密的两个类来说, 互相知晓是没有问题的.
 extension ChildSubscriber: Subscriber {
     fileprivate final func receive(subscription: Subscription) {
         if upstreamSubscription == nil {
@@ -706,6 +736,7 @@ extension ChildSubscriber: Subscriber {
     }
     
     fileprivate final func receive(_ input: Input) -> Subscribers.Demand {
+        // 这里还有一步, 存值的操作.
         return parent.receivedChildValue(child: self) { values.append(input) }
     }
     

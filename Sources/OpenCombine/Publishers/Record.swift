@@ -3,6 +3,9 @@
 // 可以用来 mock, 或者将一些已知数据, 填入到 Combine 环境中.
 /// A publisher that allows for recording a series of inputs and a completion for later
 /// playback to each subscriber.
+/*
+ A publisher that allows for recording a series of inputs and a completion, for later playback to each subscriber.
+ */
 public struct Record<Output, Failure: Error>: Publisher {
     
     /// The recorded output and completion.
@@ -225,7 +228,7 @@ extension Record {
                     self.next = next
                 }
                 
-                // 如果, 没有了数据, 那么发送 Completion 事件. 释放资源. 
+                // 如果, 没有了数据, 那么发送 Completion 事件. 释放资源.
                 if next == nil {
                     self.downstream = nil
                     self.sequence = nil

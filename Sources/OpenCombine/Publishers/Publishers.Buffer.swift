@@ -1,9 +1,3 @@
-//
-//  Publishers.Buffer.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 08.01.2020.
-//
 
 extension Publisher {
     
@@ -13,10 +7,10 @@ extension Publisher {
     /// from an upstream publisher before republishing them to the downstream subscriber
     /// according to the `Publishers.BufferingStrategy` and `Publishers.PrefetchStrategy`
     /// strategy you specify.
-    ///
+    
     /// If the publisher completes before reaching the `size` threshold, it buffers
     /// the elements and publishes them downstream prior to completion.
-    ///
+
     /// - Parameters:
     ///   - size: The maximum number of elements to store.
     ///   - prefetch: The strategy to initially populate the buffer.
@@ -136,21 +130,19 @@ extension Publishers.Buffer {
         
         private var recursion = false
         
-        private let size: Int
-        
-        private let prefetch: Publishers.PrefetchStrategy // keepFull is 0x0
-        
-        private let whenFull: Publishers.BufferingStrategy<Failure>
-        
         private let downstream: Downstream
         
         private var state = SubscriptionStatus.awaitingSubscription
         
         private var downstreamDemand = Subscribers.Demand.none
         
-        // TODO: Use a deque here?
-        // Need to measure performance with large buffers and `dropOldest` strategy.
         private var values = [Input]()
+        
+        private let prefetchSize: Int
+        
+        private let prefetchStrategy: Publishers.PrefetchStrategy // keepFull is 0x0
+        
+        private let whenFullStrategy: Publishers.BufferingStrategy<Failure>
         
         private var upstreamFailed = false
         
@@ -160,9 +152,9 @@ extension Publishers.Buffer {
              size: Int,
              prefetch: Publishers.PrefetchStrategy,
              whenFull: Publishers.BufferingStrategy<Failure>) {
-            self.size = size
-            self.prefetch = prefetch
-            self.whenFull = whenFull
+            self.prefetchSize = size
+            self.prefetchStrategy = prefetch
+            self.whenFullStrategy = whenFull
             self.downstream = downstream
         }
         
@@ -182,13 +174,14 @@ extension Publishers.Buffer {
             lock.unlock()
             
             let upstreamDemand: Subscribers.Demand
-            switch prefetch {
+            switch prefetchStrategy {
             case .keepFull:
-                upstreamDemand = .max(size)
+                upstreamDemand = .max(prefetchSize)
             case .byRequest:
                 // 这里是不是有问题. byRequest 不应该是 none 吗.
                 upstreamDemand = .unlimited
             }
+            // 根据 prefetchStrategy, 向上游进行了 Demand 的请求. 
             subscription.request(upstreamDemand)
             downstream.receive(subscription: self)
         }
@@ -202,8 +195,8 @@ extension Publishers.Buffer {
             switch terminal {
             case nil, .finished?:
                 // 如果, 还没有结束, 或者已经结束了.
-                if values.count >= size {
-                    switch whenFull {
+                if values.count >= prefetchSize {
+                    switch whenFullStrategy {
                     case .dropNewest:
                         lock.unlock()
                         return drain()
@@ -322,7 +315,7 @@ extension Publishers.Buffer {
                     additionalUpstreamDemand += 1
                 }
                 
-                if prefetch == .keepFull {
+                if prefetchStrategy == .keepFull {
                     upstreamDemand += additionalUpstreamDemand
                 }
                 
