@@ -6,7 +6,7 @@ extension Publisher {
     
     /// Use `retry(_:)` to try connecting to an upstream publisher after a failed
     /// connection attempt.
-    ///
+    
     /// In the example below, a `URLSession.DataTaskPublisher` attempts to connect to
     /// a remote URL. If the connection attempt succeeds, it publishes the remote
     /// service’s HTML to the downstream publisher and completes normally. Otherwise,
@@ -90,6 +90,7 @@ extension Publishers {
 extension Publishers.Retry: Equatable where Upstream: Equatable {}
 
 extension Publishers.Retry {
+    // 真正的 Retry 所生成的链接节点.
     private final class Inner<Downstream: Subscriber>
     : Subscriber,
       Subscription,
@@ -131,8 +132,10 @@ extension Publishers.Retry {
         
         private var needsSubscribe = false
         
+        // 初始化, 主要是信息的收集.
         init(parent: Publishers.Retry<Upstream>, downstream: Downstream) {
             state = .ready(parent, downstream)
+            // 这里的 Map, 是 optinal 的 Map.
             remaining = parent.retries.map(Chances.finite) ?? .infinite
         }
         
@@ -140,24 +143,32 @@ extension Publishers.Retry {
             lock.deallocate()
         }
         
+        // 这个函数, 会被多次调用.
+        // 因为上游 failed 之后, 会重新 parent.upstream.subscribe(self)
+        // 这个时候, 而这个过程, 会重新触发上游节点的创建, 所以, 传递进来的就是一个新的 Subscription 对象.
         func receive(subscription: Subscription) {
             lock.lock()
             guard case let .ready(_, downstream) = state,
-                    upstreamSubscription == nil
-            else {
+                    upstreamSubscription == nil else {
                 lock.unlock()
                 subscription.cancel()
                 return
             }
+            
             // 存储上游节点.
             upstreamSubscription = subscription
             let downstreamDemand = self.downstreamDemand
+            /*
+             self.downstreamNeedsSubscription 用来控制, 下游节点, 只会收到一次 Retry 生成的节点.
+             */
             let downstreamNeedsSubscription = self.downstreamNeedsSubscription
             self.downstreamNeedsSubscription = false
             lock.unlock()
             if downstreamNeedsSubscription {
                 downstream.receive(subscription: self)
             }
+            // self.downstreamDemand 有值, 应该是已经失败的 Subscription 触发的下游的 Demand 需求.
+            // 当一个新的 Subscription 来临之后, 还是需要使用现有的 Demand 的值, 触发上游的相关信号生成逻辑的触发.
             if downstreamDemand != .none {
                 subscription.request(downstreamDemand)
             }
@@ -221,6 +232,7 @@ extension Publishers.Retry {
                         needsSubscribe = false
                         lock.unlock()
                         // 再次使用上游节点, 进行 attach 的动作.
+                        // 这个时候, parent.upstream 会重新生成对应的 Subscription 节点, 然后和 Self 进行 Attach 的操作.
                         parent.upstream.subscribe(self)
                         lock.lock()
                         completionRecursion = false
@@ -230,6 +242,7 @@ extension Publishers.Retry {
                 }
             }
             
+            // 如果是正常的结束事件, 管理状态和数据, 向后进行 Forward
             state = .terminal
             lock.unlock()
             downstream.receive(completion: completion)

@@ -1,27 +1,9 @@
-//
-//  Result.Publisher.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 17.06.2019.
-//
 
 extension Result {
     
-    /// A namespace for disambiguation when both OpenCombine and Combine are imported.
-    ///
-    /// Combine extends `Result` with a nested type `Publisher`.
-    /// If you import both OpenCombine and Combine (either explicitly or implicitly,
-    /// e. g. when importing Foundation), you will not be able
-    /// to write `Result<Int, Error>.Publisher`,
-    /// because Swift is unable to understand which `Publisher` you're referring to.
-    ///
-    /// So you have to write `Result<Int, Error>.OCombine.Publisher`.
-    ///
-    /// This bug is tracked [here](https://bugs.swift.org/browse/SR-11183).
-    ///
-    /// You can omit this whenever Combine is not available (e. g. on Linux).
     public struct OCombine {
         
+        // 存储的 Box 的值.
         fileprivate let result: Result
         
         fileprivate init(_ result: Result) {
@@ -34,11 +16,13 @@ extension Result {
         
         /// A publisher that publishes an output to each subscriber exactly once then
         /// finishes, or fails immediately without producing any elements.
-        ///
+        
+        // 这里说的很明白, Combine 中的 Publisher, 都是尊重 Pull 机制的, 所以, 如果下游节点没有 Demand, 虽然 Result 是可以确定 Value 值, 还是不会进行发送的.
         /// If `result` is `.success`, then `Once` waits until it receives a request for
         /// at least 1 value before sending the output. If `result` is `.failure`,
+        // 而 Result 的 Failure, 是不受到 Pull 机制的影响的, 所以, Result 的 Fail 会立马在 attach 的时候, 进行发送.
         /// then `Once` sends the failure immediately upon subscription.
-        ///
+        
         /// In contrast with `Just`, a `Once` publisher can terminate with an error
         /// instead of sending a value. In contrast with `Optional`, a `Once` publisher
         /// always sends one value (unless it terminates with an error).
@@ -77,6 +61,7 @@ extension Result {
                 self.init(.failure(failure))
             }
             
+            // Result.Publisher, 一定是初始节点, 所以这里没有 Upstream 的事情.
             public func receive<Downstream: Subscriber>(subscriber: Downstream)
             where Downstream.Input == Success, Downstream.Failure == Failure
             {
@@ -99,7 +84,7 @@ extension Result {
 #if !canImport(Combine)
     /// A publisher that publishes an output to each subscriber exactly once then
     /// finishes, or fails immediately without producing any elements.
-    ///
+    
     /// If `result` is `.success`, then `Once` waits until it receives a request for
     /// at least 1 value before sending the output. If `result` is `.failure`, then `Once`
     /// sends the failure immediately upon subscription.
@@ -109,6 +94,8 @@ extension Result {
     /// value (unless it terminates with an error).
     public typealias Publisher = OCombine.Publisher
     
+    // 使用 Wrapper 这种技术, 将作用域到了 Wrapper 里面.
+    // 在 Wrapper 中, 还是使用存储的 Box 的值, 来触发各种操作.
     public var publisher: Publisher {
         return Publisher(self)
     }
@@ -116,6 +103,7 @@ extension Result {
 }
 
 extension Result.OCombine {
+    // 初始节点, 没有 Subscriber 的相关责任.
     private final class Inner<Downstream: Subscriber>
     : Subscription,
       CustomStringConvertible,
@@ -123,9 +111,6 @@ extension Result.OCombine {
       CustomPlaygroundDisplayConvertible
     where Downstream.Input == Success, Downstream.Failure == Failure
     {
-        // NOTE: this class has been audited for thread safety.
-        // Combine doesn't use any locking here.
-        
         private var downstream: Downstream?
         private let output: Success
         
@@ -134,6 +119,7 @@ extension Result.OCombine {
             self.downstream = downstream
         }
         
+        // 一旦, 下游节点有了 Demand, 立马发送 Result 中存储的 Value 值. 
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             guard let downstream = self.downstream.take() else { return }
@@ -160,6 +146,8 @@ where Output: Equatable, Failure: Equatable
 {
 }
 
+// 操作符的融合操作.
+// 这样, 可以减少中间节点的生成.
 extension Result.OCombine.Publisher where Output: Equatable {
     
     public func contains(_ output: Output) -> Result<Bool, Failure>.OCombine.Publisher {

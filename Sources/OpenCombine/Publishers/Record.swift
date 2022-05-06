@@ -1,4 +1,4 @@
-// 这个类, 就是手动控制一些 next 事件, 已经 completion 时间
+// 这个类, 就是手动控制一些 next 事件, 以及 completion
 // 这样下游节点收到的, 就是手动填入的这些数据了.
 // 可以用来 mock, 或者将一些已知数据, 填入到 Combine 环境中.
 /// A publisher that allows for recording a series of inputs and a completion for later
@@ -6,6 +6,7 @@
 public struct Record<Output, Failure: Error>: Publisher {
     
     /// The recorded output and completion.
+    // 真正存储的, 是一个 Recording 对象.
     public let recording: Recording
     
     /// Creates a publisher to interactively record a series of outputs and a completion.
@@ -39,6 +40,8 @@ public struct Record<Output, Failure: Error>: Publisher {
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Output == Downstream.Input, Failure == Downstream.Failure
     {
+        // 如果, Recording 里面,  根据没有数据.
+        // Compltetion 事件, 是不受 Demand 管理的, 直接将 Completion 事件, 发送给下游的节点.
         if recording.output.isEmpty {
             subscriber.receive(subscription: Subscriptions.empty)
             subscriber.receive(completion: recording.completion)
@@ -51,6 +54,7 @@ public struct Record<Output, Failure: Error>: Publisher {
     }
     
     /// A recorded sequence of outputs, followed by a completion value.
+    // 一个, 关于数据的盒子. Subscription 在接收到下游节点的请求之后, 就使用这个数据盒子, 将相关的数据, 向下游输出.
     public struct Recording {
         
         public typealias Input = Output
@@ -89,6 +93,7 @@ public struct Record<Output, Failure: Error>: Publisher {
         public mutating func receive(_ input: Input) {
             precondition(state == .input,
                          "Receiving values after completion is not allowed")
+            // 配置方法, 将 Ouput 的值, 存储到数组里面.
             output.append(input)
         }
         
@@ -98,6 +103,7 @@ public struct Record<Output, Failure: Error>: Publisher {
         public mutating func receive(completion: Subscribers.Completion<Failure>) {
             precondition(state == .input,
                          "Receiving completion more than once is not allowed")
+            // 配置方法, 将 Complete 的值, 存储到数组里面.
             self.completion = completion
             self.state = .complete
         }
@@ -143,11 +149,15 @@ extension Record {
       CustomPlaygroundDisplayConvertible
     where Downstream.Input == Output, Downstream.Failure == Failure
     {
-        // NOTE: This class has been audited for thread-safety
-        
+        // 将, 数据, 完成事件, 都进行了存储.
+        // 将相关的数据, 聚集到类内. 本身Producer 里面, 就是存储数据而已.
+        // 在 Combine 的实现里面, 节点都是倾向于把相关的数据, 存储到内部.
         private var sequence: [Output]?
         private let completion: Subscribers.Completion<Failure>
         private var downstream: Downstream?
+        
+        // 迭代的标志.
+        // 使用 Index, 应该是更加方便清晰的方式.
         private var iterator: IndexingIterator<[Output]>
         private var next: Output?
         private var pendingDemand = Subscribers.Demand.none
@@ -160,6 +170,8 @@ extension Record {
             self.sequence = sequence
             self.completion = completion
             self.downstream = downstream
+            
+            // 是使用了迭代器这种方式, 来进行遍历状态的存储.
             self.iterator = sequence.makeIterator()
             next = iterator.next()
         }
@@ -198,6 +210,8 @@ extension Record {
                 return
             }
             
+            // 当, 下方有 Demand 需求的时候, 使用 outputs 里面的值, 向下方节点, 进行数据的输出.
+            // 同时, 进行 Demand 的管理.
             while let downstream = self.downstream, pendingDemand > 0 {
                 if let current = self.next {
                     pendingDemand -= 1
@@ -211,6 +225,7 @@ extension Record {
                     self.next = next
                 }
                 
+                // 如果, 没有了数据, 那么发送 Completion 事件. 释放资源. 
                 if next == nil {
                     self.downstream = nil
                     self.sequence = nil
