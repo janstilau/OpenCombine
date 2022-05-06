@@ -1,4 +1,3 @@
-
 // 中间, 会有一个替换的过程.
 // 如果, 原本的上游链条发生了错误, 立马使用 Catch 中生成的新的 Publihser, 和当前的进行 attach .
 // 也不需要对原有的链条进行 cancel. 因为原本的发生的错误, 上游节点应该负起责任来, 将上游各个节点进行 cancel 掉. 自己作为下游节点, 进行 replace 操作就好了.
@@ -97,7 +96,7 @@ extension Publisher {
 
 extension Publishers {
     
-// A publisher that handles errors from an upstream publisher by replacing the failed publisher with another publisher.
+    // A publisher that handles errors from an upstream publisher by replacing the failed publisher with another publisher.
     
     public struct Catch<Upstream: Publisher,
                         NewPublisher: Publisher>: Publisher

@@ -1,10 +1,12 @@
 extension Publisher {
     /// Publishes the value of the key path.
-    ///
+    
     /// In the following example, the `map(_:)` operator uses the Swift
     /// key path syntax to access the `die` member
     /// of the `DiceRoll` structure published by the `Just` publisher.
-    ///
+    // KeyPath 这种方式, 具有很强的编译检查, 不太明白其中的原理.
+    // 不过, 应该不是使用的 OC 的动态查找的机制.
+    
     /// The downstream sink subscriber receives only
     /// the value of this `Int`,
     /// not the entire `DiceRoll`.
@@ -19,18 +21,21 @@ extension Publisher {
     ///             print ("Rolled: \($0)")
     ///         }
     ///     // Prints "Rolled: 6 (or some other random value).
-    ///
+    
     /// - Parameters:
     ///    - keyPath: The key path of a property on `Output`.
     /// - Returns: A publisher that publishes the value of the key path.
+    // 在方法的内部, 仅仅是需要一个 KeyPath 就可以. KeyPath 的类型参数, 左边是 Instance 的类型, 右边是 Instance 的属性的类型.
     public func map<Result>(
         _ keyPath: KeyPath<Output, Result>
     ) -> Publishers.MapKeyPath<Self, Result> {
-        return .init(
-            upstream: self,
-            keyPath: keyPath
+        // 惯例实现, 作为 Publisher, 是进行信息的收集工作.
+        return .init(upstream: self, keyPath: keyPath
         )
     }
+    
+    // 使用函数重载这种编译技术, 使得可以进行多分的 KeyPath 参数.
+    // 具体的生成的类型, 是使用了函数的参数推导的技术.
     /// Publishes the values of two key paths as a tuple.
     ///
     /// In the following example, the `map(_:_:)` operator uses the Swift
@@ -61,6 +66,8 @@ extension Publisher {
     ///    - keyPath0: The key path of a property on `Output`.
     ///    - keyPath1: The key path of another property on `Output`.
     /// - Returns: A publisher that publishes the values of two key paths as a tuple.
+    
+    // Result0, Result1 的具体类型, 是使用 map 函数的时候, 根据传递过来的 \.属性名 来确定的
     public func map<Result0, Result1>(
         _ keyPath0: KeyPath<Output, Result0>,
         _ keyPath1: KeyPath<Output, Result1>
@@ -129,8 +136,10 @@ extension Publishers {
         public let upstream: Upstream
         
         /// The key path of a property to publish.
+        // 这里写的很清楚, KeyPath 的 Instance 类型, 是 Upstream.Output 的类型,
         public let keyPath: KeyPath<Upstream.Output, Output>
-        
+
+        // 惯例实现, 在 Publisher 里面, 构造真正的节点, 然后构造到对应的响应链条中.
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Output == Downstream.Input, Failure == Downstream.Failure
         {
@@ -139,6 +148,7 @@ extension Publishers {
     }
     
     /// A publisher that publishes the values of two key paths as a tuple.
+    // MapKeyPath2 来说, 就是有这个两个 TypeParameters.
     public struct MapKeyPath2<Upstream: Publisher, Output0, Output1>: Publisher {
         
         public typealias Output = (Output0, Output1)
@@ -157,6 +167,7 @@ extension Publishers {
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Output == Downstream.Input, Failure == Downstream.Failure
         {
+            // 数据还是存在了 Puhlisher 里面, 其实可以复制过去的. 这都是一些值语义的数据.
             upstream.subscribe(Inner(downstream: subscriber, parent: self))
         }
     }
@@ -190,6 +201,7 @@ extension Publishers {
 
 extension Publishers.MapKeyPath {
     
+    // 没有成为 Subscription, 直接将上游节点的Subscription, 传递给了下游节点.
     private struct Inner<Downstream: Subscriber>
     : Subscriber,
       CustomStringConvertible,
@@ -207,6 +219,8 @@ extension Publishers.MapKeyPath {
         
         let combineIdentifier = CombineIdentifier()
         
+        // 节点的初始化, 就是进行值的赋值操作.
+        //
         fileprivate init(
             downstream: Downstream,
             parent: Publishers.MapKeyPath<Upstream, Output>
@@ -219,6 +233,7 @@ extension Publishers.MapKeyPath {
             downstream.receive(subscription: subscription)
         }
         
+        // 当, 收到上游数据之后, 是使用了 KeyPath 进行了提取, 然后给到后续的节点.
         func receive(_ input: Input) -> Subscribers.Demand {
             let output = (
                 input[keyPath: keyPath]
@@ -226,6 +241,7 @@ extension Publishers.MapKeyPath {
             return downstream.receive(output)
         }
         
+        // 直接, 将完成事件, 发送给了后续节点.
         func receive(completion: Subscribers.Completion<Failure>) {
             downstream.receive(completion: completion)
         }
@@ -278,6 +294,7 @@ extension Publishers.MapKeyPath2 {
         }
         
         func receive(_ input: Input) -> Subscribers.Demand {
+            // 使用, KeyPath 这种技术, 对于上游节点的数据, 进行了提取.
             let output = (
                 input[keyPath: keyPath0],
                 input[keyPath: keyPath1]
@@ -341,6 +358,7 @@ extension Publishers.MapKeyPath3 {
         }
         
         func receive(_ input: Input) -> Subscribers.Demand {
+            // 使用, KeyPath 这种技术, 对于上游的数据, 进行了提取. 
             let output = (
                 input[keyPath: keyPath0],
                 input[keyPath: keyPath1],
