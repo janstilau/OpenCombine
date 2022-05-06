@@ -1,6 +1,7 @@
 // 中间, 会有一个替换的过程.
 // 如果, 原本的上游链条发生了错误, 立马使用 Catch 中生成的新的 Publihser, 和当前的进行 attach .
 // 也不需要对原有的链条进行 cancel. 因为原本的发生的错误, 上游节点应该负起责任来, 将上游各个节点进行 cancel 掉. 自己作为下游节点, 进行 replace 操作就好了.
+
 extension Publisher {
     
     /// Handles errors from an upstream publisher by replacing it with another publisher.
@@ -10,10 +11,12 @@ extension Publisher {
     /// the upstream publisher by replacing the error with a `Just` publisher. This
     /// continues the stream by publishing a single value and completing normally.
     
+    
     ///
     ///     struct SimpleError: Error {}
     ///     let numbers = [5, 4, 3, 2, 1, 0, 9, 8, 7, 6]
     ///     cancellable = numbers.publisher
+    ///     各种, Try 相关的操作符, 都是里面会 Throw Error 的操作符号.
     ///         .tryLast(where: {
     ///             guard $0 != 0 else { throw SimpleError() }
     ///             return true
@@ -28,12 +31,14 @@ extension Publisher {
     /// Backpressure note: This publisher passes through `request` and `cancel` to
     /// the upstream. After receiving an error, the publisher sends sends any unfulfilled
     /// demand to the new `Publisher`.
-    ///
+    
     /// - SeeAlso: `replaceError`
+    ///  handler 接受的是一个 错误.
     /// - Parameter handler: A closure that accepts the upstream failure as input and
     ///   returns a publisher to replace the upstream publisher.
     /// - Returns: A publisher that handles errors from an upstream publisher by replacing
     ///   the failed publisher with another publisher.
+    // 限制就是, NewPublisher 的 Output, 必须是和原有的 Publihser 的 Output 是相同的.
     public func `catch`<NewPublisher: Publisher>(
         _ handler: @escaping (Failure) -> NewPublisher
     ) -> Publishers.Catch<Self, NewPublisher>
@@ -44,10 +49,10 @@ extension Publisher {
     
     /// Handles errors from an upstream publisher by either replacing it with another
     /// publisher or throwing a new error.
-    ///
+    
     /// Use `tryCatch(_:)` to decide how to handle from an upstream publisher by either
     /// replacing the publisher with a new publisher, or throwing a new error.
-    ///
+    
     /// In the example below, an array publisher emits values that a `tryMap(_:)` operator
     /// evaluates to ensure the values are greater than zero. If the values aren’t greater
     /// than zero, the operator throws an error to the downstream subscriber to let it
@@ -103,6 +108,8 @@ extension Publishers {
     // 两个 Publisher 的 Output 的得相同, 但是, 上游的 Error 相当于被 NewPublisher 处理掉了, 下游节点, 只有接收到 NewPublisher 的错误类型.
     where Upstream.Output == NewPublisher.Output
     {
+        // Catch 的数据, Output 还是原来的 Upstream 的 Output
+        // Failure 则是 NewPublisher 的 Error 类型.
         public typealias Output = Upstream.Output
         public typealias Failure = NewPublisher.Failure
         
@@ -127,6 +134,7 @@ extension Publishers {
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Downstream.Input == Output, Downstream.Failure == Failure
         {
+            // 在没有发生错误之前, 是使用 UncaughtS 充当上级节点的相应者.
             let inner = Inner(downstream: subscriber, handler: handler)
             let uncaughtS = Inner.UncaughtS(inner: inner)
             upstream.subscribe(uncaughtS)
@@ -166,6 +174,7 @@ extension Publishers {
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Downstream.Input == Output, Downstream.Failure == Failure
         {
+            // 在没有发生错误之前, 是使用 UncaughtS 充当上级节点的相应者.
             let inner = Inner(downstream: subscriber, handler: handler)
             let uncaughtS = Inner.UncaughtS(inner: inner)
             upstream.subscribe(uncaughtS)
@@ -174,6 +183,7 @@ extension Publishers {
 }
 
 extension Publishers.Catch {
+    
     // Inner 不是 Subscriber. Subscriber 的责任, 被 UncaughtS, CaughtS 代替.
     // Inner 暴露出各个方法, 被这两个类使用.
     private final class Inner<Downstream: Subscriber>
@@ -279,6 +289,8 @@ extension Publishers.Catch {
             lock.deallocate()
         }
         
+        // 收集到了上级节点.
+        // 这个节点, 是原始内容的发射者.
         func receivePre(subscription: Subscription) {
             lock.lock()
             guard case .pendingPre = state else {
@@ -328,6 +340,8 @@ extension Publishers.Catch {
                     // 使用, 新的 Publiser, 来注册.
                     // 创建了一个新的节点对象作为中介.
                     handler(error).subscribe(CaughtS(inner: self))
+                    // 因为, 错误是上级节点发射过来的, 所以, 上级节点应该做完了资源的管理才对
+                    // 所以, 这里仅仅是对于资源进行释放, 不会在调用上级的 cancel .
                 case .cancelled:
                     lock.unlock()
                 case .pendingPre, .post, .pendingPost:
@@ -336,6 +350,7 @@ extension Publishers.Catch {
             }
         }
         
+        // 记录, 新生成的 Publisher 的引用值.
         func receivePost(subscription: Subscription) {
             lock.lock()
             guard case .pendingPost = state else {
@@ -345,6 +360,7 @@ extension Publishers.Catch {
             }
             // 状态改变 + 循环引用.
             state = .post(subscription)
+            // 原本的 Demand 的值, 还会继续传递给被替换的 Publisher.
             let demand = self.demand
             lock.unlock()
             if demand > 0 {
