@@ -1,4 +1,3 @@
-
 /// A helper class that acts like both subscriber and subscription.
 
 /// Reduce-like operators send an instance of their `Inner` class that is subclass
@@ -34,7 +33,8 @@ where Downstream.Input == Output
     // 结束值.
     internal final var result: Output?
     
-    // 闭包. 使用这个闭包, 在每次获取 input 之后, 更新 result 的值 
+    // 闭包. 使用这个闭包, 在每次获取 input 之后, 更新 result 的值
+    // 这个闭包的类型, 是每个子类, 定义的时候指定的.
     internal final let reduce: Reducer
     
     // 这个状态, 在所有的 Subscriber 里面, 都会有.
@@ -69,6 +69,7 @@ where Downstream.Input == Output
     
     // MARK: - Abstract methods
     
+    // 当, 收到上游的新值后, 应该怎么处理.
     internal func receive(
         newValue: Input
     ) -> PartialCompletion<Void, Downstream.Failure> {
@@ -106,6 +107,7 @@ where Downstream.Input == Output
             assertionFailure("The subscription should have been terminated by now")
             return
         }
+        // ReduceProducer 有着固定的模式. 就是上游要 Complete 之后, 才能发送下游的数据.
         upstreamCompleted = true
         if downstreamRequested {
             self.completed = true

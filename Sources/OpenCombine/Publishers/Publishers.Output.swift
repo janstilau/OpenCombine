@@ -155,6 +155,7 @@ extension Publishers.Output {
                 subscription.cancel()
                 return
             }
+            // 记录状态. 
             status = .subscribed(subscription)
             lock.unlock()
             downstream.receive(subscription: self)

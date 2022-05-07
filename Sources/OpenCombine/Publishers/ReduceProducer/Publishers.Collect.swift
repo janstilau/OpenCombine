@@ -1,5 +1,4 @@
 
-// 忘记了 Rx 对应的节点叫什么了.
 // 就是收集所有的 Ele, 然后当做一个数组一次性的发射出来给后面的节点.
 extension Publisher {
     
@@ -9,7 +8,7 @@ extension Publisher {
     
     /// Use `collect()` to gather elements into an array that the operator emits after
     /// the upstream publisher finishes.
-    ///
+    
     /// If the upstream publisher fails with an error, this publisher forwards the error
     /// to the downstream receiver instead of sending its output.
     
@@ -86,6 +85,7 @@ extension Publishers.Collect {
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {
+            // ReduceProducer 的子类, 指定了 Result 的类型是 []了.
             result!.append(newValue)
             return .continue
         }

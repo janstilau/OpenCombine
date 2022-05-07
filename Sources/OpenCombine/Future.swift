@@ -1,6 +1,4 @@
-
 /// A publisher that eventually produces a single value and then finishes or fails.
-
 /*
  这个类的设计, 和 Promise 很像. 就是, 存储生成的结果, 然后后续的所有节点统一使用.
  一个缓存的机制.

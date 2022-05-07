@@ -1,10 +1,3 @@
-//
-//  Publishers.Map.swift
-//
-//
-//  Created by Anton Nazarov on 25.06.2019.
-//
-
 extension Publisher {
     
     /// Transforms all elements from the upstream publisher with a provided closure.
