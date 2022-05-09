@@ -1,4 +1,3 @@
-
 #if canImport(Combine)
 import Combine
 import Foundation
@@ -39,7 +38,6 @@ public extension AnyPublisher {
     init(_ factory: @escaping Publishers.Create<Output, Failure>.SubscriberHandler) {
         self = Publishers.Create(factory: factory).eraseToAnyPublisher()
     }
-    
     /// Create a publisher which accepts a closure with a subscriber argument,
     /// to which you can dynamically send value or completion events.
     ///

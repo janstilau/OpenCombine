@@ -381,7 +381,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = OBJ_75 /* Build configuration list for PBXNativeTarget "CombineExt" */;
 			buildPhases = (
-				1210ED10315C0090135F691A /* SwiftLint */,
 				OBJ_78 /* Sources */,
 				OBJ_105 /* Frameworks */,
 			);
@@ -465,24 +464,6 @@
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		1210ED10315C0090135F691A /* SwiftLint */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = SwiftLint;
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "if which swiftlint >/dev/null; then\n    swiftlint\nelse\n    echo \"warning: SwiftLint not installed\"\nfi       \n";
-		};
 		6EE0AF2A56FE8FE91E8566DF /* SwiftLint */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
