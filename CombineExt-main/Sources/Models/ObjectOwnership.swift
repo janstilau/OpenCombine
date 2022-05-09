@@ -9,8 +9,6 @@
 import Foundation
 
 /// The ownership of an object
-///
-/// - seealso: https://docs.swift.org/swift-book/LanguageGuide/AutomaticReferenceCounting.html#ID52
 public enum ObjectOwnership {
     /// Keep a strong hold of the object, preventing ARC
     /// from disposing it until its released or has no references.

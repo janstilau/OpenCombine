@@ -71,6 +71,7 @@ public extension Publisher where Self.Failure == Never {
             case .left: transition   = .transitionFlipFromLeft
             case .right: transition  = .transitionFlipFromRight
             }
+            // 这里的代码结构感觉不太好. 
         case let .animation(interval, options, animations, completion):
             // Use a custom animation.
             return handleEvents(

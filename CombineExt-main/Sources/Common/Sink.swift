@@ -45,7 +45,7 @@ class Sink<Upstream: Publisher, Downstream: Subscriber>: Subscriber {
     }
 
     func demand(_ demand: Subscribers.Demand) {
-        let newDemand = buffer.demand(demand)
+        let newDemand = self.buffer.demand(demand)
         upstreamSubscription?.requestIfNeeded(newDemand)
     }
 
@@ -66,13 +66,13 @@ class Sink<Upstream: Publisher, Downstream: Subscriber>: Subscriber {
         }
 
         guard let input = transform(input) else { return .none }
-        return buffer.buffer(value: input)
+        return self.buffer.buffer(value: input)
     }
 
     func receive(completion: Subscribers.Completion<Upstream.Failure>) {
         switch completion {
         case .finished:
-            buffer.complete(completion: .finished)
+            self.buffer.complete(completion: .finished)
         case .failure(let error):
             guard let transform = transformFailure else {
                 fatalError("""
@@ -86,7 +86,7 @@ class Sink<Upstream: Publisher, Downstream: Subscriber>: Subscriber {
             }
 
             guard let error = transform(error) else { return }
-            buffer.complete(completion: .failure(error))
+            self.buffer.complete(completion: .failure(error))
         }
 
         cancelUpstream()
