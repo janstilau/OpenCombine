@@ -5,13 +5,19 @@ import Foundation
 import UIKit.UIControl
 
 // MARK: - Publisher
+
+
 @available(iOS 13.0, *)
 public extension Combine.Publishers {
-    // 仅仅是 Publisher, 没有作为 Subscriber 的能力.
-    // 难道是因为, 有 assign on, 已经不需要了. 
+    // 和 Rx 的不同, ControlProperty 的仅仅有 Publisher 的能力.
+    // 难道是因为 assign on 已经不需要 Setter 了??
+    
+    // 当, 对应的 Event 触发之后, 使用 KeyPath 获取对应的值, 然后将值传递给后续的节点.
     /// A Control Property is a publisher that emits the value at the provided keypath
     /// whenever the specific control events are triggered. It also emits the keypath's
     /// initial value upon subscription.
+    
+    // 惯例实现, Publisher 仅仅是数据的收集者.
     struct ControlProperty<Control: UIControl, Value>: Publisher {
         public typealias Output = Value
         public typealias Failure = Never
@@ -23,10 +29,6 @@ public extension Combine.Publishers {
 
         /// Initialize a publisher that emits the value at the specified keypath
         /// whenever any of the provided Control Events trigger.
-        ///
-        /// - parameter control: UI Control.
-        /// - parameter events: Control Events.
-        /// - parameter keyPath: A Key Path from the UI Control to the requested value.
         public init(control: Control,
                     events: Control.Event,
                     keyPath: KeyPath<Control, Value>) {
@@ -35,7 +37,7 @@ public extension Combine.Publishers {
             self.keyPath = keyPath
         }
 
-        // Publihser 的内力, 他能够创建节点, 来面对后续节点的 Attach 请求.
+        // Publihser 能够创建节点, 来面对后续节点的 Attach 请求.
         public func receive<S: Subscriber>(subscriber: S) where S.Failure == Failure, S.Input == Output {
             let subscription = Subscription(subscriber: subscriber,
                                             control: control,
@@ -49,6 +51,7 @@ public extension Combine.Publishers {
 // MARK: - Subscription
 @available(iOS 13.0, *)
 extension Combine.Publishers.ControlProperty {
+    // 这是一个起始节点, 所以不必来作为 Subscriber
     private final class Subscription<S: Subscriber, Control: UIControl, Value>: Combine.Subscription where S.Input == Value {
         private var subscriber: S?
         weak private var control: Control?

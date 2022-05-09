@@ -14,14 +14,16 @@ import Combine
 // swiftlint:disable force_cast
 @available(iOS 13.0, *)
 public extension UICollectionView {
-   /// Combine wrapper for `collectionView(_:didSelectItemAt:)`
+    /// Combine wrapper for `collectionView(_:didSelectItemAt:)`
     var didSelectItemPublisher: AnyPublisher<IndexPath, Never> {
         let selector = #selector(UICollectionViewDelegate.collectionView(_:didSelectItemAt:))
+        // interceptSelectorPublisher 的返回值, 都是 [Any] 类型的.
+        // 所以, 一般后面都是 Map 进行类型的强制转化.
         return delegateProxy.interceptSelectorPublisher(selector)
             .map { $0[1] as! IndexPath }
             .eraseToAnyPublisher()
     }
-
+    
     /// Combine wrapper for `collectionView(_:didDeselectItemAt:)`
     var didDeselectItemPublisher: AnyPublisher<IndexPath, Never> {
         let selector = #selector(UICollectionViewDelegate.collectionView(_:didDeselectItemAt:))
@@ -29,7 +31,7 @@ public extension UICollectionView {
             .map { $0[1] as! IndexPath }
             .eraseToAnyPublisher()
     }
-
+    
     /// Combine wrapper for `collectionView(_:didHighlightItemAt:)`
     var didHighlightItemPublisher: AnyPublisher<IndexPath, Never> {
         let selector = #selector(UICollectionViewDelegate.collectionView(_:didHighlightItemAt:))
@@ -37,7 +39,7 @@ public extension UICollectionView {
             .map { $0[1] as! IndexPath }
             .eraseToAnyPublisher()
     }
-
+    
     /// Combine wrapper for `collectionView(_:didUnhighlightItemAt:)`
     var didUnhighlightRowPublisher: AnyPublisher<IndexPath, Never> {
         let selector = #selector(UICollectionViewDelegate.collectionView(_:didUnhighlightItemAt:))
@@ -45,7 +47,7 @@ public extension UICollectionView {
             .map { $0[1] as! IndexPath }
             .eraseToAnyPublisher()
     }
-
+    
     /// Combine wrapper for `collectionView(_:willDisplay:forItemAt:)`
     var willDisplayCellPublisher: AnyPublisher<(cell: UICollectionViewCell, indexPath: IndexPath), Never> {
         let selector = #selector(UICollectionViewDelegate.collectionView(_:willDisplay:forItemAt:))
@@ -53,7 +55,7 @@ public extension UICollectionView {
             .map { ($0[1] as! UICollectionViewCell, $0[2] as! IndexPath) }
             .eraseToAnyPublisher()
     }
-
+    
     /// Combine wrapper for `collectionView(_:willDisplaySupplementaryView:forElementKind:at:)`
     var willDisplaySupplementaryViewPublisher: AnyPublisher<(supplementaryView: UICollectionReusableView, elementKind: String, indexPath: IndexPath), Never> {
         let selector = #selector(UICollectionViewDelegate.collectionView(_:willDisplaySupplementaryView:forElementKind:at:))
@@ -61,7 +63,7 @@ public extension UICollectionView {
             .map { ($0[1] as! UICollectionReusableView, $0[2] as! String, $0[3] as! IndexPath) }
             .eraseToAnyPublisher()
     }
-
+    
     /// Combine wrapper for `collectionView(_:didEndDisplaying:forItemAt:)`
     var didEndDisplayingCellPublisher: AnyPublisher<(cell: UICollectionViewCell, indexPath: IndexPath), Never> {
         let selector = #selector(UICollectionViewDelegate.collectionView(_:didEndDisplaying:forItemAt:))
@@ -69,7 +71,7 @@ public extension UICollectionView {
             .map { ($0[1] as! UICollectionViewCell, $0[2] as! IndexPath) }
             .eraseToAnyPublisher()
     }
-
+    
     /// Combine wrapper for `collectionView(_:didEndDisplayingSupplementaryView:forElementKind:at:)`
     var didEndDisplaySupplementaryViewPublisher: AnyPublisher<(supplementaryView: UICollectionReusableView, elementKind: String, indexPath: IndexPath), Never> {
         let selector = #selector(UICollectionViewDelegate.collectionView(_:didEndDisplayingSupplementaryView:forElementOfKind:at:))
@@ -77,7 +79,8 @@ public extension UICollectionView {
             .map { ($0[1] as! UICollectionReusableView, $0[2] as! String, $0[3] as! IndexPath) }
             .eraseToAnyPublisher()
     }
-
+    
+    // CollectionViewDelegateProxy 和 Self 进行绑定, 里面会有内存管理相关的逻辑.
     override var delegateProxy: DelegateProxy {
         CollectionViewDelegateProxy.createDelegateProxy(for: self)
     }

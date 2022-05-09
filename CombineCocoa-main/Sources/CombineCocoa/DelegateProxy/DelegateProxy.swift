@@ -23,13 +23,13 @@ open class DelegateProxy: ObjcDelegateProxy {
         super.init()
     }
     
-    public override func interceptedSelector(_ selector: Selector, arguments: [Any]) {
+    public override func triggerInterceptedSelector(_ selector: Selector, arguments: [Any]) {
         dict[selector]?.forEach { handler in
             handler(arguments)
         }
     }
     
-    public func intercept(_ selector: Selector, _ handler: @escaping ([Any]) -> Void) {
+    public func collectInterceptSelAndHandler(_ selector: Selector, _ handler: @escaping ([Any]) -> Void) {
         if dict[selector] != nil {
             dict[selector]?.append(handler)
         } else {
@@ -38,17 +38,21 @@ open class DelegateProxy: ObjcDelegateProxy {
     }
     
     public func interceptSelectorPublisher(_ selector: Selector) -> AnyPublisher<[Any], Never> {
+        // DelegateProxyPublisher 的构造方法, 其实是当做了工具方法.
+        // 目的就是在于, 将 Subscriber 进行存储.
         DelegateProxyPublisher<[Any]> { subscriber in
             self.subscribers.append(subscriber)
-            return self.intercept(selector) { args in
+            return self.collectInterceptSelAndHandler(selector) { args in
                 _ = subscriber.receive(args)
             }
         }.eraseToAnyPublisher()
     }
     
+    // DelegateProxy 这个对象, 是和 Obj 进行挂钩的. 如果 Obj 消失了, 这里的 Deinit 也就会被触发.
     deinit {
         subscribers.forEach { $0?.receive(completion: .finished) }
         subscribers = []
+        self.dict = [:]
     }
 }
 #endif

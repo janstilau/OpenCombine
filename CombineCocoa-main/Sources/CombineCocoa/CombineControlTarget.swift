@@ -48,7 +48,6 @@ public extension Combine.Publishers {
                                             control: control,
                                             addTargetAction: addTargetAction,
                                             removeTargetAction: removeTargetAction)
-
             subscriber.receive(subscription: subscription)
         }
     }
@@ -57,7 +56,8 @@ public extension Combine.Publishers {
 // MARK: - Subscription
 @available(iOS 13.0, *)
 private extension Combine.Publishers.ControlTarget {
-    private final class Subscription<S: Subscriber, Control: AnyObject>: Combine.Subscription where S.Input == Void {
+    private final class Subscription<S: Subscriber,
+                                     Control: AnyObject>: Combine.Subscription where S.Input == Void {
         private var subscriber: S?
         weak private var control: Control?
 

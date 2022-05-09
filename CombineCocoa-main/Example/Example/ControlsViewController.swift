@@ -63,6 +63,10 @@ class ControlsViewController: UIViewController {
 
 private extension NSObject {
     var memoryAddress: String {
+        // Unmanaged 就是将 Swift 的引用对象, 变为 Void 类型的机制. 在其内部, 使用了 Bulltin 的相关 API, 来做相应的改变.
+        // 只能使用静态函数, 因为 init 方法是私有的.
+        // 这是一个很好的设计代码的思路, 还是使用对象来进行资源和逻辑的管理. 但是构建过程不暴露在外.
+        // 所以, 
         Unmanaged.passUnretained(self).toOpaque().debugDescription
     }
 }

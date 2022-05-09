@@ -14,6 +14,7 @@ import UIKit
 public extension UIBarButtonItem {
     /// A publisher which emits whenever this UIBarButtonItem is tapped.
     var tapPublisher: AnyPublisher<Void, Never> {
+        // Publishers.ControlTarget(control: self 这种方式, 会让 control 的类型固定下来.
         Publishers.ControlTarget(control: self,
                                  addTargetAction: { control, target, action in
             control.target = target

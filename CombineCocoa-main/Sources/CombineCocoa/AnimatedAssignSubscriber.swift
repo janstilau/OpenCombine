@@ -1,11 +1,3 @@
-//
-//  AnimatedAssignSubscriber.swift
-//  CombineCocoa
-//
-//  Created by Marin Todorov on 05/03/20.
-//  Copyright © 2020 Combine Community. All rights reserved.
-//
-
 import Foundation
 
 #if canImport(UIKit) && !(os(iOS) && (arch(i386) || arch(arm)))
@@ -13,22 +5,29 @@ import Combine
 import UIKit
 
 /// A list of animations that can be used with `Publisher.assign(to:on:animation:)`
+// Enum 充当数据盒子的方式. 在这里体现了.
 @available(iOS 13.0, *)
 public enum AssignTransition {
     public enum Direction {
         case top, bottom, left, right
     }
     
+    // 对于常用的, 使用 flip, fade 的方式, 进行使用.
     /// Flip from either bottom, top, left, or right.
     case flip(direction: Direction, duration: TimeInterval)
     
     /// Cross fade with previous value.
     case fade(duration: TimeInterval)
     
+    // 对于需要自定义的, 使用了原本的方式, 将所有的内容, 全部暴露出来了.
     /// A custom animation. Do not include your own code to update the target of the assign subscriber.
-    case animation(duration: TimeInterval, options: UIView.AnimationOptions, animations: () -> Void, completion: ((Bool) -> Void)?)
+    case animation(duration: TimeInterval,
+                   options: UIView.AnimationOptions,
+                   animations: () -> Void,
+                   completion: ((Bool) -> Void)?)
 }
 
+//
 @available(iOS 13.0, *)
 public extension Publisher where Self.Failure == Never {
     /// Behaves identically to `Publisher.assign(to:on:)` except that it allows the user to
@@ -52,7 +51,11 @@ public extension Publisher where Self.Failure == Never {
     ///     myLabel.center.x += 10.0
     ///   }, completion: nil))
     /// ```
-    func assign<Root: UIView>(to keyPath: ReferenceWritableKeyPath<Root, Self.Output>, on object: Root, animation: AssignTransition) -> AnyCancellable {
+    
+    // 这里可以看出, HandleEvent 的通用性. 可以使用它, 做各种事情.
+    func assign<Root: UIView>(to keyPath: ReferenceWritableKeyPath<Root, Self.Output>,
+                              on object: Root,
+                              animation: AssignTransition) -> AnyCancellable {
         var transition: UIView.AnimationOptions
         var duration: TimeInterval
         
@@ -78,8 +81,7 @@ public extension Publisher where Self.Failure == Never {
                                    animations: {
                         object[keyPath: keyPath] = value
                         animations()
-                    },
-                                   completion: completion)
+                    }, completion: completion)
                 }
             )
                 .sink { _ in }
