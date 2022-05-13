@@ -8,6 +8,10 @@
 // 注意, Combine 中的 Subject, 仅仅是一个 Publisher, 并不是一个 Subscriber.
 // 如果是使用 Subject 当做 Subscriber, 其实是使用了一个包装类型-SubjectSubscriber, 在里面, 是使用一个弱指针, 来指引着 Subject 对象.
 
+/*
+ 所有的 Subject, 都是使用的 class 进行的实现.
+ 这是很重要的, 因为, Subject 作为分发器, 是不可能是一个值语义的对象的. 
+ */
 public protocol Subject: AnyObject, Publisher {
     
     /// Sends a value to the subscriber.

@@ -8,7 +8,7 @@ internal class ConduitBase<Output, Failure: Error>: Subscription {
         abstractMethod()
     }
     
-    // 向存储的下游节点, 提供完成时间.
+    // 向存储的下游节点, 提供完成事件.
     internal func finish(completion: Subscribers.Completion<Failure>) {
         abstractMethod()
     }

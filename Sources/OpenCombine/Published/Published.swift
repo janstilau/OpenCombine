@@ -87,6 +87,11 @@ extension Publisher where Failure == Never {
 public struct Published<Value> {
     
     // 专门建立了一个 Publisher 的类型. 可以看到, 真正的实现, 是里面藏了一个 Subject 实现的.
+    /*
+     一个值语义的对象里面, 是一个引用值.
+     对外暴露的是这个值语义的对象.
+     但是因为这里面是一个引用值, 所以数据的改变是共享的.
+     */
     public struct PublishedPublisher: OpenCombine.Publisher {
         
         public typealias Output = Value
@@ -96,12 +101,14 @@ public struct Published<Value> {
         // @Published 的真正信号发送, 要依靠内部的一个 PublishedSubject 对象来实现.
         fileprivate let subject: PublishedSubject<Value>
         
+        // Publisher
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Downstream.Input == Value, Downstream.Failure == Never
         {
             subject.subscribe(subscriber)
         }
         
+        // 在赋初值的时候, 进行了 subject 的构造.
         fileprivate init(_ output: Output) {
             // 这种写法, 在第三方类库里面, 非常常见.
             subject = .init(output)
@@ -115,6 +122,8 @@ public struct Published<Value> {
         case publisher(PublishedPublisher)
     }
     
+    // 这个类的唯一作用, 就是把 Storage 的含义, 从值语义变为了引用语义了.
+    // 这应该是一个通用类. 任何想要从值语义, 变为引用语义的, 都可以使用一个 Box 类实现这个需求.
     @propertyWrapper
     private final class PublishedBox {
         var wrappedValue: Storage
@@ -156,7 +165,8 @@ public struct Published<Value> {
         mutating get {
             return getPublisher()
         }
-        // 不应该出现在 Set 里面,
+        
+        // 不应该有 Set 存在才对.
         set { // swiftlint:disable:this unused_setter_value
             switch storage {
             case .value(let value):
@@ -167,8 +177,8 @@ public struct Published<Value> {
         }
     }
     
-    /// Note: This method can mutate `storage`
     // 一个带有副作用的 Get 方法, 将原本存储, 从值语义, 变为了引用语义.
+    // 如果自己实现, 直接就是 .Publisher 的这种情形.
     internal func getPublisher() -> PublishedPublisher {
         switch storage {
         case .value(let value):

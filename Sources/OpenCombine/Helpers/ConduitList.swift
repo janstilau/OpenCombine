@@ -1,6 +1,7 @@
 /*
  不太明白, 这种 none, single, many 的设计意图是什么. 好多地方看到了这样类似的概念了.
  */
+// 里面存储的是 ConduitBase, 所以给了业务进行自定义的接口. 
 internal enum ConduitList<Output, Failure: Error> {
     case empty
     case single(ConduitBase<Output, Failure>)

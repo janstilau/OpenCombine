@@ -1,8 +1,10 @@
 
 // 这是一个引用类型.
-// PublishedSubject 和 CurrentSubject 没有太大的区别. 最最主要的就是, 增加了 changePublisher, 需要在每次值改变的时候, 进行调用. 触发值改变的信号的发出. 
+// PublishedSubject 和 CurrentSubject 没有太大的区别.
+// 最最主要的就是, 增加了 changePublisher, 需要在每次值改变的时候, 进行调用. 触发值改变的信号的发出.
 internal final class PublishedSubject<Output>: Subject {
     
+    // 不会失败. 这是一个 PropertyWrapper. 属性的赋值, 是不会有数据改变失败的情况发生的.
     internal typealias Failure = Never
     
     private let lock = UnfairLock.allocate()
@@ -10,15 +12,22 @@ internal final class PublishedSubject<Output>: Subject {
     // 当前的值.
     private var currentValue: Output
     
+    // 必须要有当前值.
+    internal init(_ value: Output) {
+        self.currentValue = value
+    }
+    
     // 记录了所有的上游节点.
+    // 这只会在 @Publisher.property 在 func assign(to published: inout Published<Output>.PublishedPublisher) 的时候会用到.
+    // 一般情况下, 我们直接修改该值, 是直接调用 send 方法.
     private var upstreamSubscriptions: [Subscription] = []
     // 记录了所有的下游节点.
+    // 在 send 方法里面, 所有记录的 downstreams 会被使用到.
     private var downstreams = ConduitList<Output, Failure>.empty
     
-    // 为什么, ObservableObject 可以直接因为 @Published 属性的改变, 发射信号, 就是一位有 changePublisher 存在.
-    // 这是 ObservableObject 赋值的 Publisher.
-    // 每次值改动的时候, 主动调用一下.
+    // 这是 @Published 存在的最重要的原因, 在值改动前, 会主动调用 ObservableObjectPublisher 的 send 方法, 通知所有的监听节点.
     private var changePublisher: ObservableObjectPublisher?
+    
     
     internal var value: Output {
         get {
@@ -31,6 +40,7 @@ internal final class PublishedSubject<Output>: Subject {
         }
     }
     
+    // 这个值, 会在 ObservableObject 中进行设置. 利用的是反射的机制.
     internal var objectWillChange: ObservableObjectPublisher? {
         get {
             lock.lock()
@@ -45,11 +55,6 @@ internal final class PublishedSubject<Output>: Subject {
         }
     }
     
-    // 必须要有当前值.
-    internal init(_ value: Output) {
-        self.currentValue = value
-    }
-    
     // 和, CurrentObject 完全一直.
     deinit {
         for subscription in upstreamSubscriptions {
@@ -58,7 +63,8 @@ internal final class PublishedSubject<Output>: Subject {
         lock.deallocate()
     }
     
-    // 和, CurrentObject 完全一直.
+    // 在 PublishedSubscriber 中会调用该方法, 也就是, 在将 @Published 当做 Subscriber 的时候, 会记录上游节点.
+    // 平时的属性赋值, 是直接调用 send, 来触发 Subject 的后续.
     internal func send(subscription: Subscription) {
         lock.lock()
         // 存储上游节点.
@@ -67,7 +73,8 @@ internal final class PublishedSubject<Output>: Subject {
         subscription.request(.unlimited)
     }
     
-    // 和, CurrentObject 完全一直.
+    // 当, 使用 @Publisher 的 $, 来当做 Publisher 来注册后续的响应的时候, 会触发到这里.
+    // 就是将后续节点, 当做 Subject 的一个分流节点.
     internal func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Downstream.Input == Output, Downstream.Failure == Never
     {
@@ -83,12 +90,10 @@ internal final class PublishedSubject<Output>: Subject {
     internal func send(_ input: Output) {
         lock.lock()
         let downstreams = self.downstreams
-        let changePublisher = self.changePublisher
         lock.unlock()
         
         // 这个类存在的最大的意义, 就是 @Published 属性, 每次修改的时候, 都会主动的触发存储的 changePublisher 的信号发送.
-        changePublisher?.send()
-        
+        objectWillChange?.send()
         
         // 然后, 才是真正的后续监听者, 收到发生改变的值.
         // 和, CurrentObject 完全一直.
@@ -114,6 +119,7 @@ internal final class PublishedSubject<Output>: Subject {
 
 extension PublishedSubject {
     
+    // Conduit
     private final class Conduit<Downstream: Subscriber>
     : ConduitBase<Output, Failure>,
       CustomStringConvertible,
@@ -168,6 +174,7 @@ extension PublishedSubject {
             lock.unlock()
         }
         
+        // 完成, Subscription 的要求, 后续节点主动的调用下面两个接口. 
         override func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -210,6 +217,13 @@ extension PublishedSubject {
             lock.unlock()
             parent?.disassociate(self)
         }
+        
+        
+        
+        
+        
+        
+        
         
         
         

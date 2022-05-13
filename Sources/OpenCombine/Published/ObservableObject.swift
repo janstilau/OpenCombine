@@ -106,7 +106,19 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
 #endif
 
 /// A publisher that publishes changes from observable objects.
-// 一个类似 Subject 的类. 
+/*
+ 实现, 是 Subject 的实现.
+ 完成的, 是 Publisher 的功能.
+ */
+// 这是一个 class 引用值.
+/*
+ 想一下, ObservableObject 的实现方案.
+ 当, ObservableObject 内有一个 @Published 属性发生改变的时候, ObservableObject 的 objectWillChange 都要发出通知.
+ 这就要求了, ObservableObjectPublisher 一定要有一个办法, 使得所有属性, 以及 ObservableObject 的 objectWillChange, 可以将监听这件事归并到一个地方.
+ 这样, 在所有的 ObservableObjectPublisher.send 触发的时候, 都会引起后续节点的 receiveOuput 的触发.
+ 这个机制, 是在 ObservableObjectPublisher 内部完成的.
+ 这里面有存储, 这是一个引用语义的值.
+ */
 public final class ObservableObjectPublisher: Publisher {
     
     // 仅仅是, 值发生了改变, 并不告诉当前的值是什么.
@@ -129,7 +141,8 @@ public final class ObservableObjectPublisher: Publisher {
         lock.deallocate()
     }
     
-    // 当, 收到了下游节点的 attach 请求之后, 创建了 Inner 对象, 进行管理. 从这里来看, 这个 Publisher 是当成了一个 DisPatch 节点来使用了.
+    // 当, 收到了下游节点的 attach 请求之后, 是将下游节点进行包装, 然后存储到 connections 里面.
+    // 以便自己调用 send 的时候, 将发生了改变这件事, 通过存储的 connections 进行分发. 
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Downstream.Input == Void, Downstream.Failure == Never {
         let inner = Inner(downstream: subscriber, parent: self)
