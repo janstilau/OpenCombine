@@ -32,6 +32,8 @@ public protocol ObservableObject: AnyObject {
     
     /// The type of publisher that emits before the object has changed.
     associatedtype ObjectWillChangePublisher: Publisher = ObservableObjectPublisher
+    // 不可能出现失败的情况, 因为是, Object 的属性发生改变.
+    // 失败, 是相应链条的业务场景中, 触发了失败的
     where ObjectWillChangePublisher.Failure == Never
     
     /// A publisher that emits before the object has changed.
@@ -142,7 +144,7 @@ public final class ObservableObjectPublisher: Publisher {
     }
     
     // 当, 收到了下游节点的 attach 请求之后, 是将下游节点进行包装, 然后存储到 connections 里面.
-    // 以便自己调用 send 的时候, 将发生了改变这件事, 通过存储的 connections 进行分发. 
+    // 以便自己调用 send 的时候, 将发生了改变这件事, 通过存储的 connections 进行分发.
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Downstream.Input == Void, Downstream.Failure == Never {
         let inner = Inner(downstream: subscriber, parent: self)
