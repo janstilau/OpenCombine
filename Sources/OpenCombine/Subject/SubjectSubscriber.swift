@@ -1,10 +1,9 @@
-
 /*
  Subject 并不天然是一个 Subscriber, 每次使用 Publisher receive 一个 Subject 的时候, 其实都是用下面的类型, 进行了一次包装.
  */
-
 // SubjectSubscriber 并不关心, 具体的 Subject 是什么类型. 这里使用的泛型.
 // 这里不能用 Protocol 进行存储, 因为在 Publisher 类型里面, associatedtype Output, 是有着关联类型的.
+// 所以, 实际上 SubjectSubscriber 在真正被使用的时候, 还是有着类型信息在里面的.
 internal final class SubjectSubscriber<Downstream: Subject>
 : Subscriber,
   Subscription,
@@ -31,6 +30,11 @@ internal final class SubjectSubscriber<Downstream: Subject>
         lock.deallocate()
     }
     
+    /*
+     对于 Subject 来说, 它是在外部创建的, 所以没有办法去限制, Subject 被当做 Subscriber 的次数的.
+     一个 Subject, 可以作为多方的终点, 同时, 又是多方的起点.
+     所以, 在 Subject 的内部, 是存储的多方的来源和多方去处的. 正是因为有着这样的一套机制, 才使得 Subject 是 multicast 内部的真正实现.
+     */
     internal func receive(subscription: Subscription) {
         lock.lock()
         guard upstreamSubscription == nil,
@@ -48,10 +52,11 @@ internal final class SubjectSubscriber<Downstream: Subject>
     
     internal func receive(_ input: Downstream.Output) -> Subscribers.Demand {
         lock.lock()
-        guard let subject = downstreamSubject, upstreamSubscription != nil else {
-            lock.unlock()
-            return .none
-        }
+        guard let subject = downstreamSubject,
+              upstreamSubscription != nil else {
+                  lock.unlock()
+                  return .none
+              }
         lock.unlock()
         // 当前节点收到上游节点的数据的时候, 是直接转交给了存储的 subject 节点.
         subject.send(input)
@@ -73,12 +78,13 @@ internal final class SubjectSubscriber<Downstream: Subject>
     
     internal func request(_ demand: Subscribers.Demand) {
         lock.lock()
-        guard let subscription = upstreamSubscription else {
+        guard let savedSubscription = upstreamSubscription else {
             lock.unlock()
             return
         }
         lock.unlock()
-        subscription.request(demand)
+        // 使用存储的上游节点, 来请求 Demand
+        savedSubscription.request(demand)
     }
     
     internal func cancel() {

@@ -124,10 +124,10 @@ extension Publisher {
     }
     
     /// Attaches the specified subject to this publisher.
-    ///
     /// - Parameter subject: The subject to attach to this publisher.
+    
     // 在 Combine 里面, Subejct 不自动是 Subscriber.
-    // 当注册到 Subject 的时候, 其实可以认为是, 响应链条终止了. 后面的通路, 应该是已 Subject 为起点的, 新的响应链条.
+    // 当注册到 Subject 的时候, 其实可以认为是, 响应链条终止了. 后面的通路, 应该是已 Subject 为起点建立了一条新的响应链条.
     // 所以, 这里返回一个 cancellable, 来做这条通路的 cancel 的触发点.
     public func subscribe<Subject: OpenCombine.Subject>(
         _ subject: Subject
