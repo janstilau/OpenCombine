@@ -35,9 +35,12 @@ public protocol Subject: AnyObject, Publisher {
     /// upstream subscriptions.
     /// - Parameter subscription: The subscription instance through which the subscriber
     ///   can request elements.
-    
-    // 目前, 只会在 Subject 作为响应链条的前半段终点的时候使用到了.
-    // 在 Subject 里面, 会强引用到这个 Subscription. 并且, request Unlimited 个数据.
+
+    /*
+     目前, 该方法仅仅在 SubjectSubscriber, PublishedSubscriber 中被使用到了.
+     Subject 并不是一个 Subscriber. 是进行了一层包装. 就是上面的两个类.
+     上面的两个类, 
+     */
     func send(subscription: Subscription)
 }
 

@@ -3,6 +3,8 @@
  Subject 并不天然是一个 Subscriber, 每次使用 Publisher receive 一个 Subject 的时候, 其实都是用下面的类型, 进行了一次包装.
  */
 
+// SubjectSubscriber 并不关心, 具体的 Subject 是什么类型. 这里使用的泛型.
+// 这里不能用 Protocol 进行存储, 因为在 Publisher 类型里面, associatedtype Output, 是有着关联类型的.
 internal final class SubjectSubscriber<Downstream: Subject>
 : Subscriber,
   Subscription,

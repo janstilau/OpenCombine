@@ -96,6 +96,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     /*
      上游节点, 发送 Subscription 过来, 记录在自己缓存区里面.
      */
+    // This call provides the Subject an opportunity to establish demand for any new upstream subscriptions.
     public func send(subscription: Subscription) {
         lock.lock()
         // 存储所有的上游节点. upstreamSubscriptions 在类内没有业务逻辑, 主要是为了在 Subject deinit 的时候, 进行上游节点的 cancel 处理.
