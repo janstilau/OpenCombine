@@ -16,16 +16,21 @@ class LoginViewController: UIViewController {
     @IBOutlet weak private var loginButton: UIButton!
     @IBOutlet weak private var activityIndicator: UIActivityIndicatorView!
     
+    // 实际上, 都使用 Subject 也是可以的. @Published 相当于是将这个过程, 隐藏到了自己的赋值语句中了.
     @Published private var username: String = ""
     @Published private var password: String = ""
     private let loginTaps = PassthroughSubject<Void, Never>()
     
     private let executing = CurrentValueSubject<Bool, Never>(false)
     private var cancellableBag = Set<AnyCancellable>()
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        //
+        
+        /*
+         根据, 之前 Rx 里面的实现. CombineLatest 会在内部注册成为所监听的 Publisher 节点.
+         然后在每次收到上游事件之后, 如果上游都已经 Publish 过了, 将存储的值组成成为一个 Tuple 对象, 然后发送给下游.
+         */
         let credentials = Publishers.CombineLatest($username, $password)
             .share()
         
@@ -76,7 +81,11 @@ class LoginViewController: UIViewController {
             .assign(to: \.isHidden, on: activityIndicator)
             .store(in: &cancellableBag)
     }
-
+    
+    /*
+     不太了解, 这是不是 Combine 的正常用法.
+     @Published 中, 其实就是藏了一个 Subject 的对象. 所以, 这里其实都是用 Subject 这个对象, 来将响应式, 变化成为了响应式.
+     */
     @IBAction func usernameDidChange(_ sender: UITextField) {
         username = sender.text ?? ""
     }

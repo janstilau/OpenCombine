@@ -52,7 +52,7 @@ extension Publishers {
     // 将一个 Publisher, 变为 ConnectablePublisher, 一定是要由复用的问题.
     // 不然, 在 connect 之前调用的那些 subscribe downstream 的数据, 要存到哪里.
     // 这里是利用了 multicast 技术. 将所有的配置, 都在 PassthroughSubject 对象那进行了拦截.
-    // 然后 connect 的时候, 将 PassthroughSubject 在前半程的链路进行注册. 
+    // 然后 connect 的时候, 将 PassthroughSubject 在前半程的链路进行注册.
     public struct MakeConnectable<Upstream: Publisher>: ConnectablePublisher {
         
         public typealias Output = Upstream.Output

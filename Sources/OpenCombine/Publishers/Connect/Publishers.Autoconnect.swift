@@ -1,11 +1,5 @@
-
-/*
-    ConnectablePublisher 的 Publisher. 在实现上, 应该都是一个分发的机制.
-    一般来说, Publisher 的 subscribe 其实是创建响应链条的地方, 但是现在是 Connect 才真正的触发信号的发送. 所以, 之前的 Subscribe, 一定要把后面的链条存起来.
-    在真正的触发 connect 的时候, 使得整个后续链条, 都能接收到前面节点发送过来的数据.
- */
 extension ConnectablePublisher {
-    
+    // autoconnect 其实还是会 auto disconnect 的.
     /// Automates the process of connecting or disconnecting from this connectable
     /// publisher.
     /// Use `autoconnect()` to simplify working with `ConnectablePublisher` instances,
@@ -80,6 +74,10 @@ extension Publishers {
                 // 将次数和 cancel 存储到这个状态里面.
                 lock.unlock()
                 upstream.subscribe(inner)
+                // upstream.connect, 就是上游链路注册 Subject 返回的对象
+                // 如果下游已经没有了链路, 那么上游的链路也可以取消.
+                // 所以, 关键点就是, 响应链路的两段式管理.
+                // 一切从两段式进行思考, 逻辑就清晰了. 
                 let connection = upstream.connect()
                 lock.lock()
                 state = .connected(refcount: 1, connection: connection)
