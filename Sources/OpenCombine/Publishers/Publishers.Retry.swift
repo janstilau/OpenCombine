@@ -15,6 +15,8 @@ extension Publisher {
     /// replaces the error with a new publisher that publishes a “connection timed out”
     /// HTML page. After the downstream subscriber receives the timed out message,
     /// the stream completes normally.
+    
+    //
     ///
     ///     struct WebSiteData: Codable {
     ///         var rawHTML: String
@@ -211,7 +213,7 @@ extension Publishers.Retry {
             
             // 如果, 失败了
             if case .failure = completion {
-                // 上游放弃. 这个上游应该自己把资源释放了.
+                // 上游放弃. 这个上游应该自己把资源释放了. 所以, 这里仅仅是将引用释放了.
                 upstreamSubscription = nil
                 switch remaining {
                 case .finite(0):
@@ -232,7 +234,7 @@ extension Publishers.Retry {
                         needsSubscribe = false
                         lock.unlock()
                         // 再次使用上游节点, 进行 attach 的动作.
-                        // 这个时候, parent.upstream 会重新生成对应的 Subscription 节点, 然后和 Self 进行 Attach 的操作.
+                        // 这会再次触发上游响应链路的各个节点的构造动作. 到了最开始的节点, 会真正的触发源节点的信号产生.
                         parent.upstream.subscribe(self)
                         lock.lock()
                         completionRecursion = false
@@ -277,6 +279,13 @@ extension Publishers.Retry {
                 lock.unlock()
             }
         }
+        
+        
+        
+        
+        
+        
+        
         
         var description: String { return "Retry" }
         

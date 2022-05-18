@@ -3,13 +3,13 @@
  */
 extension Publisher {
     /// Performs the specified closures when publisher events occur.
-    ///
+    
     /// Use `handleEvents` when you want to examine elements as they progress through
     /// the stages of the publisher’s lifecycle.
     // 这个节点, 不会对于原来的数据, 进行任何的操作. 只是在中间, 使用数据进行附加的操作.
     // 例如, 在各个示例程序里面, 都是使用这个节点, 进行的缓存处理.
+    // 这是一个产生副作用的场所. 因为响应链条是一个非常, 固化的操作, 有了这样的一个 Publisher, 可以将那些副作用相关的代码, HandleEvent 当中.
     
-    //
     /// In the example below, a publisher of integers shows the effect of printing
     /// debugging information at each stage of the element-processing lifecycle:
     ///
@@ -57,8 +57,9 @@ extension Publisher {
     /// - Returns: A publisher that performs the specified closures when publisher events
     ///   occur.
     ///
-    
-    // 按照惯例, 方法里面, 是生成对应的 Publisher. 而这个 Publisher, 最主要的工作, 就是进行值的存储.
+        
+    // 惯例实现, Publisher 的方法, 就是生成 Publisher 对象.
+    // Publisher 对象, 就是将各个数据进行收集.
     public func handleEvents(
         receiveSubscription: ((Subscription) -> Void)? = nil,
         receiveOutput: ((Output) -> Void)? = nil,
@@ -84,27 +85,34 @@ extension Publishers {
         
         public typealias Failure = Upstream.Failure
         
-        // 按照管理, 各个 Publisher, 仅仅是进行数据的收集. 真正的业务逻辑, 是各个 Publisher 的 Inner 对象.
+        // 按照惯例, 各个 Publisher, 仅仅是进行数据的收集. 真正的业务逻辑, 是各个 Publisher 的 Inner 对象.
         // 将, Publisher 收集到的各个数据, 存储到对应的 Inner 对象里面.
+
+        // 惯例, 将上游的 Publisher 进行存储.
         /// The publisher from which this publisher receives elements.
         public let upstream: Upstream
         
+        // 存储.
         /// A closure that executes when the publisher receives the subscription from
         /// the upstream publisher.
         public var receiveSubscription: ((Subscription) -> Void)?
         
+        // 存储.
         ///  A closure that executes when the publisher receives a value from the upstream
         ///  publisher.
         public var receiveOutput: ((Upstream.Output) -> Void)?
         
+        // 存储.
         /// A closure that executes when the publisher receives the completion from
         /// the upstream publisher.
         public var receiveCompletion:
         ((Subscribers.Completion<Upstream.Failure>) -> Void)?
         
+        // 存储.
         ///  A closure that executes when the downstream receiver cancels publishing.
         public var receiveCancel: (() -> Void)?
         
+        // 存储.
         /// A closure that executes when the publisher receives a request for more
         /// elements.
         public var receiveRequest: ((Subscribers.Demand) -> Void)?
@@ -130,11 +138,14 @@ extension Publishers {
         where Upstream.Failure == Downstream.Failure,
               Upstream.Output == Downstream.Input
         {
+            // 生成真正的 Subscription 对象. 真正在响应链条里面的, 就是这个节点.
             let inner = Inner(self, downstream: subscriber)
+            // 然后通知上游节点, 进行节点的创建.
             upstream.subscribe(inner)
         }
     }
 }
+
 
 extension Publishers.HandleEvents {
     private final class Inner<Downstream: Subscriber>
@@ -150,6 +161,7 @@ extension Publishers.HandleEvents {
         
         private var status = SubscriptionStatus.awaitingSubscription
         private let lock = UnfairLock.allocate()
+        
         public var receiveSubscription: ((Subscription) -> Void)?
         public var receiveOutput: ((Upstream.Output) -> Void)?
         public var receiveCompletion:
@@ -190,14 +202,16 @@ extension Publishers.HandleEvents {
                 subscription.cancel()
                 return
             }
-            // 状态的存储
+            // 状态的存储, 形成了循环引用.
             status = .subscribed(subscription)
             lock.unlock()
             // 下游节点, 接受自己当做 Subscription
             downstream.receive(subscription: self)
         }
         
-        // 和一般的节点所做的没有任何的区别, 在里面, 调用了对应的埋点逻辑.
+        /*
+         在各个事件里面, 读取存储的 Closure 数据, 然后触发各个相对应的 Closure.
+         */
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             if let receiveOutput = self.receiveOutput {
@@ -207,10 +221,12 @@ extension Publishers.HandleEvents {
             } else {
                 lock.unlock()
             }
+            
             let newDemand = downstream.receive(input)
             if newDemand == .none {
                 return newDemand
             }
+            
             lock.lock()
             if let receiveRequest = self.receiveRequest {
                 lock.unlock()
@@ -269,6 +285,9 @@ extension Publishers.HandleEvents {
             lock.unlock()
             subscription.cancel()
         }
+        
+        
+        
         
         var description: String { return "HandleEvents" }
         

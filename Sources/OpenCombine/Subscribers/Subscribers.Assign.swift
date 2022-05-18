@@ -1,6 +1,5 @@
 
 extension Publisher where Failure == Never {
-    
     /// Assigns each element from a publisher to a property on an object.
     
     /// Use the `assign(to:on:)` subscriber when you want to set a given property each
@@ -55,7 +54,7 @@ extension Subscribers {
     
     /// A simple subscriber that assigns received elements to a property indicated by a key path.
     public final class Assign<Root, Input>: Subscriber,
-                                            Cancellable,
+                                            Cancellable, // 末尾节点, 不需要接受 Demand 的管理.
                                             CustomStringConvertible,
                                             CustomReflectable,
                                             CustomPlaygroundDisplayConvertible
@@ -81,21 +80,6 @@ extension Subscribers {
         
         private var status = SubscriptionStatus.awaitingSubscription
         
-        /// A textual representation of this subscriber.
-        public var description: String { return "Assign \(Root.self)." }
-        
-        /// A mirror that reflects the subscriber.
-        public var customMirror: Mirror {
-            let children: [Mirror.Child] = [
-                ("object", object as Any),
-                ("keyPath", keyPath),
-                ("status", status as Any)
-            ]
-            return Mirror(self, children: children)
-        }
-        
-        public var playgroundDescription: Any { return description }
-        
         /// Creates a subscriber to assign the value of a property indicated by
         /// a key path.
         public init(object: Root, keyPath: ReferenceWritableKeyPath<Root, Input>) {
@@ -116,6 +100,7 @@ extension Subscribers {
                 return
             }
             // 存储一下上游的节点.
+            // 循环引用一下.
             status = .subscribed(subscription)
             lock.unlock()
             // 必须调用 requestDemand 方法.
@@ -165,5 +150,23 @@ extension Subscribers {
                 lock.unlock()
             }
         }
+        
+        
+        
+        
+        /// A textual representation of this subscriber.
+        public var description: String { return "Assign \(Root.self)." }
+        
+        /// A mirror that reflects the subscriber.
+        public var customMirror: Mirror {
+            let children: [Mirror.Child] = [
+                ("object", object as Any),
+                ("keyPath", keyPath),
+                ("status", status as Any)
+            ]
+            return Mirror(self, children: children)
+        }
+        
+        public var playgroundDescription: Any { return description }
     }
 }

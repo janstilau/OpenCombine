@@ -1,12 +1,11 @@
 extension Publisher {
-    
     /// Transforms all elements from the upstream publisher with a provided closure.
-    ///
+    
     /// OpenCombine’s `map(_:)` operator performs a function similar to that of `map(_:)`
     /// in the Swift standard library: it uses a closure to transform each element it
     /// receives from the upstream publisher. You use `map(_:)` to transform from one kind
     /// of element to another.
-    ///
+    
     /// The following example uses an array of numbers as the source for a collection
     /// based publisher. A `map(_:)` operator consumes each integer from the publisher and
     /// uses a dictionary to transform it from its Arabic numeral to a Roman equivalent,
@@ -25,14 +24,13 @@ extension Publisher {
     ///
     /// If your closure can throw an error, use OpenCombine’s `tryMap(_:)` operator
     /// instead.
-    ///
+    
     /// - Parameter transform: A closure that takes one element as its parameter and
     ///   returns a new element.
     /// - Returns: A publisher that uses the provided closure to map elements from
     ///   the upstream publisher to new elements that it then publishes.
     
-    // 因为, 每次 Operator 其实都把 Self 传递进去了, 所以, 在多次使用 Operator 之后, 这个 Self 会越来越大.
-    // 这个时候, AnyPublisher 的作用就展示了出来, 它会把 Self 隐藏, 重新变回只有一个 Output, Result 类型的 Publihser
+    // Combine 中, 将 Transform 和 TryTransform 进行了区分, 是一个非常好的设计. 
     public func map<Result>(
         _ transform: @escaping (Output) -> Result
     ) -> Publishers.Map<Self, Result> {
@@ -209,7 +207,7 @@ extension Publishers.TryMap {
  2. 作为 Subscriber, 在 Subscriber 的 ReceiveInput 中, 是否会触发整个响应链路的终止. 如果会, 比如各个 try Operator, 那么应该保存 Subscrption, 触发上游节点的 cancel 操作. 如果保存了 Subscrption, 那么这个节点就需要是 Subscrption. 来中转下游节点的 cancel, requestDemand 操作.
  
  如果, 以上都不需要, 那么 Operator 的 Inner 节点不用是 Subscrption. 直接把上游的 Subscrption 交给下游就可以了.
- 这个节点, 挂靠到上游节点就好了, 不需要循环引用. 
+ 这个节点, 挂靠到上游节点就好了, 不需要循环引用.
  */
 extension Publishers.Map {
     
@@ -387,7 +385,7 @@ extension Publishers.TryMap {
             
             // TryMap 并没有 demand 管理的职责, 向上抛出去.
             // 应该说, 对于大部分的 Operator 来说, 都没有 Demand 管理的能力, 只能是顺着线路, 将 Demand 管理往上抛出.
-            // 应该只有那些, 真正能生产出信号的 Publisher 产生的节点, 才能有 Demand 管理的能力. 
+            // 应该只有那些, 真正能生产出信号的 Publisher 产生的节点, 才能有 Demand 管理的能力.
             subscription.request(demand)
         }
         

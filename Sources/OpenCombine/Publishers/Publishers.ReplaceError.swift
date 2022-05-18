@@ -11,6 +11,7 @@ extension Publisher {
     /// which sends a failure completion downstream. The `replaceError(with:)` operator
     /// handles the failure by publishing the string `(replacement element)` and
     /// completing normally.
+    
     ///
     ///     struct MyError: Error {}
     ///     let fail = Fail<String, MyError>(error: MyError())
@@ -28,7 +29,7 @@ extension Publisher {
     /// an error by sending a single replacement element and end the stream.
     /// Use `catch(_:)` to recover from an error and provide a replacement publisher
     /// to continue providing elements to the downstream subscriber.
-    ///
+    
     /// - Parameter output: An element to emit when the upstream publisher fails.
     /// - Returns: A publisher that replaces an error from the upstream publisher with
     ///   the provided output element.
@@ -156,6 +157,8 @@ extension Publishers.ReplaceError {
                 // ReplaceError does not forward the value that
                 // replaces the error until it is requested.
                 if pendingDemand == .none {
+                    // ReplaceError, 是将错误替换成为正常的元素, 然后发送 Complete 事件.
+                    // 如果, 下游没有 Demand 了, 那么发生了错误, 也不会发送 ReplacedElement, 直到下面, Demand 来临了.
                     terminated = true
                     lock.unlock()
                     return
@@ -171,14 +174,16 @@ extension Publishers.ReplaceError {
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
-            // 已经发生了错误, 发送 replace 的值, 然后结束. 
             if terminated {
                 status = .terminal
                 lock.unlock()
+                // 已经发生了错误, 发送 replace 的值, 然后结束.
                 _ = downstream.receive(output)
                 downstream.receive(completion: .finished)
                 return
             }
+            // 惯例实现, 进行 demand 的管理.
+            // 所以, 这里之所以有 Demand 的管理, 是因为处理, 当发生错误的时候, 是否应该发送 ReplacedElement 到后方节点.
             pendingDemand += demand
             guard case let .subscribed(subscription) = status else {
                 lock.unlock()
@@ -198,6 +203,8 @@ extension Publishers.ReplaceError {
             lock.unlock()
             subscription.cancel()
         }
+        
+        
         
         var description: String { return "ReplaceError" }
         

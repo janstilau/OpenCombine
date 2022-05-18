@@ -5,6 +5,7 @@
 //  Created by Sergej Jaskiewicz on 21.09.2019.
 //
 
+// 这是一个通用的设计.
 internal enum SubscriptionStatus {
     case awaitingSubscription
     case subscribed(Subscription)

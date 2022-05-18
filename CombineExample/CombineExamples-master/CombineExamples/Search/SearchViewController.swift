@@ -50,6 +50,10 @@ class SearchViewController: UIViewController {
     
     @IBAction func queryDidChange(_ sender: UITextField) {
         // 在 Target-Action 里面, 进行信号的发送.
+        // 将所有的修改, 链接到了 Subject 的信号处理里面.
+        // 因为, Combine 里面, 其实没有对于 Cocoa 的各种事件的处理, 所以每次想要让 Cocoa 的事件触发, 其实是使用了 Subject 的 send 函数.
+        // @Published 中, 藏了一个 PublishedSubject 对象, 每次修改之后, 就是该对象的 send 方法的触发.
+        // 在没有引入第三方库的时候, 使用 Subject 来桥接 Cocoa 的各种 UI 事件, 是最常见的方式. 
         query = sender.text ?? ""
     }
 }
