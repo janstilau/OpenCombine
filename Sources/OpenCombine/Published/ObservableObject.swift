@@ -112,7 +112,12 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
  实现, 是 Subject 的实现.
  完成的, 是 Publisher 的功能.
  */
-// 这是一个 class 引用值.
+/*
+ 一般来说, Publisher 都是一个生成器, 每一个 Publisher 串联在一起, 在真正的进行生成响应链条的时候, 才会生成对应的节点.
+ 但是, ObservableObjectPublisher 是直接和一个引用对象挂钩的.
+ 这个 Publisher 只会有一个. 从这个意义上来说, 很像是 Subject.
+ 所以里面的实现, 和 Subject 非常像.
+ */
 /*
  想一下, ObservableObject 的实现方案.
  当, ObservableObject 内有一个 @Published 属性发生改变的时候, ObservableObject 的 objectWillChange 都要发出通知.
