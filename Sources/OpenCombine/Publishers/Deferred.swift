@@ -1,5 +1,5 @@
 
-
+// 不太明白, 意义在哪里, 本身 Publisher 就是 subscribe 的时候, 才会触发真正的信号的生成.
 // 延时生成 Publisher.
 /// A publisher that awaits subscription before running the supplied closure
 /// to create a publisher for the new subscriber.
@@ -31,7 +31,7 @@ public struct Deferred<DeferredPublisher: Publisher>: Publisher {
     /*
      Publisher 的惯例是, 生成该 Publisher 相关的节点对象, 节点对象和 downstream 节点相连, 然后将新生成的节点对象, attach 到上级 Publisher 上.
      但是 Deferred 的作用, 就是生成 Publisher. 所以 Deffer 一定是头节点.
-     所以, 它的 receive<Downstream: Subscriber>(subscriber 就是, 生成头节点的 Publisher, 然后接受 Downstream 节点. 
+     所以, 它的 receive<Downstream: Subscriber>(subscriber 就是, 生成头节点的 Publisher, 然后接受 Downstream 节点.
      */
     /// This function is called to attach the specified `Subscriber`
     /// to this `Publisher` by `subscribe(_:)`

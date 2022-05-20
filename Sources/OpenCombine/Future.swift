@@ -59,6 +59,9 @@ public final class Future<Output, Failure: Error>: Publisher {
         }
     }
     
+    /*
+     当, 有新的 Subscriber 的时候, 将值包装成为一个 Conduit 值, 存储到自己的 downstreams 当中. 
+     */
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Output == Downstream.Input, Failure == Downstream.Failure
     {
@@ -226,6 +229,9 @@ extension Future {
                 lock.unlock()
             }
         }
+        
+        
+        
         
         var description: String { return "Future" }
         

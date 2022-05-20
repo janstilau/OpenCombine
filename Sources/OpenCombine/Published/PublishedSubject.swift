@@ -174,7 +174,7 @@ extension PublishedSubject {
             lock.unlock()
         }
         
-        // 完成, Subscription 的要求, 后续节点主动的调用下面两个接口. 
+        // 完成, Subscription 的要求, 后续节点主动的调用下面两个接口.
         override func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
