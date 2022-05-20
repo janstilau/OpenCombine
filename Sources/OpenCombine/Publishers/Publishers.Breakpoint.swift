@@ -1,4 +1,3 @@
-
 #if !WASI
 
 #if canImport(COpenCombineHelpers)
@@ -6,7 +5,6 @@ import COpenCombineHelpers
 #endif
 
 extension Publisher {
-    
     /// Raises a debugger signal when a provided closure needs to stop the process in
     /// the debugger.
     
@@ -16,7 +14,7 @@ extension Publisher {
     /// returns `true`, this operator raises the `SIGTRAP` signal to stop the process
     /// in the debugger. Otherwise, this publisher passes through values and completions
     /// as-is.
-    ///
+    
     /// In the example below, a `PassthroughSubject` publishes strings to a breakpoint
     /// republisher. When the breakpoint receives the string “`DEBUGGER`”, it returns
     /// `true`, which stops the app in the debugger.
@@ -193,7 +191,7 @@ extension Publishers.Breakpoint {
             self.breakpoint = breakpoint
         }
         
-        // 在 Subscriber 的各种事件里面, 如果触发了 Check 逻辑, 就主动抛出断点. 
+        // 在 Subscriber 的各种事件里面, 如果触发了 Check 逻辑, 就主动抛出断点.
         func receive(subscription: Subscription) {
             if breakpoint.receiveSubscription?(subscription) == true {
                 __stopInDebugger()
