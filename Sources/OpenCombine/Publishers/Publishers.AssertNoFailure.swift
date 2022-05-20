@@ -2,16 +2,15 @@
 // 消除错误的. 专门的一个 Publisher, 使得上游节点的 Failure 类型变为 Never.
 extension Publisher {
     
-    /// Raises a fatal error when its upstream publisher fails, and otherwise republishes
-    /// all received input.
+    /// Raises a fatal error when its upstream publisher fails, and otherwise republishes all received input.
     // 如果上游出错了, 直接崩. 如果没有, 直接 forward 上游的任何事件.
+    // 之所以有这样一个东西, 是因为很多的 Publisher 需要 Failure 是 Never 才可以.
     
     /// Use `assertNoFailure()` for internal sanity checks that are active during testing.
     /// However, it is important to note that, like its Swift counterpart
     
     /// `fatalError(_:)`, the `assertNoFailure()` operator asserts a fatal exception when
     /// triggered in both development/testing _and_ shipping versions of code.
-    
     
     /// In the example below, a `CurrentValueSubject` publishes the initial and second
     /// values successfully. The third value, containing a `genericSubjectError`, causes
@@ -31,12 +30,6 @@ extension Publisher {
     ///     subject.send("second value")
     ///     subject.send(completion: .failure(SubjectError.genericSubjectError))
     
-    
-    ///     // Prints:
-    ///     //  value: initial value.
-    ///     //  value: second value.
-    ///     // The process then terminates in the debugger as the assertNoFailure
-    ///     // operator catches the genericSubjectError.
     /// - Returns: A publisher that raises a fatal error when its upstream publisher
     ///   fails.
     public func assertNoFailure(_ prefix: String = "",
@@ -53,6 +46,7 @@ extension Publishers {
         
         public typealias Output = Upstream.Output
         
+        // 在 AssertNoFailure 的内部, 将 Failure 相关的错误, 设置为 Never.
         public typealias Failure = Never
         
         /// The publisher from which this publisher receives elements.
@@ -136,6 +130,8 @@ extension Publishers.AssertNoFailure {
                 fatalError("\(prefix)\(error)", file: file, line: line)
             }
         }
+        
+        
         
         var description: String { return "AssertNoFailure" }
         

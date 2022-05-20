@@ -1,16 +1,8 @@
-//
-//  Subscribers.Completion.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 11.06.2019.
-//
-
 #if canImport(_Concurrency) && compiler(>=5.5)
 import _Concurrency
 #endif
 
 extension Subscribers {
-    
     /// A signal that a publisher doesn’t produce additional elements, either due to
     /// normal completion or an error.
     
@@ -43,7 +35,6 @@ extension Subscribers.Completion {
 }
 
 extension Subscribers.Completion: Encodable where Failure: Encodable {
-    
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {

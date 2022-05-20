@@ -1,6 +1,5 @@
 
 extension Publisher where Failure == Never {
-    
     /// Republishes elements received from a publisher, by assigning them to a property
     /// marked as a publisher.
     
@@ -124,7 +123,7 @@ public struct Published<Value> {
     
     // 这个类的唯一作用, 就是把 Storage 的含义, 从值语义变为了引用语义了.
     // 这应该是一个通用类. 任何想要从值语义, 变为引用语义的, 都可以使用一个 Box 类实现这个需求.
-    // propertyWrapper 其实也可以是 class, 他会调用对应的构造方法来进行初始化的. 
+    // propertyWrapper 其实也可以是 class, 他会调用对应的构造方法来进行初始化的.
     @propertyWrapper
     private final class PublishedBox {
         var wrappedValue: Storage

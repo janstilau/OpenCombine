@@ -1,4 +1,5 @@
 
+// 这种行为, Failure 必须是 Never 才可以.
 extension Publisher where Failure == Never {
     /// Assigns each element from a publisher to a property on an object.
     
@@ -7,6 +8,7 @@ extension Publisher where Failure == Never {
     
     /// In this example, the `assign(to:on:)` sets the value of the `anInt` property on
     /// an instance of `MyClass`:
+    //
     ///
     ///     class MyClass {
     ///         var anInt: Int = 0 {
@@ -23,18 +25,17 @@ extension Publisher where Failure == Never {
     ///
     ///     // Prints: "anInt was set to: 0; anInt was set to: 1; anInt was set to: 2"
     
-    // 这个 Subscriber 有着循环引用.
+    // 这个 Subscriber 对于被赋值的 Object 有着强引用.
     ///  > Important: The `Subscribers.Assign` instance created by this operator maintains
     ///  a strong reference to `object`, and sets it to `nil` when the upstream publisher
     ///  completes (either normally or with an error).
     ///
     /// - Parameters:
-    ///   - keyPath: A key path that indicates the property to assign. See
-    ///     [Key-Path Expression](https://docs.swift.org/swift-book/ReferenceManual/Expressions.html#ID563)
-    ///     in _The Swift Programming Language_ to learn how to use key paths to specify
-    ///     a property of an object.
+    ///   - keyPath: A key path that indicates the property to assign.
+    ///   核心的内容就是这里, 每次收到数据之后, 给 Object 进行赋值, 使用 keypath 的方式.
     ///   - object: The object that contains the property. The subscriber assigns
     ///     the object’s property every time it receives a new value.
+    
     /// - Returns: An `AnyCancellable` instance. Call `cancel()` on this instance when you
     ///   no longer want the publisher to automatically assign the property.
     ///   Deinitializing this instance will also cancel automatic assignment.
@@ -51,9 +52,8 @@ extension Publisher where Failure == Never {
 
 
 extension Subscribers {
-    
-    /// A simple subscriber that assigns received elements to a property indicated by a key path.
-    public final class Assign<Root, Input>: Subscriber,
+    // A simple subscriber that assigns received elements to a property indicated by a key path.
+    public final class Assign<Root, Input>: Subscriber, // 承接上端的数据.
                                             Cancellable, // 末尾节点, 不需要接受 Demand 的管理.
                                             CustomStringConvertible,
                                             CustomReflectable,
@@ -76,8 +76,10 @@ extension Subscribers {
         public private(set) var object: Root?
         
         /// The key path that indicates the property to assign.
+        // KeyPath 是一个很特殊的数据结构.
         public let keyPath: ReferenceWritableKeyPath<Root, Input>
         
+        // 一个惯例实现.
         private var status = SubscriptionStatus.awaitingSubscription
         
         /// Creates a subscriber to assign the value of a property indicated by
@@ -101,6 +103,7 @@ extension Subscribers {
             }
             // 存储一下上游的节点.
             // 循环引用一下.
+            // 强引用的实现.
             status = .subscribed(subscription)
             lock.unlock()
             // 必须调用 requestDemand 方法.
@@ -121,6 +124,7 @@ extension Subscribers {
             return .none
         }
         
+        // 接收到了完成事件. 这个时候, 上游的资源, 理应已经完成了释放.
         public func receive(completion: Subscribers.Completion<Never>) {
             lock.lock()
             guard case .subscribed = status else {
@@ -146,6 +150,7 @@ extension Subscribers {
             status = .terminal
             withExtendedLifetime(object) {
                 // 触发, 存储的 root 对象的释放 .
+                // 在 Assign 里面, 资源就是强引用的各个对象.
                 object = nil
                 lock.unlock()
             }

@@ -1,7 +1,7 @@
 /// A type of object with a publisher that emits before the object has changed.
-
 /// By default an `ObservableObject` synthesizes an `objectWillChange` publisher that
 /// emits the changed value before any of its `@Published` properties changes.
+
 // 如果, 标注了是 ObservableObject 对象, 并且里面有 @Published 的属性, 那么每次 @Published 的属性变化之前, 都会引起 objectWillChange 对应的 Publisher 的信号发送
 // 也可以自己实现 objectWillChange 的真正实现.
 
@@ -18,7 +18,7 @@
 ///             age += 1
 ///         }
 ///     }
-///
+
 ///     let john = Contact(name: "John Appleseed", age: 24)
 ///     cancellable = john.objectWillChange
 ///         .sink { _ in
@@ -28,6 +28,7 @@
 ///     // Prints "24 will change"
 ///     // Prints "25"
 
+// 这是非常重要的一个 Protocol. SwiftUI 的各种监听, 都是建立在 ObservableObject 的基础上的.
 public protocol ObservableObject: AnyObject {
     
     /// The type of publisher that emits before the object has changed.
@@ -39,6 +40,8 @@ public protocol ObservableObject: AnyObject {
     /// A publisher that emits before the object has changed.
     var objectWillChange: ObjectWillChangePublisher { get }
 }
+
+
 
 // 这里是一个小技巧, 专门做一个私有协议, 然后让特定的类型来实现该协议.
 // 其实, 就是类型判断. 不过如果类型过多的话, 使用协议判断, 代码会更加的清晰.

@@ -1,28 +1,30 @@
+// Failure  == Never ???
 extension Publisher where Failure == Never {
-    
     /// Attaches a subscriber with closure-based behavior to a publisher that never fails.
     
     /// Use `sink(receiveValue:)` to observe values received by the publisher and print
-    /// them to the console. This operator can only be used when the stream doesn’t fail,
+    /// them to the console.  
+    /// This operator can only be used when the stream doesn’t fail,
     /// that is, when the publisher’s `Failure` type is `Never`.
     
     /// In this example, a `Range` publisher publishes integers to a `sink(receiveValue:)`
     /// operator’s `receiveValue` closure that prints them to the console:
+    
     ///
     ///     let integers = (0...3)
     ///     integers.publisher
     ///         .sink { print("Received \($0)") }
-    ///
+    
     ///     // Prints:
     ///     //  Received 0
     ///     //  Received 1
     ///     //  Received 2
     ///     //  Received 3
-    ///
+    
     /// This method creates the subscriber and immediately requests an unlimited number of
     /// values, prior to returning the subscriber.
     /// The return value should be held, otherwise the stream will be canceled.
-    ///
+
     /// - parameter receiveValue: The closure to execute on receipt of a value.
     /// - Returns: A cancellable instance, which you use when you end assignment of
     ///   the received value. Deallocation of the result will tear down the subscription
@@ -45,6 +47,64 @@ extension Publisher where Failure == Never {
         return AnyCancellable(subscriber)
     }
 }
+
+// 添加 Operator, 或者 Subscriber, 有着固定的套路. 一定要在 Publisher Protocol 里面, 增加快捷方法, 进行链条构建的串联.
+// 返回的时候, 应该使用 Any 进行类型的隐藏.
+extension Publisher {
+    
+    // Attach, 一定要多使用这个词, 这是 Combine 里面, 非常重要的一个词.
+    /// Attaches a subscriber with closure-based behavior.
+    
+    /// Use `sink(receiveCompletion:receiveValue:)` to observe values received by
+    /// the publisher and process them using a closure you specify.
+    
+    /// In this example, a `Range` publisher publishes integers to
+    /// a `sink(receiveCompletion:receiveValue:)` operator’s `receiveValue` closure that
+    /// prints them to the console. Upon completion
+    /// the `sink(receiveCompletion:receiveValue:)` operator’s `receiveCompletion` closure
+    /// indicates the successful termination of the stream.
+    
+    ///
+    ///     let myRange = (0...3)
+    ///     cancellable = myRange.publisher
+    ///         .sink(receiveCompletion: { print ("completion: \($0)") },
+    ///               receiveValue: { print ("value: \($0)") })
+    ///
+    ///     // Prints:
+    ///     //  value: 0
+    ///     //  value: 1
+    ///     //  value: 2
+    ///     //  value: 3
+    ///     //  completion: finished
+    ///
+    
+    /// This method creates the subscriber and immediately requests an unlimited number
+    /// of values, prior to returning the subscriber.
+    
+    // 内存释放和 Cancel 的连动, 是 AnyCancellable 的行为. Sink 的 Deinit 里面, 没有做这件事.
+    /// The return value should be held, otherwise the stream will be canceled.
+    ///
+    /// - parameter receiveComplete: The closure to execute on completion.
+    /// - parameter receiveValue: The closure to execute on receipt of a value.
+    /// - Returns: A cancellable instance, which you use when you end assignment of
+    ///   the received value. Deallocation of the result will tear down the subscription
+    ///   stream.
+    public func sink(
+        receiveCompletion: @escaping (Subscribers.Completion<Failure>) -> Void,
+        receiveValue: @escaping ((Output) -> Void)
+    ) -> AnyCancellable {
+        let subscriber = Subscribers.Sink<Output, Failure>(
+            receiveCompletion: receiveCompletion,
+            receiveValue: receiveValue
+        )
+        // 上游节点, 主动调用 subscribe, 完成整个响应链条的构建工作.
+        subscribe(subscriber)
+        // 主动进行类型的隐藏.
+        // 实际上, subscribe 并不返回 cancel 对象. 如果返回了一个 cancel 对象, 是要在各个方法内专门进行声明的.
+        return AnyCancellable(subscriber)
+    }
+}
+
 
 
 extension Subscribers {
@@ -153,6 +213,7 @@ extension Subscribers {
                 receiveValue = { _ in }
                 lock.unlock()
             }
+            // 真正调用存储的回调.
             receiveCompletion(completion)
         }
         
@@ -173,62 +234,5 @@ extension Subscribers {
             }
             subscription.cancel()
         }
-    }
-}
-
-// 添加 Operator, 或者 Subscriber, 有着固定的套路. 一定要在 Publisher Protocol 里面, 增加快捷方法, 进行链条构建的串联.
-// 返回的时候, 应该使用 Any 进行类型的隐藏.
-extension Publisher {
-    
-    // Attach, 一定要多使用这个词, 这是 Combine 里面, 非常重要的一个词.
-    /// Attaches a subscriber with closure-based behavior.
-    
-    /// Use `sink(receiveCompletion:receiveValue:)` to observe values received by
-    /// the publisher and process them using a closure you specify.
-    
-    /// In this example, a `Range` publisher publishes integers to
-    /// a `sink(receiveCompletion:receiveValue:)` operator’s `receiveValue` closure that
-    /// prints them to the console. Upon completion
-    /// the `sink(receiveCompletion:receiveValue:)` operator’s `receiveCompletion` closure
-    /// indicates the successful termination of the stream.
-    
-    ///
-    ///     let myRange = (0...3)
-    ///     cancellable = myRange.publisher
-    ///         .sink(receiveCompletion: { print ("completion: \($0)") },
-    ///               receiveValue: { print ("value: \($0)") })
-    ///
-    ///     // Prints:
-    ///     //  value: 0
-    ///     //  value: 1
-    ///     //  value: 2
-    ///     //  value: 3
-    ///     //  completion: finished
-    ///
-    
-    /// This method creates the subscriber and immediately requests an unlimited number
-    /// of values, prior to returning the subscriber.
-    
-    // 内存释放和 Cancel 的连动, 是 AnyCancellable 的行为. Sink 的 Deinit 里面, 没有做这件事.
-    /// The return value should be held, otherwise the stream will be canceled.
-    ///
-    /// - parameter receiveComplete: The closure to execute on completion.
-    /// - parameter receiveValue: The closure to execute on receipt of a value.
-    /// - Returns: A cancellable instance, which you use when you end assignment of
-    ///   the received value. Deallocation of the result will tear down the subscription
-    ///   stream.
-    public func sink(
-        receiveCompletion: @escaping (Subscribers.Completion<Failure>) -> Void,
-        receiveValue: @escaping ((Output) -> Void)
-    ) -> AnyCancellable {
-        let subscriber = Subscribers.Sink<Output, Failure>(
-            receiveCompletion: receiveCompletion,
-            receiveValue: receiveValue
-        )
-        // 上游节点, 主动调用 subscribe, 完成整个响应链条的构建工作.
-        subscribe(subscriber)
-        // 主动进行类型的隐藏.
-        // 实际上, subscribe 并不返回 cancel 对象. 如果返回了一个 cancel 对象, 是要在各个方法内专门进行声明的.
-        return AnyCancellable(subscriber)
     }
 }
