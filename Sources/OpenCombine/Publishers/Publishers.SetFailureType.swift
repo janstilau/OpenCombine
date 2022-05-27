@@ -1,3 +1,5 @@
+//
+
 extension Publishers {
     /// A publisher that appears to send a specified failure type.
     
@@ -104,6 +106,8 @@ extension Publishers.SetFailureType {
             return downstream.receive(input)
         }
         
+        // Fail 是 Never.
+        // Failure 根本没有真正的使用到. 仅仅是让编译通过. 
         func receive(completion: Subscribers.Completion<Never>) {
             downstream.receive(completion: .finished)
         }

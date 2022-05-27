@@ -1,6 +1,5 @@
 
 extension Publisher where Output: Equatable {
-    
     /// Publishes only elements that don’t match the previous element.
     
     /// Use `removeDuplicates()` to remove repeating elements from an upstream publisher.
@@ -31,15 +30,15 @@ extension Publisher {
     
     /// Publishes only elements that don’t match the previous element, as evaluated by
     /// a provided closure.
-    ///
+    
     /// Use `removeDuplicates(by:)` to remove repeating elements from an upstream
     /// publisher based upon the evaluation of the current and previously published
     /// elements using a closure you provide.
-    ///
+    
     /// Use the `removeDuplicates(by:)` operator when comparing types that don’t
     /// themselves implement `Equatable`, or if you need to compare values differently
     /// than the type’s `Equatable` implementation.
-    ///
+    
     /// In the example below, the `removeDuplicates(by:)` functionality triggers when
     /// the `x` property of the current and previous elements are equal, otherwise
     /// the operator publishes the current `Point` to the downstream subscriber:
@@ -60,7 +59,7 @@ extension Publisher {
     ///         .sink { print("\($0)", terminator: " ") }
     ///
     ///     // Prints: Point(x: 0, y: 0) Point(x: 1, y: 1) Point(x: 2, y: 1)
-    ///
+    
     /// - Parameter predicate: A closure to evaluate whether two elements are equivalent,
     ///   for purposes of filtering. Return `true` from this closure to indicate that
     ///   the second element is a duplicate of the first.
@@ -197,7 +196,7 @@ extension Publishers.RemoveDuplicates {
       (Output, Output) -> Bool> // FilterBlock
     where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
     {
-        // 业务存储, 要记录上一个数据的值. 
+        // 业务存储, 要记录上一个数据的值.
         private var last: Upstream.Output?
         
         override func receive(

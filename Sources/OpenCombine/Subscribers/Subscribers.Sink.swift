@@ -1,9 +1,9 @@
-// Failure  == Never ???
+// 只有, 永远不会失败, 才可以仅仅处理, Next 的情况.
 extension Publisher where Failure == Never {
     /// Attaches a subscriber with closure-based behavior to a publisher that never fails.
     
     /// Use `sink(receiveValue:)` to observe values received by the publisher and print
-    /// them to the console.  
+    /// them to the console.
     /// This operator can only be used when the stream doesn’t fail,
     /// that is, when the publisher’s `Failure` type is `Never`.
     
@@ -24,7 +24,7 @@ extension Publisher where Failure == Never {
     /// This method creates the subscriber and immediately requests an unlimited number of
     /// values, prior to returning the subscriber.
     /// The return value should be held, otherwise the stream will be canceled.
-
+    
     /// - parameter receiveValue: The closure to execute on receipt of a value.
     /// - Returns: A cancellable instance, which you use when you end assignment of
     ///   the received value. Deallocation of the result will tear down the subscription
@@ -109,9 +109,6 @@ extension Publisher {
 
 extension Subscribers {
     /// A simple subscriber that requests an unlimited number of values upon subscription
-    // unlimited Demand. Demand 的设计, 不是说下游节点需要, 上游节点就要一直给. 而是上游节点不能超过需要的数量, 什么时候, 真正的触发信号的发送, 还是上游节点的责任.
-    // 进行了类型的绑定. 写在泛型参数里面的类型, 不仅仅是一个抽象数据类型的概念, 也有类型绑定的含义在里面.
-    
     /*
      我们想让 MySink 满足 Cancellable，因此需要持有 subscription，才能在未来取消这个订阅。在语义上来说，我们也不希望发生复制，所以使用 class 来声明 MySink。这也是实现自定义 Subscriber 的一般做法。
      喵神的博客. 可以看到, Cancellable 一般都是进行了上游节点的引用. 并且, 真正在相应链条中的, 一般都是引用类型.
@@ -146,12 +143,6 @@ extension Subscribers {
         private let lock = UnfairLock.allocate()
         
         public var description: String { return "Sink" }
-        
-        public var customMirror: Mirror {
-            return Mirror(self, children: EmptyCollection())
-        }
-        
-        public var playgroundDescription: Any { return description }
         
         // 因为, Sink 是最后节点, 所以没有 Subscribe 后方节点的操作, 他是一个 Subscriber, 而不是一个 Publisher
         public init(receiveCompletion: @escaping (Subscribers.Completion<Failure>) -> Void,
@@ -234,5 +225,11 @@ extension Subscribers {
             }
             subscription.cancel()
         }
+        
+        public var customMirror: Mirror {
+            return Mirror(self, children: EmptyCollection())
+        }
+        
+        public var playgroundDescription: Any { return description }
     }
 }

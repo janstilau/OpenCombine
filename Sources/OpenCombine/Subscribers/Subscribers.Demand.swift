@@ -64,7 +64,7 @@ extension Subscribers {
         // Demand 其实就是 Int 的封装, 提供了 none, unlimited 和 static func max(_ value: Int) 供外界值的构建.
         // 下面的都是操作符的定义.
         // 需要注意的就是, max + Int, 或者 max + max 还是 max.
-         
+        
         
         
         

@@ -120,6 +120,7 @@ extension Publishers {
 }
 
 extension Publishers.Debounce {
+    
     private final class Inner<Downstream: Subscriber>
     : Subscriber,
       Subscription,
@@ -222,6 +223,7 @@ extension Publishers.Debounce {
             lock.lock()
             currentCancellers[generation] = .active(newCanceller)
             lock.unlock()
+            // 这里还不是把原来的都清了.
             for canceller in previousCancellers.values {
                 canceller.cancel()
             }
@@ -240,6 +242,7 @@ extension Publishers.Debounce {
             for canceller in previousCancellers.values {
                 canceller.cancel()
             }
+            // 任何的事件, 都是在 scheduler 的调度下, 发给了后方的节点了.
             scheduler.schedule {
                 self.downstreamLock.lock()
                 self.downstream.receive(completion: completion)
@@ -271,19 +274,6 @@ extension Publishers.Debounce {
             }
             subscription.cancel()
         }
-        
-        var description: String { return "Debounce" }
-        
-        var customMirror: Mirror {
-            let children: [Mirror.Child] = [
-                ("downstream", downstream),
-                ("downstreamDemand", downstreamDemand),
-                ("currentValue", currentValue as Any)
-            ]
-            return Mirror(self, children: children)
-        }
-        
-        var playgroundDescription: Any { return description }
         
         private func due(generation: Generation) {
             lock.lock()
@@ -327,5 +317,24 @@ extension Publishers.Debounce {
             downstreamDemand += newDemand
             lock.unlock()
         }
+        
+        
+        
+        
+        
+        
+        
+        var description: String { return "Debounce" }
+        
+        var customMirror: Mirror {
+            let children: [Mirror.Child] = [
+                ("downstream", downstream),
+                ("downstreamDemand", downstreamDemand),
+                ("currentValue", currentValue as Any)
+            ]
+            return Mirror(self, children: children)
+        }
+        
+        var playgroundDescription: Any { return description }
     }
 }
