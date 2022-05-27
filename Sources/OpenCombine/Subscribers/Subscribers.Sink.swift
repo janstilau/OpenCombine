@@ -168,6 +168,7 @@ extension Subscribers {
                 subscription.cancel()
                 return
             }
+            // 存储, 上游的 Sink 节点. 
             status = .subscribed(subscription)
             lock.unlock()
             

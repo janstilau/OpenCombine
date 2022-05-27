@@ -8,7 +8,8 @@ extension Publisher where Failure == Never {
     
     /// In this example, the `assign(to:on:)` sets the value of the `anInt` property on
     /// an instance of `MyClass`:
-    //
+    
+    ///
     ///
     ///     class MyClass {
     ///         var anInt: Int = 0 {
@@ -29,7 +30,7 @@ extension Publisher where Failure == Never {
     ///  > Important: The `Subscribers.Assign` instance created by this operator maintains
     ///  a strong reference to `object`, and sets it to `nil` when the upstream publisher
     ///  completes (either normally or with an error).
-    ///
+    
     /// - Parameters:
     ///   - keyPath: A key path that indicates the property to assign.
     ///   核心的内容就是这里, 每次收到数据之后, 给 Object 进行赋值, 使用 keypath 的方式.
@@ -65,7 +66,6 @@ extension Subscribers {
         private let lock = UnfairLock.allocate()
         
         /// The object that contains the property to assign.
-        ///
         /// The subscriber holds a strong reference to this object until the upstream
         /// publisher calls `Subscriber.receive(completion:)`, at which point
         /// the subscriber sets this property to `nil`.
@@ -120,6 +120,7 @@ extension Subscribers {
             lock.unlock()
             // Subscriber 就是末端, 所以不会有再次后续节点的接受. 而是直接机型赋值.
             // object 必然是一个引用类型.
+            // KeyPath 必然是一个 WriteAble 的对象.
             object[keyPath: keyPath] = value
             return .none
         }
@@ -147,6 +148,7 @@ extension Subscribers {
         
         private func terminateAndConsumeLock() {
             // 消除对于上游节点的引用. 打破了循环引用.
+            // 这里才是, 真正的资源释放的地方.
             status = .terminal
             withExtendedLifetime(object) {
                 // 触发, 存储的 root 对象的释放 .
