@@ -1,4 +1,5 @@
-/// A publisher that exposes a method for outside callers to publish elements.
+
+// A publisher that exposes a method for outside callers to publish elements.
 // 一个, 外界可以通过 API 来手动进行信号发送的 ObjectPublisher. 这个类型, 在 Combine 中使用的很广.
 
 /// A subject is a publisher that you can use to ”inject” values into a stream, by calling
@@ -6,7 +7,6 @@
 /// Combine model.
 
 // 注意, Combine 中的 Subject, 仅仅是一个 Publisher, 并不是一个 Subscriber.
-// 各个 Subject 的实现类, 如何实现 Publisher, 目前来看都是统一的实现方案. 但是没有写到一个公用父类里面, 在这个类库里面, 有很多的重复代码.
 // 如果是使用 Subject 当做 Subscriber, 其实是使用了一个包装类型-SubjectSubscriber, 在里面, 是使用一个弱指针, 来指引着 Subject 对象.
 
 /*
@@ -18,7 +18,6 @@ public protocol Subject: AnyObject, Publisher {
     /// Sends a value to the subscriber.
     ///
     /// - Parameter value: The value to send.
-    
     // 这是, 命令式的代码触发信号发送的基础.
     func send(_ value: Output)
     
@@ -35,7 +34,6 @@ public protocol Subject: AnyObject, Publisher {
     /// upstream subscriptions.
     /// - Parameter subscription: The subscription instance through which the subscriber
     ///   can request elements.
-    
     /*
      目前, 该方法仅仅在 SubjectSubscriber, PublishedSubscriber 中被使用到了.
      Subject 并不是一个 Subscriber. 是进行了一层包装. 就是上面的两个类.

@@ -55,11 +55,6 @@
 /// - Add the `@Published` annotation to a property of one of your own types. In doing so,
 ///   the property gains a publisher that emits an event whenever the property’s value
 ///   changes. See the `Published` type for an example of this approach.
-
-// 可以看到, 和 Rx 里面, 大量使用 Create 这个函数相比, Combine 其实更加的希望, 使用 Subject 这种技术来进行信号的触发.
-// 猜测, 因为 Combine 其实是 Pull 驱动的, Create 这种方式, 没有办法做好管理. 而 Subject 的设计里面, 本身就有对于 Demand 的管理.
-// 使用 Subject 作为响应式的起始节点, 也符合单一化原则.
-
 public protocol Publisher {
     
     /// The kind of values published by this publisher.

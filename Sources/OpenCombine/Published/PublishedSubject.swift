@@ -220,13 +220,6 @@ extension PublishedSubject {
         
         
         
-        
-        
-        
-        
-        
-        
-        
         var description: String { return "PublishedSubject" }
         
         var customMirror: Mirror {

@@ -61,8 +61,7 @@ extension NotificationCenter {
         /// - Returns: A publisher that emits events when broadcasting notifications.
         public func publisher(for name: Notification.Name,
                               object: AnyObject? = nil) -> Publisher {
-            // 这里返回的, 就是 Publisher 对象. 绑定了类型, 就可以直接使用 init 函数了.
-            // 是
+            // 惯例实现, Publisher 的构建方法, 主要就是进行信息的收集.
             return .init(center: center, name: name, object: object)
         }
     }
@@ -113,6 +112,8 @@ extension Notification {
       CustomReflectable,
       CustomPlaygroundDisplayConvertible
     where Downstream.Input == Notification,
+    // 不会出错.
+    // 这是一个头结点, 所以, 它不用作为一个 Subscriber 存在.
           Downstream.Failure == Never
     {
         // 大量的, Private 的权限控制. 甚至整个类型, 都是 Private 的.
@@ -185,8 +186,7 @@ extension Notification {
         // Cancel, 则是将自己从 NotificaitonCenter 里面移除.
         func cancel() {
             lock.lock()
-            guard let center = self.center.take(),
-                  let observation = self.observation.take() else {
+            guard let center = self.center.take(), let observation = self.observation.take() else {
                       lock.unlock()
                       return
                   }
@@ -196,6 +196,9 @@ extension Notification {
             // 这里, 对于 downStream 进行了强引用的解除.
             center.removeObserver(observation)
         }
+        
+        
+        
         
         fileprivate var description: String { return "NotificationCenter Observer" }
         

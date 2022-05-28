@@ -1,4 +1,14 @@
 
+/*
+ 这个非常重要.
+ @Published 的属性, 一般会当做 UI 的 Binding 机制存在.
+ 那么如何引起  @Published 的修改呢.
+ 如果, 在组合好一个业务相关的 Publihser 之后, 需要手动 Sink 一下, 在进行 Published 的修改, 就太麻烦了.
+ 在 ViewModel 的创建过程中, 组合好一个复杂的 Publisher 之后, 将他和 @Published 的 Subject 进行挂钩, 然后, @Published 和 UI 进行挂钩.
+ 这样, ViewAction, 触发 ModelAction, 然后 ModelAction 触发信号改变. 就能够全部自动了.
+ 
+ Bind 的机制, 就是 ViewAction, 自动触发 Model Action 的过程.
+ */
 extension Publisher where Failure == Never {
     /// Republishes elements received from a publisher, by assigning them to a property
     /// marked as a publisher.

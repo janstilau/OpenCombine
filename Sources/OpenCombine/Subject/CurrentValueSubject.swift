@@ -11,7 +11,8 @@
 /*
  Subject 的实现, 和 Rx 差不多.
  最重要的是, 这是一个可以缓存多个下游节点的节点.
- Combine 里面, 增加了 Demand 的管理, 所以 Combine 中的 dispatchNode 要复杂一些.
+ 
+ 所以, Share 这件事, 天然就是可以使用 Subject 来实现.
  */
 public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     
@@ -25,9 +26,10 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     private var completion: Subscribers.Completion<Failure>?
     
     // 存储一下, 上游节点. 上游节点, 只会在 Deinit 的时候, 对于所有的上游节点进行 cancel.
-    // Subject 的 Deinit Cancel 其实没有太大的问题. Subject 其实是两条响应链条的中间 Pivot.
-    // 所以, 他在前面的响应链条中, 其实是尾节点. 所以, 它的生命周期, 其实影响到了前半程链条的存在是否有意义.
-    // 就算前半程是共享的, 那么 Subject 的析构, 影响到的也是 Begin --- SharePivot --- Subject 中, SharePivot --- Subject 这条线. 这样其实不会影响到 Begin 的逻辑. 所以, 不同担心会影响到别的响应链条.
+    /*
+     1. 如果, 这个 Subject 是一个单独没有共享的响应链路, 那么取消上游, 是整个响应链路取消. 没有问题, 因为下游节点已经取消了.
+     2. 如果, 这个 Subject 所在链路在一个 Share 的 Dispatch 中, 那么取消仅仅是让自己所在的链路消失, Share 的整个 DisPatch 不受影响.
+     */
     
     // 一个 Subject 对象, 可能会有很多的上游节点. 因为, 可能会有很多的信号, 触发 Object 的修改.
     // 一个 Subject 对象, 可能会有很多的下游节点. 每次自己修改之后, 都会把修改信号, 发送给所有的下游节点.
@@ -37,8 +39,12 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     // 存储一下, 下游节点. 没有直接存储 Subsriber, 而是一个 Conduit 对象
     private var downstreams = ConduitList<Output, Failure>.empty
     
-    // 缓存一下当前值.
-    // 在 Init 的时候, 必须带一个 Output 的值过来.
+    // 真正存值的地方
+    /*
+     currentValue 的赋值, 不会引发信号的发送. 而暴露给外界的, 是 public var value: Output 这样的一个属性.
+     value 的 set 中, 引起真正存储的变化, 和信号的发送.
+     这是一个非常常见的设计.
+     */
     private var currentValue: Output
     
     /// The value wrapped by this subject, published as a new element whenever it changes.
@@ -70,6 +76,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         currentValue = newValue
         let downstreams = self.downstreams
         lock.unlock()
+        
         // 先取出所有的下游节点, 然后就 unlock
         // 因为给下游节点喂食, 可能会引发各种后续操作, 时间不可控的.
         // 当, CurrentValue 发生变化的时候, 给所有的下游节点喂食.
@@ -112,6 +119,8 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
          这些各自独立的链条的 Demand, 是在 Subject 中独立进行的管理.
          作为上一段链条的终点, 它不做 Demand 管理, 上游 Publisher 的 Next 事件全部接受.
          但是转发个给下游节点的时候, 如果这个链路上的 Demand 不足, 那么这个链路, 就失去了 Current Value 的值.
+         
+         从这个意义上来说, Subject 是作为尾节点存在的, 就和 Sink 一样.
          */
         subscription.request(.unlimited)
     }
@@ -149,6 +158,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
             lock.unlock()
             return
         }
+        
         // 记录一下 Completion, 之后的 subscriber 可以直接使用.
         // active 和 completion 是绑定在一起的, 可以使用一个 Enum 来进行管理.
         active = false

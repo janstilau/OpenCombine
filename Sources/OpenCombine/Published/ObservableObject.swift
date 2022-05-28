@@ -41,8 +41,6 @@ public protocol ObservableObject: AnyObject {
     var objectWillChange: ObjectWillChangePublisher { get }
 }
 
-
-
 // 这里是一个小技巧, 专门做一个私有协议, 然后让特定的类型来实现该协议.
 // 其实, 就是类型判断. 不过如果类型过多的话, 使用协议判断, 代码会更加的清晰.
 private protocol _ObservableObjectProperty {

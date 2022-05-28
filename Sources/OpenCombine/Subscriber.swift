@@ -33,7 +33,6 @@
 
 /*
  Subscriber 的三个方法, 具有明显的时间顺序.
- 
  */
 public protocol Subscriber: CustomCombineIdentifierConvertible {
     
@@ -70,7 +69,6 @@ public protocol Subscriber: CustomCombineIdentifierConvertible {
 }
 
 extension Subscriber where Input == Void {
-    
     /// Tells the subscriber that a publisher of void elements is ready to receive further
     /// requests.
     ///
