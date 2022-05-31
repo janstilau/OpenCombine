@@ -202,6 +202,7 @@ extension Publishers.CompactMap {
         
         // 接收到了上游节点, filter 处理完之后, 交给下游节点. 这也是 Map 的主要存在的价值.
         func receive(_ input: Input) -> Subscribers.Demand {
+            // 只有, 返回的数据不是 nil 的情况下, 才将数据发送给后面. 
             if let output = filter(input) {
                 return downstream.receive(output)
             }

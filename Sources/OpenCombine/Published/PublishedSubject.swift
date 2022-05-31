@@ -28,7 +28,6 @@ internal final class PublishedSubject<Output>: Subject {
     // 这是 @Published 存在的最重要的原因, 在值改动前, 会主动调用 ObservableObjectPublisher 的 send 方法, 通知所有的监听节点.
     private var changePublisher: ObservableObjectPublisher?
     
-    
     internal var value: Output {
         get {
             lock.lock()
@@ -47,7 +46,7 @@ internal final class PublishedSubject<Output>: Subject {
             defer { lock.unlock() }
             return changePublisher
         }
-        // 从 ObservableObject.swift 里面的实现, 可以看到是, 对于一个对象里面, 所有的 @Published 属性, 里面都会存储一个 PublishedSubject 对象, 而PublishedSubject的 objectWillChange, 懒加载生成, 会是同一个对象.
+        // 从 ObservableObject.swift 里面的实现, 可以看到是, 对于一个对象里面, 所有的 @Published 属性, 里面都会存储一个 ObservableObjectPublisher 对象
         set {
             lock.lock()
             defer { lock.unlock() }

@@ -10,7 +10,6 @@
 /// `Publishers.Count`,
 /// `Publishers.FirstWhere`,
 /// `Publishers.AllSatisfy` and more.
-///
 /// Subclasses must override the `receive(newValue:)` and `description`.
 
 internal class ReduceProducer<Downstream: Subscriber,

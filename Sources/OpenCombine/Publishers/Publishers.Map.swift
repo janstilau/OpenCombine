@@ -163,6 +163,7 @@ extension Publishers {
 
 extension Publishers.Map {
     
+    // 避免了中间节点的搭建, 这个过程, 交过 OPERATOR 的融合.
     public func map<Result>(
         _ transform: @escaping (Output) -> Result
     ) -> Publishers.Map<Upstream, Result> {

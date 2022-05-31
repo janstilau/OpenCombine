@@ -217,7 +217,7 @@ extension Publishers.Filter {
         }
         
         // 核心, 就是在收到上级节点之后, 进行了 filter 的相关逻辑.
-        // 如果真的 Filter 了, 就再要一个. 
+        // 如果真的 Filter 了, 就再要一个.
         func receive(_ input: Input) -> Subscribers.Demand {
             if filter(input) {
                 return downstream.receive(input)
