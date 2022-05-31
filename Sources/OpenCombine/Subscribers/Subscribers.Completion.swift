@@ -72,6 +72,7 @@ extension Subscribers.Completion {
         switch self {
         case .finished:
             return .finished
+            // 在这里, 将 error 的类型进行了抹除操作. 
         case .failure(let error):
             return .failure(error)
         }

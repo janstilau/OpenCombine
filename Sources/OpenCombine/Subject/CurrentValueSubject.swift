@@ -164,6 +164,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         active = false
         self.completion = completion
         
+        // 将, 所有的下游节点, 进行了清空的操作. 
         let downstreams = self.downstreams.take()
         lock.unlock()
         downstreams.forEach { conduit in

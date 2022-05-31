@@ -196,6 +196,7 @@ extension Publishers {
         where Suffix.Failure == Downstream.Failure,
               Suffix.Output == Downstream.Input
         {
+            // 在构建响应联调的一开始, 就进行了 prefix 和 Inner 之间数据的链接. 所以在 Inner 里面, 是没有存储 Prefix 的 Publisher.
             let inner = Inner(downstream: subscriber, suffix: suffix)
             prefix.subscribe(Inner<Downstream>.PrefixSubscriber(inner: inner))
         }
@@ -304,7 +305,8 @@ extension Publishers.Concatenate {
         
         private func prefixReceive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
-            guard case .subscribed = prefixState, pending != .none else {
+            guard case .subscribed = prefixState,
+                  pending != .none else {
                 lock.unlock()
                 return .none
             }
@@ -373,7 +375,7 @@ extension Publishers.Concatenate {
             prefixState = .terminal
             suffixState = .terminal
             lock.unlock()
-            // 只有当 Suffix 结束之后, 才是真正的结束. 
+            // 只有当 Suffix 结束之后, 才是真正的结束.
             downstream.receive(completion: completion)
         }
     }
@@ -415,6 +417,7 @@ extension Publishers.Concatenate.Inner.SuffixSubscriber: Subscriber {
         return inner.combineIdentifier
     }
     
+    // 所有的不过是进行转发了而已.
     fileprivate func receive(subscription: Subscription) {
         inner.suffixReceive(subscription: subscription)
     }

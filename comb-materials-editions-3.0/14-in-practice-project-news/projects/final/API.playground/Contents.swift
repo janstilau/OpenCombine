@@ -55,7 +55,6 @@ struct API {
     
     func mergedStories(ids storyIDs: [Int]) -> AnyPublisher<Story, Error> {
         let storyIDs = Array(storyIDs.prefix(maxStories))
-        precondition(!storyIDs.isEmpty)
         
         let initialPublisher = story(id: storyIDs[0])
         let remainder = Array(storyIDs.dropFirst())
@@ -82,6 +81,7 @@ struct API {
             }
             .filter { !$0.isEmpty }
             .flatMap { storyIDs in
+                // 拿到 ids, 然后触发后续的根据 id 获取 story 对象的操作. 
                 return self.mergedStories(ids: storyIDs)
             }
             .scan([]) { stories, story -> [Story] in

@@ -29,7 +29,8 @@ struct MainView: View {
         Spacer()
         
         Button(action: {
-          model.add()
+          model.addNewImage()
+          // isDisplayingPhotoPicker 的变化, 引起了 View 层级的变化, 弹出了添加图片的 VC.
           isDisplayingPhotoPicker = true
         }, label: {
           Text("＋").font(.title)
@@ -64,12 +65,48 @@ struct MainView: View {
       
     }
     .padding()
+    /*
+     Summary
+     Adds a modifier for this view that fires an action when a specific value changes.
+     Declaration
+
+     func onChange<V>(of value: V, perform action: @escaping (V) -> Void) -> some View where V : Equatable
+     Discussion
+
+     You can use onChange to trigger a side effect as the result of a value changing, such as an Environment key or a Binding.
+     onChange is called on the main thread. Avoid performing long-running tasks on the main thread. If you need to perform a long-running task in response to value changing, you should dispatch to a background queue.
+     The new value is passed into the closure. The previous value may be captured by the closure to compare it to the new value. For example, in the following code example, PlayerView passes both the old and new values to the model.
+     struct PlayerView: View {
+         var episode: Episode
+         @State private var playState: PlayState = .paused
+
+         var body: some View {
+             VStack {
+                 Text(episode.title)
+                 Text(episode.showTitle)
+                 PlayButton(playState: $playState)
+             }
+             .onChange(of: playState) { [playState] newState in
+                 model.playStateDidChange(from: playState, to: newState)
+             }
+         }
+     }
+     Parameters
+
+     value
+     The value to check against when determining whether to run the closure.
+     action
+     A closure to run when the value changes.
+     newValue
+     The new value that failed the comparison check.
+     Returns
+
+     A view that fires an action when the specified value changes.
+     */
     .onChange(of: model.lastSavedPhotoID, perform: { lastSavedPhotoID in
       isDisplayingSavedMessage = true
     })
     
-    // 这是 KVO ?????
-    // 监听值的变化之后, 自动弹框 ????
     .alert("Saved photo with id: \(model.lastSavedPhotoID)", isPresented: $isDisplayingSavedMessage, actions: { })
     .alert(lastErrorMessage, isPresented: $isDisplayingErrorMessage, actions: { })
     .sheet(isPresented: $isDisplayingPhotoPicker, onDismiss: {
@@ -84,7 +121,7 @@ struct MainView: View {
     .onReceive(model.updateUISubject, perform: updateUI)
   }
   
-  // 函数的参数, 就是信号发送的 Next 值 .
+  // 类似于 UI 的 UpateViews 的思路了.
   func updateUI(photosCount: Int) {
     saveIsEnabled = photosCount > 0 && photosCount % 2 == 0
     clearIsEnabled = photosCount > 0

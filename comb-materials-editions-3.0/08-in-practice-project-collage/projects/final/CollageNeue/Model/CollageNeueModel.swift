@@ -8,10 +8,18 @@ class CollageNeueModel: ObservableObject {
   static let collageSize = CGSize(width: UIScreen.main.bounds.width, height: 200)
   
   // 注意权限控制.
+  
+  // lastSavedPhotoID 是一个属性.
+  
+  /*
+   ViewModle 的数据变化, 引起了外界 View 层的状态变化. 
+   */
   private(set) var lastSavedPhotoID = ""
   private(set) var lastErrorMessage = ""
   // DisposeBag 对象.
   private var subscriptions = Set<AnyCancellable>()
+  
+  
   // CurrentValueSubject 是一个引用对象, 所以是 Let.
   // CurrentValueSubject 的每次变化, 引起 imagePreview 的变化, imagePreview 是真正和 UI 监护的数据源.
   private let images = CurrentValueSubject<[UIImage], Never>([])
@@ -39,13 +47,15 @@ class CollageNeueModel: ObservableObject {
         UIImage.collage(images: photos, size: Self.collageSize)
       }
     // 这样会有循环引用.
-//      .assign(to: .imagePreview, on: self)
+    //      .assign(to: .imagePreview, on: self)
     // 触发了 $imagePreview 的信号变化.
+    
+    
     // 这样, 没有循环引用.
       .assign(to: &$imagePreview)
   }
   
-  func add() {
+  func addNewImage() {
     // 不太明白, 这个值为什么要每次都新创建.
     // 因为, 每次都在 PhotoView 消失的时候, PassthroughSubject 都发送了 Compelteion 事件.
     selectedPhotosSubject = PassthroughSubject<UIImage, Never>()
@@ -72,19 +82,32 @@ class CollageNeueModel: ObservableObject {
       .assign(to: \.value, on: images)
     // 3
       .store(in: &subscriptions)
-    
-    // 如果, 不把结果放在 subscriptions 里面, 那么
   }
   
   func clear() {
     images.send([])
   }
   
+  
+  /*
+   IntentAction
+   
+   触发了异步操作.
+   在异步操作的结束, 修改了自己的状态.
+   自己状态的修改, 引起了 View 的相应, 弹出了 Alert 弹框.
+   */
   func save() {
     guard let image = imagePreview else { return }
     
+    // 添加到 subscriptions 里面的操作, 会随着 Promise 的调用, 触发 Completion 后的清除操作.
+    // 但是, 整个 Subscription, 还是在 subscriptions 里面.
+    // 在每个节点, 收到 Completion 之后, 会解除循环强引用.
+    // 所以整个响应链条的 Sink 能够进行内存的释放操作.
+    // 最终, subscriptions 中存储的, 仅仅是一个 cancel 类型的对象而已.
     // 1
-    PhotoWriter.save(image)
+    let future = PhotoWriter.saveImgToDisk(image)
+      future
+      .print()
       .sink(
         receiveCompletion: { [unowned self] completion in
           // 2
@@ -127,7 +150,7 @@ class CollageNeueModel: ObservableObject {
   }
   
   func selectImage(asset: PHAsset) {
-    
+    //  这里, 实在是没有明白, 为什么要引入 selectedPhotosSubject 这一层抽象的存在.
     imageManager.requestImage(for: asset,
                                  targetSize: UIScreen.main.bounds.size,
                                  contentMode: .aspectFill,

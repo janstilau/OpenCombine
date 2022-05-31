@@ -68,18 +68,6 @@ extension Publishers.Sequence {
             return next == nil
         }
         
-        var description: String {
-            return sequence.map(String.init(describing:)) ?? "Sequence"
-        }
-        
-        var customMirror: Mirror {
-            let children =
-            CollectionOfOne<Mirror.Child>(("sequence", sequence ?? [Element]()))
-            return Mirror(self, children: children)
-        }
-        
-        var playgroundDescription: Any { return description }
-        
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard downstream != nil else {
@@ -92,6 +80,8 @@ extension Publishers.Sequence {
                 return
             }
             
+            // 这是一个头结点, 并且里面的值是确定的.
+            // 每次, 在后续节点要求 Demand 的时候, 就进行 Next 事件的发送.
             while let downstream = self.downstream,
                     pendingDemand > 0 {
                 // 一个循环体里面, 进行 Demand 的管理工作.
@@ -121,7 +111,6 @@ extension Publishers.Sequence {
                     return
                 }
             }
-            
             lock.unlock()
         }
         
@@ -132,6 +121,18 @@ extension Publishers.Sequence {
             sequence = nil
             lock.unlock()
         }
+        
+        var description: String {
+            return sequence.map(String.init(describing:)) ?? "Sequence"
+        }
+        
+        var customMirror: Mirror {
+            let children =
+            CollectionOfOne<Mirror.Child>(("sequence", sequence ?? [Element]()))
+            return Mirror(self, children: children)
+        }
+        
+        var playgroundDescription: Any { return description }
     }
 }
 
