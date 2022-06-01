@@ -132,6 +132,7 @@ struct JokeView: View {
     }
     
     private func reset() {
+        // 各种信号的改版. 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.showFetchingJoke = true
             self.hudOpacity = 0.5
@@ -147,20 +148,3 @@ struct JokeView: View {
         }
     }
 }
-
-#if DEBUG
-struct JokeView_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            JokeView()
-                .previewDevice("iPhone 11 Pro Max")
-                .previewDisplayName("iPhone Xs Max")
-            
-            JokeView()
-                .previewDevice("iPhone SE (2nd generation)")
-                .previewDisplayName("iPhone SE (2nd generation)")
-                .environment(\.colorScheme, .dark)
-        }
-    }
-}
-#endif

@@ -11,7 +11,8 @@ struct HNReader: App {
     init() {
         // $keywords 的修改, 导致了 主ViewModel 中的数据变化. 是
         userSettings.$keywords
-        // 非常烂的代码, 怎么就不能写清楚了呢.
+        // 这里, 完成了类似于信号槽的机制.
+        // 一个信号的发出, 绑定到了另外的一个信号上, 导致另外的一个信号的发出. 
             .map { $0.map { $0.value } }
             .assign(to: \.filter, on: viewModel)
             .store(in: &subscriptions)

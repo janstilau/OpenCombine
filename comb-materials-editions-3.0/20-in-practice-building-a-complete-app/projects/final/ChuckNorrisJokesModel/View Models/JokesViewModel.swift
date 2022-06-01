@@ -10,7 +10,7 @@ public final class JokesViewModel: ObservableObject {
     
     private static let decoder = JSONDecoder()
     
-    @Published public var fetching = false
+    @Published private var fetching = false
     @Published public var joke = Joke.starter
     @Published public var backgroundColor = Color("Gray")
     @Published public var decisionState = DecisionState.undecided
@@ -44,6 +44,14 @@ public final class JokesViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
         // 7
             .assign(to: &$joke)
+        /*
+         $fetching = false 的操作. 实际上, 还是应该写到 Netwrok 中.
+         这样更加的清晰.
+         .assign(to: &$joke) 其实并没有让代码更加的清晰.
+         
+         
+         而且, 其实 fetching 没有太大作用啊, 根本没有在 View 层使用到这个东西. 
+         */
     }
     
     public func updateBackgroundColorForTranslation(_ translation: Double) {

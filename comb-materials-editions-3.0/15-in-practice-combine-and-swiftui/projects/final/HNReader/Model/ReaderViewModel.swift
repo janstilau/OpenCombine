@@ -12,6 +12,8 @@ class ReaderViewModel: ObservableObject {
     @Published var filter = [String]()
     // filter 的改变, 会引起 View 的刷新, 而在 View 中, 真正使用的, 是 stories 的值.
     
+    // 一个计算属性, allStories 存储了所有的数据, filter 存储了过滤的数据.
+    // 每当, 上面的 @Published 的值改变, UI 层都会调用 Stories 重新生成自己需要展示的数据. 计算属性就是方法.
     var stories: [Story] {
         guard !filter.isEmpty else {
             return allStories
@@ -24,7 +26,8 @@ class ReaderViewModel: ObservableObject {
             }
     }
     
-    
+    // ViewAction 触发的 ModelAction. 来进行实际的数据层面的改变.
+    // 这里就是通过网络, 进行数据的修改, 然后引起信号的改变. 
     func fetchStories() {
         api
             .stories()

@@ -5,6 +5,7 @@ import SwiftUI
 import CoreData
 import ChuckNorrisJokesModel
 
+// 数据库层面的存储工作. 
 // 2
 extension JokeManagedObject {
     // 3

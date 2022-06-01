@@ -31,6 +31,7 @@ public extension Joke {
         categories: []
     )
     
+    // 一个特殊的 Joke 对象. 
     static let starter: Joke = {
         guard let url = Bundle.main.url(forResource: "SampleJoke", withExtension: "json"),
               var data = try? Data(contentsOf: url),
