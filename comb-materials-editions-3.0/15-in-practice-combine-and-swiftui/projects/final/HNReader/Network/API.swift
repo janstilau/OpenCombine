@@ -55,6 +55,9 @@ struct API {
     }
     
     func mergedStories(ids storyIDs: [Int]) -> AnyPublisher<Story, Error> {
+        
+        print(storyIDs)
+        
         let storyIDs = Array(storyIDs.prefix(maxStories))
         
         precondition(!storyIDs.isEmpty)

@@ -2,11 +2,15 @@ import Combine
 import Foundation
 
 class ReaderViewModel: ObservableObject {
+    
     private let api = API()
-    @Published private var allStories = [Story]()
     private var subscriptions = Set<AnyCancellable>()
     
+    // 可以是, @Published + Private 的这种组合, 仅仅是为了通知外界, 发生了变化. 
+    @Published private var allStories = [Story]()
+    @Published var error: API.Error? = nil
     @Published var filter = [String]()
+    // filter 的改变, 会引起 View 的刷新, 而在 View 中, 真正使用的, 是 stories 的值.
     
     var stories: [Story] {
         guard !filter.isEmpty else {
@@ -20,7 +24,6 @@ class ReaderViewModel: ObservableObject {
             }
     }
     
-    @Published var error: API.Error? = nil
     
     func fetchStories() {
         api
