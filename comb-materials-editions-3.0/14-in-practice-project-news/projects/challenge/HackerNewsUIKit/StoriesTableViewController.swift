@@ -2,6 +2,7 @@ import UIKit
 import Combine
 
 class StoriesTableViewController: UITableViewController {
+    // 每次, Stories 的改变, 都会引起 UI 的改变.
     var stories = [Story]() {
         didSet {
             tableView.reloadData()
@@ -19,8 +20,10 @@ class StoriesTableViewController: UITableViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
+        // 响应式, 交互的方式变了. 不再是通过传输 Block 的方式, 而是使用了统一的 Publisher 的结构.
         api.stories()
             .receive(on: DispatchQueue.main)
+        // 如果, 出错了, 那么就不进行后续的响应节点的触发了. 
             .catch { _ in Empty() }
             .assign(to: \.stories, on: self)
             .store(in: &subscriptions)

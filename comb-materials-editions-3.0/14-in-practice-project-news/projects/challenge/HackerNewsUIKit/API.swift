@@ -51,25 +51,6 @@ struct API {
             .eraseToAnyPublisher()
     }
     
-    func mergedStories(ids storyIDs: [Int]) -> AnyPublisher<Story, Error> {
-        let storyIDs = Array(storyIDs.prefix(maxStories))
-        
-        precondition(!storyIDs.isEmpty)
-        
-        var allStoryPublishers: [AnyPublisher<Story, API.Error>] = []
-        for id in storyIDs {
-            allStoryPublishers.append(story(id: id))
-        }
-        return Publishers.MergeMany.init(allStoryPublishers).eraseToAnyPublisher()
-        
-//        let initialPublisher = story(id: storyIDs[0])
-//        let remainder = Array(storyIDs.dropFirst())
-//        return remainder.reduce(initialPublisher) { (combined, id) -> AnyPublisher<Story, Error> in
-//            return combined.merge(with: story(id: id))
-//                .eraseToAnyPublisher()
-//        }
-    }
-    
     func stories() -> AnyPublisher<[Story], Error> {
         URLSession.shared.dataTaskPublisher(for: EndPoint.stories.url)
             .map { $0.0 }
@@ -92,5 +73,26 @@ struct API {
                 return stories.sorted()
             }
             .eraseToAnyPublisher()
+    }
+    
+    
+    private func mergedStories(ids storyIDs: [Int]) -> AnyPublisher<Story, Error> {
+        let storyIDs = Array(storyIDs.prefix(maxStories))
+        
+        precondition(!storyIDs.isEmpty)
+        
+        var allStoryPublishers: [AnyPublisher<Story, API.Error>] = []
+        for id in storyIDs {
+            allStoryPublishers.append(story(id: id))
+        }
+        // 在书出的时候, 应该没有 MergeMany 的API, 不然为什么要用这么丑陋的实现呢.
+        return Publishers.MergeMany.init(allStoryPublishers).eraseToAnyPublisher()
+        
+        //        let initialPublisher = story(id: storyIDs[0])
+        //        let remainder = Array(storyIDs.dropFirst())
+        //        return remainder.reduce(initialPublisher) { (combined, id) -> AnyPublisher<Story, Error> in
+        //            return combined.merge(with: story(id: id))
+        //                .eraseToAnyPublisher()
+        //        }
     }
 }

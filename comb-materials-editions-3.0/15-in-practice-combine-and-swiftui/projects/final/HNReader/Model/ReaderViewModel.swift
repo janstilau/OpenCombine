@@ -34,6 +34,7 @@ class ReaderViewModel: ObservableObject {
                     self.error = error
                 }
             }, receiveValue: { stories in
+                // 虽然, 这是一个 Private, 但是不妨碍他能触发 objectWillChanged 信号的触发. 
                 self.allStories = stories
                 self.error = nil
             })
