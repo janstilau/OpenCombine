@@ -2,6 +2,7 @@ import UIKit
 import Combine
 
 extension UIViewController {
+  // 使用 Combine, 将原有的命令式的代码, 封装成为响应式的一个示例. 
   func alert(title: String, text: String?) -> AnyPublisher<Void, Never> {
     let alertVC = UIAlertController(title: title,
                                     message: text,

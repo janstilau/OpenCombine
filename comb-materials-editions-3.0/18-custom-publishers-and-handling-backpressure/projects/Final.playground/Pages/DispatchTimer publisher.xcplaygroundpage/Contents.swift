@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 
+// 配置类, 这个类, 帮助生成 Publisher 的实例.
 struct DispatchTimerConfiguration {
     // 1
     let queue: DispatchQueue?
@@ -14,6 +15,8 @@ struct DispatchTimerConfiguration {
 
 extension Publishers {
     // 惯例 Publihser 实现.
+    // 生成 DispatchTimer, 主要是为了收集信息. 在真正的调用 receive 的时候, 才生成对应的 DispatchTimerSubscription 对象.
+    // 将 DispatchTimerSubscription 交给后续的 subscriber
     struct DispatchTimer: Publisher {
         // 5
         typealias Output = DispatchTime
@@ -29,32 +32,35 @@ extension Publishers {
         // 7
         func receive<S: Subscriber>(subscriber: S)
         where Failure == S.Failure, Output == S.Input {
-                  // 8
-                  let subscription = DispatchTimerSubscription(
-                    subscriber: subscriber,
-                    configuration: configuration
-                  )
-                  // 9
-                  subscriber.receive(subscription: subscription)
-              }
+            // 8
+            let subscription = DispatchTimerSubscription(
+                // 在这里, 生成了循环引用.
+                subscriber: subscriber,
+                configuration: configuration
+            )
+            // 9
+            subscriber.receive(subscription: subscription)
+        }
     }
 }
 
 private final class DispatchTimerSubscription<S: Subscriber>: Subscription
 where S.Input == DispatchTime {
     // 10
+    // 值的收集.
     let configuration: DispatchTimerConfiguration
     // 11 Demand 管理. 当前的 Publisher 可以产生多少出具.
+    // 这个代表着最大的 Timer 可以发出的信号数量.
     var times: Subscribers.Demand
     // 12 Demand 管理, 下游要求多少个数据.
     var requested: Subscribers.Demand = .none
     // 13
+    // 真正的 Timer 的实现.
     var source: DispatchSourceTimer? = nil
     // 14
     var subscriber: S?
     
-    init(subscriber: S,
-         configuration: DispatchTimerConfiguration) {
+    init(subscriber: S, configuration: DispatchTimerConfiguration) {
         self.configuration = configuration
         self.subscriber = subscriber
         self.times = configuration.times
@@ -66,8 +72,7 @@ where S.Input == DispatchTime {
         guard times > .none else {
             // 17
             // 只有, 当 configure 的初始值直接是 .none 的时候, 才会触发这样的事情.
-            // 或者是, 当前的 Publihser 被 share 了. 这样的话, 这个 Subscription 可能会被多次进行 request demand.
-            // 不过这也说不准, 在喵神的博客里面, 其实是重新定义了一个, 可以在 Subscriber 中主动控制 Pull 行为的 Subscriber.
+            // 也就是说, 这个 Publsiher 的使用者, 开始就没打算使用这个定时器.
             subscriber?.receive(completion: .finished)
             return
         }
@@ -102,7 +107,7 @@ where S.Input == DispatchTime {
                 _ = self.subscriber?.receive(.now())
                 // 26
                 if self.times == .none {
-                    // 当, 发射完了所有的数据, 主动向下游进行 finished 的发送. 
+                    // 当, 发射完了所有的数据, 主动向下游进行 finished 的发送.
                     self.subscriber?.receive(completion: .finished)
                 }
             }
@@ -121,6 +126,8 @@ where S.Input == DispatchTime {
     }
 }
 
+// 在 Publishers 添加一个快捷的方法, 作为生成 DispatchTimer 的入口.
+// 如果, 是一个 Operator, 那么这个就会添加到了 Publisher 的 extension 中了.
 extension Publishers {
     static func timer(queue: DispatchQueue? = nil,
                       interval: DispatchTimeInterval,

@@ -8,11 +8,15 @@
 
 // 不太明白这个类的意义何在. 目前来看, 就是 ClosureBasedAnySubscriber 用来进行一些自定义的操作者.
 // 这个是用 Snik 也可以完全达到相应的目的.
+
+// 在 ShareReplay, 这个自定义的 Operator 里面, 看到了这个类的实际使用.
+// 在那里, ShareReplay 是一个类 Subject 的分发机制, 在接受到上级节点发送过来的数据之后, 将收到的数据, 分发给注册的后续节点.
 public struct AnySubscriber<Input, Failure: Error>: Subscriber,
                                                     CustomStringConvertible,
                                                     CustomReflectable,
                                                     CustomPlaygroundDisplayConvertible
 {
+    // Box 是一个抽象接口对象, 实际的对象, 从下面看是 接口对象的抽象, 以及闭包对象的抽象. 
     @usableFromInline
     internal let box: AnySubscriberBase<Input, Failure>
     

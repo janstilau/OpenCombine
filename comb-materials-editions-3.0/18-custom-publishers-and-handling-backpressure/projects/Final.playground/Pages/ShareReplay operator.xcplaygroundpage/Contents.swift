@@ -1,6 +1,8 @@
 import Foundation
 import Combine
 
+// 这是一个 Operator, 所以, 在 Publisher 协议上, 直接添加了 shareReplay 这个快捷方法.
+// 在这个方法内部,
 extension Publisher {
     func shareReplay(capacity: Int = .max) -> Publishers.ShareReplay<Self> {
         return Publishers.ShareReplay(upstream: self, capacity: capacity)
@@ -9,6 +11,7 @@ extension Publisher {
 
 // 在 Combine 里面, 没有 Replay 这回事. 在这里, 进行自定义.
 // 和以往的不同, 这次的 Publisher, 是引用语义的, 它直接进行了响应链的交互.
+// 之所以成为这个样子, 是因为这是一个 Share 含义的 Publisher. 所以, 后续添加的 Subscriber 要集中到一个地方进行管理才可以.
 extension Publishers {
     // 20
     final class ShareReplay<Upstream: Publisher>: Publisher {
@@ -28,7 +31,6 @@ extension Publishers {
         // 真正的完整的, 没有被破坏的缓存数据, 其实只应该有一份.
         private var replay = [Output]()
         // 26
-        // ???? 这是一个 Publihser, 怎么有这玩意.
         private var subscriptions = [ShareReplaySubscription<Output, Failure>]()
         // 27
         // 存储, 最后的一个值.
@@ -39,6 +41,7 @@ extension Publishers {
             self.capacity = capacity
         }
         
+        // Publisher 的最核心的方法, 就是接收 subscriber 来创建一个响应链条.
         func receive<S: Subscriber>(subscriber: S)
         where Failure == S.Failure,
               Output == S.Input {
@@ -46,6 +49,10 @@ extension Publishers {
                   defer { lock.unlock() }
                   
                   // 34
+                  /*
+                   这种, Share 其实都会出现类似于 Subject 的存储结构.
+                   就是, 本质上是一个分发机制. 但是由于想要保持 Combine 的 Demand 管理, 所以需要一个中间层, 来进行 Deamnd 相关业务的管理.
+                   */
                   let subscription = ShareReplaySubscription(
                     subscriber: subscriber,
                     replay: replay,
@@ -58,6 +65,8 @@ extension Publishers {
                   subscriber.receive(subscription: subscription)
                   
                   // 37
+                  // 这是一个类似于 autoConnect 的机制.
+                  // 只有第一次的时候, 才触发将自己和上游节点的挂钩.
                   guard subscriptions.count == 1 else { return }
                   // 38
                   let sink = AnySubscriber(
@@ -151,6 +160,7 @@ fileprivate final class ShareReplaySubscription<Output, Failure: Error>: Subscri
         self.completion = completion
     }
     
+    // 这里, 居然没有将自身从分发节点中删除.
     private func complete(with completion: Subscribers.Completion<Failure>) {
         // 9
         guard let subscriber = subscriber else { return }
@@ -181,7 +191,7 @@ fileprivate final class ShareReplaySubscription<Output, Failure: Error>: Subscri
         // 注意, 这里并不是说 buffer 里面的内容已经发完了, 也可能是后方节点 Demand 的需求已经完毕了.
         // 然后如果有 self.completion, 那就是证明其实上游的分发节点已经结束了, 将结束事件, 也下发给后方节点.
         // 在 complete 里面, 做了各种资源的清理.
-        // 这是一个很棒的设计, 缓存的数据, 以及
+        // 这是一个很棒的设计, 缓存的数据, 以及 downstream 的索引, 都会在 complete 函数中进行清除.
         if let completion = completion {
             complete(with: completion)
         }
@@ -194,6 +204,9 @@ fileprivate final class ShareReplaySubscription<Output, Failure: Error>: Subscri
         emitAsNeeded()
     }
     
+    // 每一个注册, 都有着 Demand 的管理. 使用 buffer 存储使得逻辑变得统一了.
+    // buffer 的内容, 有可能是新 receiver 的, 也有可能是建立通路的时候, 从 publisher 那里复制过来的.
+    // 不管是哪一种, 都收到了下游节点的 demand 的约束. 所以, 统一的走 emitAsNeeded 是一个比较好的实现逻辑.
     func receive(_ input: Output) {
         guard subscriber != nil else { return }
         // 17
@@ -209,13 +222,13 @@ fileprivate final class ShareReplaySubscription<Output, Failure: Error>: Subscri
     func receive(completion: Subscribers.Completion<Failure>) {
         guard let subscriber = subscriber else { return }
         self.subscriber = nil
-        // 将所有没有发送的数据清空, 整个响应链路已经结束了. 
+        // 将所有没有发送的数据清空, 整个响应链路已经结束了.
         self.buffer.removeAll()
         subscriber.receive(completion: completion)
     }
     
     func cancel() {
-        // 为什么. 这样不会引起下方节点, 收到一个 Complete Event 吗
+        // 在 Complete 里面, 完成了对于 download 的释放工作.
         complete(with: .finished)
     }
 }

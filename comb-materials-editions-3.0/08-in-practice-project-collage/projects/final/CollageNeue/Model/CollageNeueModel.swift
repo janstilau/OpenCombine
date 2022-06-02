@@ -12,7 +12,9 @@ class CollageNeueModel: ObservableObject {
   // lastSavedPhotoID 是一个属性.
   
   /*
-   ViewModle 的数据变化, 引起了外界 View 层的状态变化. 
+   ViewModle 的数据变化, 引起了外界 View 层的状态变化.
+   因为, 这个属性其实并不是 @Published 所以实际上, 并不会引起 View 的变化.
+   但是因为在 View 上面, 使用 onChange(of 进行了监听, 所以, View 会重新调用 body 来获取当前的展示.
    */
   private(set) var lastSavedPhotoID = ""
   private(set) var lastErrorMessage = ""
@@ -106,7 +108,7 @@ class CollageNeueModel: ObservableObject {
     // 最终, subscriptions 中存储的, 仅仅是一个 cancel 类型的对象而已.
     // 1
     let future = PhotoWriter.saveImgToDisk(image)
-      future
+    future
       .print()
       .sink(
         receiveCompletion: { [unowned self] completion in

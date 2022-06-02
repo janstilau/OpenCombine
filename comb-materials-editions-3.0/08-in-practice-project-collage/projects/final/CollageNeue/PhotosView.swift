@@ -9,18 +9,15 @@ struct PhotosView: View {
   
   let columns: [GridItem] = [.init(.adaptive(minimum: 100, maximum: 200))]
   
-  @State private var subscriptions = [AnyCancellable]()
-  
-  @State private var photos = PHFetchResult<PHAsset>()
-  @State private var imageManager = PHCachingImageManager()
+  @State private var fetchedPhotos = PHFetchResult<PHAsset>()
   @State private var isDisplayingError = false
   
   var body: some View {
     NavigationView {
       ScrollView {
         LazyVGrid(columns: columns, spacing: 2) {
-          ForEach((0..<photos.count), id: \.self) { index in
-            let asset = photos[index]
+          ForEach((0..<fetchedPhotos.count), id: \.self) { index in
+            let asset = fetchedPhotos[index]
             let _ = model.enqueueThumbnail(asset: asset)
             
             Button(action: {
@@ -52,10 +49,11 @@ struct PhotosView: View {
     
     .onAppear {
       // Check for Photos access authorization and reload the list if authorized.
+      // 这里, 使用了命令式的编码方式.
       PHPhotoLibrary.fetchAuthorizationStatus { status in
         if status {
           DispatchQueue.main.async {
-            self.photos = model.loadPhotos()
+            self.fetchedPhotos = model.loadPhotos()
           }
         }
       }
