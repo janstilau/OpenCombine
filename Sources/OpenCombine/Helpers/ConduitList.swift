@@ -1,7 +1,5 @@
-/*
- 不太明白, 这种 none, single, many 的设计意图是什么. 好多地方看到了这样类似的概念了.
- */
-// 里面存储的是 ConduitBase, 所以给了业务进行自定义的接口. 
+// 里面存储的是 ConduitBase, 所以给了业务进行自定义的接口.
+// 这是一个 Enum. 是一个把 Enum 当做盒子使用的示例. 
 internal enum ConduitList<Output, Failure: Error> {
     case empty
     case single(ConduitBase<Output, Failure>)

@@ -1,6 +1,16 @@
+/*
+ A subject that wraps a single value and publishes a new element whenever the value changes.
+ Declaration
+ final class CurrentValueSubject<Output, Failure> where Failure : Error
+ 
+ Overview
+ Unlike PassthroughSubject, CurrentValueSubject maintains a buffer of the most recently published element.
+ Calling send(_:) on a CurrentValueSubject also updates the current value, making it equivalent to updating the value directly.
+ */
+
 /// A subject that wraps a single value and publishes a new element whenever the value
 /// changes.
-// 初始化的时候, 必须要有一个数据, 每次更新, 都替换该数据. 这个 Subject 和 UI 很相配.
+// 初始化的时候, 必须要有一个数据, 每次更新, 都替换该数据. 这个 Subject 非常适合 UI 数据的更新, 因为他能提供 UI 数据. 并且在 attach 的时候, 就能够进行初始数据的发送.
 
 /// Unlike `PassthroughSubject`, `CurrentValueSubject` maintains a buffer of the most
 /// recently published element.
@@ -16,13 +26,17 @@
  */
 public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     
-    private let lock = UnfairLock.allocate()
+    /*
+     Combine 就是为了在多线程环境下进行的, 所以, 一定会有锁的存在.
+     */
+    private let subjectInnerLock = UnfairLock.allocate()
     
-    private var active = true
+    private var isSubjectActive = true
     
     // 存储一下结束事件.
     // 在 Subject 接收到上游的结束事件的时候, 会将这个值进行存储.
     // 后续新的 Subscriber 来临的时候, 可以直接收到这个存储的事件.
+    // 这个概念, 和 Promise 是一致的. 不过, Completion 的时候, 是不会存储 Result 的值的, 只是存储了 Complete 的状态.
     private var completion: Subscribers.Completion<Failure>?
     
     // 存储一下, 上游节点. 上游节点, 只会在 Deinit 的时候, 对于所有的上游节点进行 cancel.
@@ -51,13 +65,13 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     //
     public var value: Output {
         get {
-            lock.lock()
-            defer { lock.unlock() }
+            subjectInnerLock.lock()
+            defer { subjectInnerLock.unlock() }
             // 取值, 必须在锁的环境
             return currentValue
         }
         set {
-            lock.lock()
+            subjectInnerLock.lock()
             // 赋值, 必须在锁的环境, 并且触发后续的信号发送.
             currentValue = newValue
             sendValueAndConsumeLock(newValue)
@@ -67,15 +81,16 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     // 命名很明确, 里面应该进行 Lock 的 Unlock 的操作才可以.
     private func sendValueAndConsumeLock(_ newValue: Output) {
         // 必须要做这样的判断. 因为 Subject 的各个函数, 其实是手动触发的.
-        // 如果使用者 sendComplete 之后, 又进行了 send value, 其实有可能的. 业务逻辑复杂了之后, 类的设计者应该保证自己类的健壮性.
-        guard active else {
-            lock.unlock()
+        // 如果使用者 sendComplete 之后, 又进行了 send value, 就触发了已经完成了但是有进行 Send 的场景了.
+        // 业务逻辑复杂了之后, 类的设计者应该保证自己类的健壮性.
+        guard isSubjectActive else {
+            subjectInnerLock.unlock()
             return
         }
         // 先是记录一下当前值.
         currentValue = newValue
         let downstreams = self.downstreams
-        lock.unlock()
+        subjectInnerLock.unlock()
         
         // 先取出所有的下游节点, 然后就 unlock
         // 因为给下游节点喂食, 可能会引发各种后续操作, 时间不可控的.
@@ -97,7 +112,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
-        lock.deallocate()
+        subjectInnerLock.deallocate()
     }
     
     /*
@@ -105,10 +120,10 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
      */
     // This call provides the Subject an opportunity to establish demand for any new upstream subscriptions.
     public func send(subscription: Subscription) {
-        lock.lock()
+        subjectInnerLock.lock()
         // 存储所有的上游节点. upstreamSubscriptions 在类内没有业务逻辑, 主要是为了在 Subject deinit 的时候, 进行上游节点的 cancel 处理.
         upstreamSubscriptions.append(subscription)
-        lock.unlock()
+        subjectInnerLock.unlock()
         
         /*
          Subject, 是一个 Pivot
@@ -125,21 +140,26 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         subscription.request(.unlimited)
     }
     
+    /*
+     当收到下游节点的 Subscriber 的时候, Subject 注册监听的逻辑.
+     */
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Output == Downstream.Input, Failure == Downstream.Failure
     {
-        lock.lock()
-        if active {
-            //  作为头结点, 自己管理的各个子响应链条的挂载操作.
+        subjectInnerLock.lock()
+        if isSubjectActive {
+            // 作为头结点, 自己管理的各个子响应链条的挂载操作.
             let conduit = Conduit(parent: self, downstream: subscriber)
             downstreams.insert(conduit)
-            lock.unlock()
+            subjectInnerLock.unlock()
+            // 下游节点, 面对的 Subscription 其实这个 Conduit 对象.
+            // 这个对象, 可以算作是 Privot 所管理的各个链条的头结点.
             subscriber.receive(subscription: conduit)
         } else {
             // 如果, Subject 已经接受过了结束事件.
             // 那么对于新的 Subscriber, 应该让他知道这件事.
             let completion = self.completion!
-            lock.unlock()
+            subjectInnerLock.unlock()
             // 一定要给后续的节点, 发送一个 subscription. 因为并不知道, 后续节点, 会根据这个做什么处理.
             subscriber.receive(subscription: Subscriptions.empty)
             subscriber.receive(completion: completion)
@@ -147,26 +167,26 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     }
     
     public func send(_ input: Output) {
-        lock.lock()
+        subjectInnerLock.lock()
         sendValueAndConsumeLock(input)
     }
     
     // 不论, Subject 作为多少条链条的终止节点, 只要有一条发送了 Completion, 都结束.
     public func send(completion: Subscribers.Completion<Failure>) {
-        lock.lock()
-        guard active else {
-            lock.unlock()
+        subjectInnerLock.lock()
+        guard isSubjectActive else {
+            subjectInnerLock.unlock()
             return
         }
         
         // 记录一下 Completion, 之后的 subscriber 可以直接使用.
         // active 和 completion 是绑定在一起的, 可以使用一个 Enum 来进行管理.
-        active = false
+        isSubjectActive = false
         self.completion = completion
         
-        // 将, 所有的下游节点, 进行了清空的操作. 
+        // 将, 所有的下游节点, 进行了清空的操作.
         let downstreams = self.downstreams.take()
-        lock.unlock()
+        subjectInnerLock.unlock()
         downstreams.forEach { conduit in
             conduit.finish(completion: completion)
         }
@@ -174,14 +194,14 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     
     // 作为头结点, 所管理的各个子响应联调的卸载操作.
     private func disassociate(_ conduit: ConduitBase<Output, Failure>) {
-        lock.lock()
-        guard active else {
-            lock.unlock()
+        subjectInnerLock.lock()
+        guard isSubjectActive else {
+            subjectInnerLock.unlock()
             return
         }
         // 解除 Subject 和下游节点的关联关系.
         downstreams.remove(conduit)
-        lock.unlock()
+        subjectInnerLock.unlock()
     }
 }
 
