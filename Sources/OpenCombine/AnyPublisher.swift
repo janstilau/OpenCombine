@@ -143,11 +143,11 @@ internal class PublisherBoxBase<Output, Failure: Error>: Publisher {
 }
 
 /*
- PublisherBox 的生成, 是需要完成的类型信息的.
- 在 AnyPublisher 的 init 方法里面, 参数是需要完整的类型信息的.
- 这些完整的类型信息中的类型, 被抽取出来, 来填充 PublisherBoxBase 所需要的类型信息.
- AnyPublisher 中所暴露出去的, 也是这些被抽取的类型信息.
- 通过这样, 完整的类型被隐藏了, 仅仅暴露出完整的类型信息中的部分信息.
+ 这种类型消除器, 有着统一的实现方案.
+ 它的 Init 方法里面, 参数是要有这完成的类型信息的.
+ 它的成员变量, Box 里面, 是需要完整的类型信息的.
+ 它对于协议的实现, 完全是转交给了 Box 成员变量.
+ 它对外暴露的, 是隐藏了完整的类型信息的类型, 所以, 隐藏的关键所在, 其实就是 box 的存在. 
  */
 @usableFromInline
 internal final class PublisherBox<PublisherType: Publisher>

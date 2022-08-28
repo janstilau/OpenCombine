@@ -7,7 +7,10 @@
  Combine declares publishers to expose values that can change over time, and subscribers to receive those values from the publishers.
  
  The Publisher protocol declares a type that can deliver a sequence of values over time. Publishers have operators to act on the values received from upstream publishers and republish them.
+ 这个说的很清楚, Operattor 的作用, 是接收上游的数据, 加工, 然后 Publish 给下游.
+ 
  At the end of a chain of publishers, a Subscriber acts on elements as it receives them. Publishers only emit values when explicitly requested to do so by subscribers. This puts your subscriber code in control of how fast it receives events from the publishers it’s connected to.
+ 这里说的很清楚, 被压的管理, 是Subsciber 的责任. 应该说, Operator 是不需要考虑被压管理的. 它仅仅是进行透传.
  
  Several Foundation types expose their functionality through publishers, including Timer, NotificationCenter, and URLSession. Combine also provides a built-in publisher for any property that’s compliant with Key-Value Observing.
  
@@ -31,6 +34,7 @@
  所有的 Subject, 都是使用的 class 进行的实现.
  这是很重要的, 因为, Subject 作为分发器, 是不可能是一个值语义的对象的.
  */
+// Subject 天然是一个 Publisher, 它必须能够接收 Subscriber.
 public protocol Subject: AnyObject, Publisher {
     
     /// Sends a value to the subscriber.
@@ -43,7 +47,6 @@ public protocol Subject: AnyObject, Publisher {
     ///
     /// - Parameter completion: A `Completion` instance which indicates whether publishing
     ///   has finished normally or failed with an error.
-    
     // 这是, 命令式触发结束事件的基础. 在照片合成的那个例子里面, 就是在 ImagePicker 的 ViewDidDisappear 里面, 主动地触发了一次 Subject 的结束事件.
     func send(completion: Subscribers.Completion<Failure>)
     
