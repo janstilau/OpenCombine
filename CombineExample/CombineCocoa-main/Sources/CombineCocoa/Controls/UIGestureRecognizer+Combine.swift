@@ -74,9 +74,11 @@ public extension UILongPressGestureRecognizer {
 @available(iOS 13.0, *)
 private func gesturePublisher<Gesture: UIGestureRecognizer>(for gesture: Gesture) -> AnyPublisher<Gesture, Never> {
     Publishers.ControlTarget(control: gesture,
+                             
                              addTargetAction: { gesture, target, action in
                                 gesture.addTarget(target, action: action)
                              },
+                             
                              removeTargetAction: { gesture, target, action in
                                 gesture?.removeTarget(target, action: action)
                              })

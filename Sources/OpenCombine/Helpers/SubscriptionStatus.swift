@@ -8,6 +8,7 @@
 // 这是一个通用的设计.
 internal enum SubscriptionStatus {
     case awaitingSubscription
+    // 这里使用 Subscription 整个 Protocol 来进行存储, 是怎么进行内存分配的呢. 
     case subscribed(Subscription)
     case pendingTerminal(Subscription)
     case terminal

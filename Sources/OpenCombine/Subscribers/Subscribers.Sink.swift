@@ -214,6 +214,7 @@ extension Subscribers {
         public func cancel() {
             lock.lock()
             // 如果, 已经 Complete 了, 这里是不会有后续的操作的.
+            // 这里, 其实还有取值的动作在里面.
             guard case let .subscribed(subscription) = status else {
                 lock.unlock()
                 return

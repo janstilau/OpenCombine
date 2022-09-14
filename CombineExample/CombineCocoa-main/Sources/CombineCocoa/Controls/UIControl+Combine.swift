@@ -10,6 +10,9 @@
 import Combine
 import UIKit
 
+/*
+ 如果, 各种 Publisher 一样, 
+ */
 @available(iOS 13.0, *)
 public extension UIControl {
     /// A publisher emitting events from this control.

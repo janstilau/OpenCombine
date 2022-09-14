@@ -37,6 +37,7 @@
 public protocol Subscriber: CustomCombineIdentifierConvertible {
     
     /// The kind of values this subscriber receives.
+    // 泛型限制, 要和 Publisher 的 Output 完全对接.
     associatedtype Input
     
     /// The kind of errors this subscriber might receive.
@@ -51,6 +52,7 @@ public protocol Subscriber: CustomCombineIdentifierConvertible {
     /// - Parameter subscription: A subscription that represents the connection between
     ///   publisher and subscriber.
     // 其实, 就是 Publisher 生成 Inner Sink 对象.
+    // 也就是, 整个响应链路的节点对象.
     func receive(subscription: Subscription)
     
     /// Tells the subscriber that the publisher has produced an element.

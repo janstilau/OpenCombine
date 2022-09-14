@@ -1,5 +1,6 @@
-
 // 这种行为, Failure 必须是 Never 才可以.
+// 因为是赋值, 如果上游出错了, 出错信息流转到这里, 其实是没有办法处理的. 所以, 必须是 Never.
+// 这也迫使了, 上游节点一定要做错误的处理. 不然直接使用 assign 会出问题的.
 extension Publisher where Failure == Never {
     /// Assigns each element from a publisher to a property on an object.
     
@@ -18,7 +19,7 @@ extension Publisher where Failure == Never {
     ///             }
     ///         }
     ///     }
-    ///
+    
     ///     var myObject = MyClass()
     ///     let myRange = (0...2)
     ///     cancellable = myRange.publisher
@@ -42,10 +43,10 @@ extension Publisher where Failure == Never {
     ///   Deinitializing this instance will also cancel automatic assignment.
     public func assign<Root>(to keyPath: ReferenceWritableKeyPath<Root, Output>,
                              on object: Root) -> AnyCancellable {
-        let subscriber = Subscribers.Assign(object: object, keyPath: keyPath)
+        
+        let subscriber = Subscribers.Assign(object: object,
+                                            keyPath: keyPath)
         subscribe(subscriber)
-        // Combine 中, 只有最后的末端节点注册, 才返回 cancellable 对象.
-        // 或者 connect 操作的时候.
         return AnyCancellable(subscriber)
     }
 }
@@ -102,8 +103,7 @@ extension Subscribers {
                 return
             }
             // 存储一下上游的节点.
-            // 循环引用一下.
-            // 强引用的实现.
+            // 因为上游其实在存储着 Subscriber 的指针, 这里又存储着上游的指针, 循环引用成立.
             status = .subscribed(subscription)
             lock.unlock()
             // 必须调用 requestDemand 方法.

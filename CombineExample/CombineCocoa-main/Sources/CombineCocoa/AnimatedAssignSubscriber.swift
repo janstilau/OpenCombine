@@ -18,13 +18,13 @@ public enum AssignTransition {
     public enum Direction {
         case top, bottom, left, right
     }
-
+    
     /// Flip from either bottom, top, left, or right.
     case flip(direction: Direction, duration: TimeInterval)
-
+    
     /// Cross fade with previous value.
     case fade(duration: TimeInterval)
-
+    
     /// A custom animation. Do not include your own code to update the target of the assign subscriber.
     case animation(duration: TimeInterval, options: UIView.AnimationOptions, animations: () -> Void, completion: ((Bool) -> Void)?)
 }
@@ -55,7 +55,7 @@ public extension Publisher where Self.Failure == Never {
     func assign<Root: UIView>(to keyPath: ReferenceWritableKeyPath<Root, Self.Output>, on object: Root, animation: AssignTransition) -> AnyCancellable {
         var transition: UIView.AnimationOptions
         var duration: TimeInterval
-
+        
         switch animation {
         case .fade(let interval):
             duration = interval
@@ -76,15 +76,15 @@ public extension Publisher where Self.Failure == Never {
                                    delay: 0,
                                    options: options,
                                    animations: {
-                                    object[keyPath: keyPath] = value
-                                    animations()
-                                   },
+                        object[keyPath: keyPath] = value
+                        animations()
+                    },
                                    completion: completion)
-                    }
-                )
-                .sink { _ in }
+                }
+            )
+            .sink { _ in }
         }
-
+        
         // Use one of the built-in transitions like flip or crossfade.
         return self
             .handleEvents(receiveOutput: { value in
@@ -92,8 +92,8 @@ public extension Publisher where Self.Failure == Never {
                                   duration: duration,
                                   options: transition,
                                   animations: {
-                                    object[keyPath: keyPath] = value
-                                  },
+                    object[keyPath: keyPath] = value
+                },
                                   completion: nil)
             })
             .sink { _ in }
