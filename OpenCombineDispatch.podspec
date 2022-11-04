@@ -22,4 +22,6 @@ Pod::Spec.new do |spec|
 
   spec.source_files = "Sources/OpenCombineDispatch/**/*.swift"
   spec.dependency     "OpenCombine", '>= 0.12.0'
+
+  # 在 OpenCombine 里面, 修改了 PodSpec 的数据. 
 end
