@@ -24,4 +24,5 @@ Pod::Spec.new do |spec|
   spec.public_header_files = "Sources/COpenCombineHelpers/include/*.h"
 
   spec.libraries = "c++"
+  # 在 Github 网站上, 修改了 OpenCombine 的内容.
 end
