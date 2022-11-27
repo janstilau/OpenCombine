@@ -31,6 +31,11 @@ final class DispatchQueueSchedulerTests: XCTestCase {
                 uptimeNanoseconds: DispatchTime.distantFuture.uptimeNanoseconds - 1024
             )
         )
+        let int64max = Scheduler.SchedulerTimeType(
+            DispatchTime(
+                uptimeNanoseconds: UInt64(Int.max)
+            )
+        )
 
         XCTAssertEqual(time1.distance(to: time2), .nanoseconds(431))
         XCTAssertEqual(time2.distance(to: time1), .nanoseconds(-431))
@@ -45,9 +50,15 @@ final class DispatchQueueSchedulerTests: XCTestCase {
         XCTAssertEqual(time2.distance(to: notSoDistantFuture), .nanoseconds(.max))
         XCTAssertEqual(notSoDistantFuture.distance(to: time2), .nanoseconds(.max))
 
+        XCTAssertEqual(time1.distance(to: int64max), .nanoseconds(.max - 10000))
+        XCTAssertEqual(int64max.distance(to: time1), .nanoseconds(-(.max - 10000)))
+        XCTAssertEqual(time2.distance(to: int64max), .nanoseconds(.max - 10431))
+        XCTAssertEqual(int64max.distance(to: time2), .nanoseconds(-(.max - 10431)))
+
         XCTAssertEqual(distantFuture.distance(to: distantFuture), .nanoseconds(0))
         XCTAssertEqual(notSoDistantFuture.distance(to: notSoDistantFuture),
                        .nanoseconds(0))
+        XCTAssertEqual(int64max.distance(to: int64max), .nanoseconds(0))
     }
 
     func testSchedulerTimeTypeAdvanced() {

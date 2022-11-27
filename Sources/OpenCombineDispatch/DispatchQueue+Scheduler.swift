@@ -420,16 +420,20 @@ extension DispatchTime {
 #endif
         let start = rawValue
         let end = other.rawValue
-        var result: Int64
-        let overflow: Bool
         if end >= start {
-            (result, overflow) = Int64(bitPattern: end)
-                .subtractingReportingOverflow(Int64(bitPattern: start))
+            let result = end - start
+            if result > Int.max {
+                return .never
+            } else {
+                return .nanoseconds(Int(result))
+            }
         } else {
-            (result, overflow) = Int64(bitPattern: start)
-                .subtractingReportingOverflow(Int64(bitPattern: end))
-            result = -result
+            let result = start - end
+            if result > Int.max {
+                return .never
+            } else {
+                return .nanoseconds(-Int(result))
+            }
         }
-        return overflow ? .never : .nanoseconds(Int(result))
     }
 }
