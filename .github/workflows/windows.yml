@@ -21,6 +21,4 @@ jobs:
           branch: swift-${{ matrix.swift_version }}-release
           tag: ${{ matrix.swift_version }}-RELEASE
       - name: Building and running tests in debug mode
-        run: swift test "-c" "debug" "-Xswiftc" "-warnings-as-error" "--build-path" ".build-test-debug"
-      - name: Building and running tests in release mode
-        run: swift test "-c" "release" "-Xswiftc" "-warnings-as-errors" "--build-path" ".build-test-release"
+        run: swift test

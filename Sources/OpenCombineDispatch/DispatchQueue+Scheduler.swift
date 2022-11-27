@@ -421,15 +421,15 @@ extension DispatchTime {
         let start = rawValue
         let end = other.rawValue
         if end >= start {
-            let result = end - start
-            if result > Int.max {
+            let result = end &- start
+            if result > dispatch_time_t(Int.max) {
                 return .never
             } else {
                 return .nanoseconds(Int(result))
             }
         } else {
-            let result = start - end
-            if result > Int.max {
+            let result = start &- end
+            if result > dispatch_time_t(Int.max) {
                 return .never
             } else {
                 return .nanoseconds(-Int(result))
