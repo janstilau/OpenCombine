@@ -34,7 +34,7 @@ final class FutureTests: XCTestCase {
         let parentAsSut: Sut?
 
         do {
-            parentAsSut = try XCTUnwrap(parent.value as? Sut?)
+            parentAsSut = try XCTUnwrap(parent.value as Any? as? Sut?)
         } catch {
             XCTFail("Unexpected type of the 'parent' property: \(parent.value)")
             return
