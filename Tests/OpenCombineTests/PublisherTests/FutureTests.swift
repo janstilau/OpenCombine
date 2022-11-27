@@ -17,15 +17,53 @@ import OpenCombine
 final class FutureTests: XCTestCase {
     private typealias Sut = Future<Int, TestingError>
 
-    func testFutureSuccess() {
+    private func assertParent(of futureSubscription: Subscription, isNil: Bool) {
+
+        let parent: Mirror.Child
+        do {
+            parent = try XCTUnwrap(
+                Mirror(reflecting: futureSubscription)
+                    .children
+                    .first { $0.label == "parent" }
+            )
+        } catch {
+            XCTFail("Missing 'parent' property in \(futureSubscription)")
+            return
+        }
+
+        let parentAsSut: Sut?
+
+        do {
+            parentAsSut = try XCTUnwrap(parent.value as? Sut?)
+        } catch {
+            XCTFail("Unexpected type of the 'parent' property: \(parent.value)")
+            return
+        }
+
+        if isNil {
+            XCTAssertNil(parentAsSut)
+        } else {
+            XCTAssertNotNil(parentAsSut)
+        }
+    }
+
+
+    func testFutureSuccess() throws {
         var promise: Sut.Promise?
 
         let future = Sut { promise = $0 }
 
+        var downstreamSubscription: Subscription?
         let subscriber = TrackingSubscriber(receiveSubscription: { subscription in
+            downstreamSubscription = subscription
             subscription.request(.unlimited)
         })
         future.subscribe(subscriber)
+
+        let unwrappedDownstreamSubscription = try XCTUnwrap(downstreamSubscription)
+        subscriber.onValue = { _ in
+            self.assertParent(of: unwrappedDownstreamSubscription, isNil: true)
+        }
 
         promise?(.success(42))
 
@@ -36,13 +74,15 @@ final class FutureTests: XCTestCase {
         ])
     }
 
-    func testFutureFailure() {
+    func testFutureFailure() throws {
         var promise: Sut.Promise?
 
         let future = Sut { promise = $0 }
 
+        var downstreamSubscription: Subscription?
         let subscriber = TrackingSubscriber(
             receiveSubscription: { subscription in
+                downstreamSubscription = subscription
                 subscription.request(.unlimited)
             }, receiveValue: { _ in
                 XCTFail("no value should be returned")
@@ -50,6 +90,12 @@ final class FutureTests: XCTestCase {
             }
         )
         future.subscribe(subscriber)
+
+        let unwrappedDownstreamSubscription = try XCTUnwrap(downstreamSubscription)
+
+        subscriber.onFailure = { _ in
+            self.assertParent(of: unwrappedDownstreamSubscription, isNil: true)
+        }
 
         let error = TestingError(description: "\(#function)")
         promise?(.failure(error))
@@ -250,6 +296,10 @@ final class FutureTests: XCTestCase {
 
         let unwrappedDownstreamSubscription = try XCTUnwrap(downstreamSubscription)
 
+        subscriber.onValue = { _ in
+            self.assertParent(of: unwrappedDownstreamSubscription, isNil: true)
+        }
+
         unwrappedDownstreamSubscription.request(.max(1))
 
         XCTAssertEqual(subscriber.history, [
@@ -258,12 +308,7 @@ final class FutureTests: XCTestCase {
             .completion(.finished)
         ])
 
-        let parent = try XCTUnwrap(
-            Mirror(reflecting: unwrappedDownstreamSubscription)
-                .descendant("parent") as? Sut?
-        )
-
-        XCTAssertNotNil(parent)
+        assertParent(of: unwrappedDownstreamSubscription, isNil: true)
     }
 
     func testReleasesEverythingOnTermination() {
