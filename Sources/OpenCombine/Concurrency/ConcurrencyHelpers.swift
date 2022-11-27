@@ -9,7 +9,8 @@
 import _Concurrency
 #endif
 
-#if swift(<5.7)
+#if (canImport(_Concurrency) && compiler(>=5.5) || compiler(>=5.5.1)) && swift(<5.7)
+/// A polyfill for pre-5.7 Swift versions.
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 internal func withTaskCancellationHandler<T>(
     operation: () async throws -> T,
