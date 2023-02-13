@@ -4,6 +4,7 @@
  Overview
  非常重要的一点, 这是一个多监听者模式.
  A publisher delivers elements to one or more Subscriber instances.
+ 
  在泛型的世界里面, Output -> Input, Output Error -> Input Error 是被编译器强制进行绑定的.
  The subscriber’s Input and Failure associated types must match the Output and Failure types declared by the publisher. The publisher implements the receive(subscriber:)method to accept a subscriber.
  
@@ -15,7 +16,7 @@
  
  这是一个固定的模式, 新的 Publisher 的设计者, 要遵循这个模式, 才能保证 Combine 系统的正确性.
  Every Publisher must adhere to this contract for downstream subscribers to function correctly.
- Combine 的大量的 Operator, 是这个框架难以学习的原因所在. 
+ Combine 的大量的 Operator, 是这个框架难以学习的原因所在.
  Extensions on Publisher define a wide variety of operators that you compose to create sophisticated event-processing chains. Each operator returns a type that implements the Publisher protocol Most of these types exist as extensions on the Publishers enumeration. For example, the map(_:) operator returns an instance of Publishers.Map.
  
  Creating Your Own Publishers
@@ -110,6 +111,12 @@ public protocol Publisher {
     func receive<Subscriber: OpenCombine.Subscriber>(subscriber: Subscriber)
     where Failure == Subscriber.Failure, Output == Subscriber.Input
 }
+
+/*
+ 对于 protocol Publisher 来说, 它的 extension 其实更多的是进行各种 map, satisfy 方法的创建.
+ 在里面, 是对于各种 Operator 创建.
+ 真正的 Inner 节点的创建, 是在 Operator 的内部完成的, 搭建出完整的响应链条. 
+ */
 
 extension Publisher {
     

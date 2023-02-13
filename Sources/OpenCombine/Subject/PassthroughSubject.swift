@@ -69,6 +69,7 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
             lock.unlock()
             subscriber.receive(subscription: conduit)
         } else {
+            // 这里有点 promise 的感觉, 如果已经有了 completionEvent 就直接将向下游发送, 这个时候, 其实不用存储下游到自己的成员变量里面.
             let completion = self.completionEvent!
             lock.unlock()
             subscriber.receive(subscription: Subscriptions.empty)

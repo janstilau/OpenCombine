@@ -13,5 +13,7 @@
 public protocol Subscription: Cancellable, CustomCombineIdentifierConvertible {
     
     /// Tells a publisher that it may send more values to the subscriber.
+    // 数据的传递动作, 还是要交给 Subscriber 来进行处理.
+    // Subscription 这里承担的责任, 因该是可以进行 demand 的传输. 
     func request(_ demand: Subscribers.Demand)
 }

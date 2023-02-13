@@ -199,6 +199,11 @@ extension RunLoop {
 }
 
 #if !canImport(Combine)
+// 如果官方没有 Combine 的引入, 才编译以下的代码.
+// 这里可以体现出, 面向协议编程的好处了.
+// 对于 Publisher 来说, 它的各种 receive(on 方法, 并不关心具体的类型是什么, 只要参数是 OpenCombine.Scheduler 就可以了.
+// 所以, 各个已知的类型只要完成了对于协议的支持, 就可以直接添加到原有写好的业务逻辑里面了.
+
 extension RunLoop: OpenCombine.Scheduler {
     
     /// Options that affect the operation of the run loop scheduler.

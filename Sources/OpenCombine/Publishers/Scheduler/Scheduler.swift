@@ -95,7 +95,7 @@ public protocol Scheduler {
     var minimumTolerance: SchedulerTimeType.Stride { get }
     
     /// Performs the action at the next possible opportunity.
-    // 最简单的, 就是直接调用 schedule, 在合适的环境, 进行 action 的调用. 
+    // 最简单的, 就是直接调用 schedule, 在合适的环境, 进行 action 的调用.
     func schedule(options: SchedulerOptions?, _ action: @escaping () -> Void)
     
     /// Performs the action at some time after the specified date.

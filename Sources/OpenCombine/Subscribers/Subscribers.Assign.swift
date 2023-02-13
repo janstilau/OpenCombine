@@ -46,6 +46,12 @@ extension Publisher where Failure == Never {
         
         let subscriber = Subscribers.Assign(object: object,
                                             keyPath: keyPath)
+        // 回溯创建整个链条的起点.
+        /*
+         当我们实现一个 Publisher 的时候, 一定要实现  receive<Subscriber: OpenCombine.Subscriber>(subscriber: Subscriber) 这个方法, 但是这个方法的调用, 是在创建响应链路的时候.
+         我们实现这个协议, 并不主动调用这个协议. 这是因为这个协议是被模板方法在使用.
+         模板方法, 固定的算法流程, 使用协议提供的抽象, 来搭建固定的行为模式.
+        */
         subscribe(subscriber)
         return AnyCancellable(subscriber)
     }
@@ -74,7 +80,7 @@ extension Subscribers {
         // 只有自己显示的进行 cancel 的情况下, 才应该进行资源的释放 .
         
         // 这里是强引用
-        public private(set) var object: Root?
+        public private(set) var toAssignObject: Root?
         
         /// The key path that indicates the property to assign.
         // KeyPath 是一个很特殊的数据结构.
@@ -86,7 +92,7 @@ extension Subscribers {
         /// Creates a subscriber to assign the value of a property indicated by
         /// a key path.
         public init(object: Root, keyPath: ReferenceWritableKeyPath<Root, Input>) {
-            self.object = object
+            self.toAssignObject = object
             self.keyPath = keyPath
         }
         
@@ -113,7 +119,7 @@ extension Subscribers {
         
         public func receive(_ value: Input) -> Subscribers.Demand {
             lock.lock()
-            guard case .subscribed = status, let object = self.object else {
+            guard case .subscribed = status, let object = self.toAssignObject else {
                 lock.unlock()
                 return .none
             }
@@ -146,14 +152,15 @@ extension Subscribers {
             subscription.cancel()
         }
         
+        // 对于 Assign 来说, 它是终点,
         private func terminateAndConsumeLock() {
             // 消除对于上游节点的引用. 打破了循环引用.
             // 这里才是, 真正的资源释放的地方.
             status = .terminal
-            withExtendedLifetime(object) {
+            withExtendedLifetime(toAssignObject) {
                 // 触发, 存储的 root 对象的释放 .
                 // 在 Assign 里面, 资源就是强引用的各个对象.
-                object = nil
+                toAssignObject = nil
                 lock.unlock()
             }
         }
@@ -167,7 +174,7 @@ extension Subscribers {
         /// A mirror that reflects the subscriber.
         public var customMirror: Mirror {
             let children: [Mirror.Child] = [
-                ("object", object as Any),
+                ("object", toAssignObject as Any),
                 ("keyPath", keyPath),
                 ("status", status as Any)
             ]

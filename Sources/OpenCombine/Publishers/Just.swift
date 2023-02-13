@@ -297,7 +297,8 @@ extension Just {
         
         // Combine 里面, 信号产生的逻辑的触发, 不是在 Receive Subscriber 中.
         // 因为 Combine 是一个 Pull 的逻辑, 为了尊重这个逻辑, 应该在每个节点的 request(_ demand 中, 进行真正的生成逻辑的触发.
-        // 这个方法, 是各个下游节点, 主动调用存储的 subscription 触发的. 
+        // 这个方法, 是各个下游节点, 主动调用存储的 subscription 触发的.
+        // 对于一个 Publisher 来说, 他需要在
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             // 并不是 Downstream 可以调用 take. 这里是 Optional 调用的 Take.

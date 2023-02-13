@@ -9,6 +9,7 @@ public final class Future<Output, Failure: Error>: Publisher {
     
     /// The promise closure receives one parameter:
     // a `Result` that contains either a single element published by a `Future`, or an error.
+    // 这里的 Promise 也表明了, 应该就是借鉴了 Promise 的思想.
     public typealias Promise = (Result<Output, Failure>) -> Void
     
     private let lock = UnfairLock.allocate()

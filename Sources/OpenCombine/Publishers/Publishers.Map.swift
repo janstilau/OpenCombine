@@ -1,3 +1,9 @@
+/*
+ 实际上, 并没有 Operator 这样的一个协议存在.
+ 它更多的是一个概念, 存储上游的 Publisher, 存储自己的业务逻辑.
+ 当然真正的流传环节, 其实是一个 Inner 实际节点在里面.
+ Inner 节点接受到上游的数据, 然后自己的业务逻辑处理, 然后将处理的结果, 下放到下游节点.
+ */
 extension Publisher {
     /// Transforms all elements from the upstream publisher with a provided closure.
     
@@ -249,6 +255,7 @@ extension Publishers.Map {
         
         // Map 没有错误处理, 直接 forward.
         func receive(_ input: Input) -> Subscribers.Demand {
+            // 作为中间件, Map 的责任就是进行 transform, 然后调用下游的 receive 将数据进行传递.
             return downstream.receive(map(input))
         }
         
