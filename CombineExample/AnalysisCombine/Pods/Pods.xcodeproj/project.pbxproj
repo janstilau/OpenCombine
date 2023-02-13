@@ -11,7 +11,7 @@
 		039F520EDC33173A319D87B4548BABA5 /* Subscribers.Sink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CC0951849343ECE4F4E23317DEEAC28 /* Subscribers.Sink.swift */; };
 		065E109556C208FD9B325DE327897A3C /* Publishers.Comparison.swift in Sources */ = {isa = PBXBuildFile; fileRef = 399DAE748E872691213B78F22B57BA09 /* Publishers.Comparison.swift */; };
 		07236F3B697AB757A65BDF4D6AFED36C /* AnyPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A57E680B9516FA4239875BCC1F48D344 /* AnyPublisher.swift */; };
-		0AA08A5F76D076897E8465DE49691832 /* Published.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B5AF3DD6F72A55EE7034065A192E38E /* Published.swift */; };
+		0AA08A5F76D076897E8465DE49691832 /* OpenPublished.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B5AF3DD6F72A55EE7034065A192E38E /* OpenPublished.swift */; };
 		0C855A32EBAA98221CAC8913CE222DE5 /* URLSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3804E6173D29740FFF698049880EF4E4 /* URLSession.swift */; };
 		11DDE99712850C3B35EB0672153B2D54 /* GENERATED-Publishers.Encode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0086017103B3E03FFFF0750BCE432AC6 /* GENERATED-Publishers.Encode.swift */; };
 		11F1753B019731E0A6790E9EFE6D0814 /* Subscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5509800C3AF53297E043A440399BCEF1 /* Subscriber.swift */; };
@@ -255,7 +255,7 @@
 		7577D05FAB595E227B185FAFE8C35EC6 /* Cancellable.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Cancellable.swift; sourceTree = "<group>"; };
 		767B386D5CAD78DBAE053BBEDFE07764 /* Deferred.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Deferred.swift; sourceTree = "<group>"; };
 		76E0FE2397C3D7364284EED91E97F10B /* OpenCombine-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "OpenCombine-umbrella.h"; sourceTree = "<group>"; };
-		7B5AF3DD6F72A55EE7034065A192E38E /* Published.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Published.swift; sourceTree = "<group>"; };
+		7B5AF3DD6F72A55EE7034065A192E38E /* OpenPublished.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OpenPublished.swift; sourceTree = "<group>"; };
 		7BAAED26A9FCB0685468839CDAD6C6F6 /* Record.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Record.swift; sourceTree = "<group>"; };
 		7BB7AE355E688C9677DC5EDDAE15E5D8 /* ConduitList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConduitList.swift; sourceTree = "<group>"; };
 		7BC17D10EC10AEA3D4F903170E81C7D7 /* DispatchQueue+Scheduler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = "DispatchQueue+Scheduler.swift"; path = "Sources/OpenCombineDispatch/DispatchQueue+Scheduler.swift"; sourceTree = "<group>"; };
@@ -457,7 +457,7 @@
 				DDA9974438E8B54D8AA8FCB05A18C962 /* ObservableObject.swift */,
 				072697DFCD950B7F62A4521C13FAA255 /* PublishedSubject.swift */,
 				E0217593E5689D6996C141B21D24F020 /* PublishedSubscriber.swift */,
-				7B5AF3DD6F72A55EE7034065A192E38E /* Published.swift */,
+				7B5AF3DD6F72A55EE7034065A192E38E /* OpenPublished.swift */,
 			);
 			path = Published;
 			sourceTree = "<group>";
@@ -1005,7 +1005,7 @@
 				EE0DB934295F66DCFC2669D2C7FF1D69 /* Optional.Publisher.swift in Sources */,
 				7B4B96B95CE0BB16FE49F57E35684EE9 /* PartialCompletion.swift in Sources */,
 				279FDE425303BC9A6CE5C582567D1E69 /* PassthroughSubject.swift in Sources */,
-				0AA08A5F76D076897E8465DE49691832 /* Published.swift in Sources */,
+				0AA08A5F76D076897E8465DE49691832 /* OpenPublished.swift in Sources */,
 				AABE1FB0FF07F1B5B2CCFB3D371F4B8F /* PublishedSubject.swift in Sources */,
 				1AF890470F97A441BB15EDB0BB362713 /* PublishedSubscriber.swift in Sources */,
 				5ACAE5077A2C7252DFC49243839820BD /* Publisher.swift in Sources */,

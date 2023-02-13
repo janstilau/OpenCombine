@@ -73,83 +73,83 @@ extension AsyncPublisher.Iterator {
             case terminal
         }
         
-        private let lock = UnfairLock.allocate()
+        private let innerLock = UnfairLock.allocate()
         private var pending: [UnsafeContinuation<Input?, Never>] = []
         private var state = State.awaitingSubscription
         private var pendingDemand = Subscribers.Demand.none
         
         deinit {
-            lock.deallocate()
+            innerLock.deallocate()
         }
         
         func receive(subscription: Subscription) {
-            lock.lock()
+            innerLock.lock()
             guard case .awaitingSubscription = state else {
-                lock.unlock()
+                innerLock.unlock()
                 subscription.cancel()
                 return
             }
             state = .subscribed(subscription)
             let pendingDemand = self.pendingDemand
             self.pendingDemand = .none
-            lock.unlock()
+            innerLock.unlock()
             if pendingDemand != .none {
                 subscription.request(pendingDemand)
             }
         }
         
         func receive(_ input: Input) -> Subscribers.Demand {
-            lock.lock()
+            innerLock.lock()
             guard case .subscribed = state else {
                 let pending = self.pending.take()
-                lock.unlock()
+                innerLock.unlock()
                 pending.resumeAllWithNil()
                 return .none
             }
             precondition(!pending.isEmpty, "Received an output without requesting demand")
             let continuation = pending.removeFirst()
-            lock.unlock()
+            innerLock.unlock()
             continuation.resume(returning: input)
             return .none
         }
         
         func receive(completion: Subscribers.Completion<Failure>) {
-            lock.lock()
+            innerLock.lock()
             state = .terminal
             let pending = self.pending.take()
-            lock.unlock()
+            innerLock.unlock()
             pending.resumeAllWithNil()
         }
         
         func cancel() {
-            lock.lock()
+            innerLock.lock()
             let pending = self.pending.take()
             guard case .subscribed(let subscription) = state else {
                 state = .terminal
-                lock.unlock()
+                innerLock.unlock()
                 pending.resumeAllWithNil()
                 return
             }
             state = .terminal
-            lock.unlock()
+            innerLock.unlock()
             subscription.cancel()
             pending.resumeAllWithNil()
         }
         
         fileprivate func next() async -> Input? {
             return await withUnsafeContinuation { continuation in
-                lock.lock()
+                innerLock.lock()
                 switch state {
                 case .awaitingSubscription:
                     pending.append(continuation)
                     pendingDemand += 1
-                    lock.unlock()
+                    innerLock.unlock()
                 case .subscribed(let subscription):
                     pending.append(continuation)
-                    lock.unlock()
+                    innerLock.unlock()
                     subscription.request(.max(1))
                 case .terminal:
-                    lock.unlock()
+                    innerLock.unlock()
                     continuation.resume(returning: nil)
                 }
             }
@@ -212,54 +212,54 @@ extension AsyncThrowingPublisher.Iterator {
             case terminal(Error?)
         }
         
-        private let lock = UnfairLock.allocate()
+        private let innerLock = UnfairLock.allocate()
         private var pending: [UnsafeContinuation<Input?, Error>] = []
         private var state = State.awaitingSubscription
         private var pendingDemand = Subscribers.Demand.none
         
         deinit {
-            lock.deallocate()
+            innerLock.deallocate()
         }
         
         func receive(subscription: Subscription) {
-            lock.lock()
+            innerLock.lock()
             guard case .awaitingSubscription = state else {
-                lock.unlock()
+                innerLock.unlock()
                 subscription.cancel()
                 return
             }
             state = .subscribed(subscription)
             let pendingDemand = self.pendingDemand
             self.pendingDemand = .none
-            lock.unlock()
+            innerLock.unlock()
             if pendingDemand != .none {
                 subscription.request(pendingDemand)
             }
         }
         
         func receive(_ input: Input) -> Subscribers.Demand {
-            lock.lock()
+            innerLock.lock()
             guard case .subscribed = state else {
                 let pending = self.pending.take()
-                lock.unlock()
+                innerLock.unlock()
                 pending.resumeAllWithNil()
                 return .none
             }
             precondition(!pending.isEmpty, "Received an output without requesting demand")
             let continuation = pending.removeFirst()
-            lock.unlock()
+            innerLock.unlock()
             continuation.resume(returning: input)
             return .none
         }
         
         func receive(completion: Subscribers.Completion<Failure>) {
-            lock.lock()
+            innerLock.lock()
             switch state {
             case .awaitingSubscription, .subscribed:
                 if let continuation = pending.first {
                     state = .terminal(nil)
                     let remaining = pending.take().dropFirst()
-                    lock.unlock()
+                    innerLock.unlock()
                     switch completion {
                     case .finished:
                         continuation.resume(returning: nil)
@@ -269,48 +269,48 @@ extension AsyncThrowingPublisher.Iterator {
                     remaining.resumeAllWithNil()
                 } else {
                     state = .terminal(completion.failure)
-                    lock.unlock()
+                    innerLock.unlock()
                 }
             case .terminal:
                 let pending = self.pending.take()
-                lock.unlock()
+                innerLock.unlock()
                 pending.resumeAllWithNil()
             }
         }
         
         func cancel() {
-            lock.lock()
+            innerLock.lock()
             let pending = self.pending.take()
             guard case .subscribed(let subscription) = state else {
                 state = .terminal(nil)
-                lock.unlock()
+                innerLock.unlock()
                 pending.resumeAllWithNil()
                 return
             }
             state = .terminal(nil)
-            lock.unlock()
+            innerLock.unlock()
             subscription.cancel()
             pending.resumeAllWithNil()
         }
         
         fileprivate func next() async throws -> Input? {
             return try await withUnsafeThrowingContinuation { continuation in
-                lock.lock()
+                innerLock.lock()
                 switch state {
                 case .awaitingSubscription:
                     pending.append(continuation)
                     pendingDemand += 1
-                    lock.unlock()
+                    innerLock.unlock()
                 case .subscribed(let subscription):
                     pending.append(continuation)
-                    lock.unlock()
+                    innerLock.unlock()
                     subscription.request(.max(1))
                 case .terminal(nil):
-                    lock.unlock()
+                    innerLock.unlock()
                     continuation.resume(returning: nil)
                 case .terminal(let error?):
                     state = .terminal(nil)
-                    lock.unlock()
+                    innerLock.unlock()
                     continuation.resume(throwing: error)
                 }
             }

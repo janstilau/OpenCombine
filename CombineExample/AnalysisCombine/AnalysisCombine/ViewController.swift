@@ -10,6 +10,15 @@ import OpenCombine
 import OpenCombineFoundation
 import OpenCombineDispatch
 
+class Weather {
+    @OpenPublished var temperature: Double
+    init(temperature: Double) {
+        self.temperature = temperature
+    }
+}
+
+
+
 protocol SomeProtocol {
     func doSth()
 }
@@ -55,18 +64,13 @@ class ViewController: UIViewController {
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
 
-        let pub =
-        (1...3).publisher
-            .map( { _ in return Int.random(in: 0...100) } )
-//            .delay(for: .seconds(2), scheduler: RunLoop.main, options: .none)
-            .multicast(subject: PassthroughSubject())
-
-        cancellable1 = pub
-            .sink { print ("Stream 1 received: \($0)")}
-        cancellable2 = pub
-            .sink { print ("Stream 2 received: \($0)")}
-        
-//        pub.connect()
+        let weather = Weather(temperature: 20)
+        let cancleable = weather.$temperature.sink() {
+            print ("Temperature now: \($0)")
+        }
+        weather.temperature = 25
+        weather.temperature = 23
+        weather.temperature = 21
     }
     
     func getProtocolFunc(_ sth: SomeProtocol) {

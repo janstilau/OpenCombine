@@ -128,6 +128,7 @@ extension Publishers {
         public typealias Failure = Upstream.Failure
         
         /// The publisher from which this publisher receives elements.
+        // 这种可以直接当成员变量啊. 
         public let upstream: Upstream
         
         /// The closure that transforms elements from the upstream publisher.

@@ -1,7 +1,7 @@
-
 /*
  大部分的 Publisher, 都是 struct 值语义的.
- Publisher 的作用, 其实是收集信息. 这些信息, 一般都会在真正生成响应链路的时候, 赋值到 引用类型的 InnerSink 节点中.
+ Publisher 的作用, 其实是收集信息. 也就是将各种 Publisher 进行复制.
+ 这些信息, 一般都会在真正生成响应链路的时候, 赋值到 引用类型的 InnerSink 节点中.
  所以, 各种 Operator 的使用, 其实就是一顿值的复制工作.
  到了最后的一个 Operator, 它的 upstream 对象, 其实是一个非常庞大的结构体了. 
  */
@@ -52,7 +52,7 @@ extension Publisher {
     ///     // Prints "Successfully cast nonErased.publisher."
     /// - Returns: An ``AnyPublisher`` wrapping this publisher.
     // 之所以, 出现上面的状况是, AnyPublisher 是一个包装类型. 他和被包装的类型, 是没有类型关系的.
-    
+    // 这里的 Output, Failure 是从当前的 Publisher 中直接获取到的.
     public func eraseToAnyPublisher() -> AnyPublisher<Output, Failure> {
         return .init(self)
     }
@@ -70,6 +70,10 @@ extension Publisher {
 /// `AnyPublisher`.
 
 /*
+ 因为泛型其实是一个半成品, 只有它的参数类型确认了之后, 才能够真正的当做是一个类型来进行看待.
+ 而 Upstream: Publisher 这种写法, 只是一种限制, 真正类型在使用的时候一定要确定下来的.
+ 所以在真实使用一个对象的时候, 这个对象的类型是一定要确定下来的. 而确定下来的类型, 会变得非常复杂.
+ 
  public struct Map<Upstream: Publisher, Output>: Publisher
  上面是 Map 的结构. 因为, 它的 Upstream 类型参数是一个 Publisher. 所以, 当多次进行 map 之后, 里面的类型就会变得异常复杂.
  AnyPublisher 就是为了解决这个问题的, 它的类型参数, 重新变为了最最原始的 Output, Failure 的形式, 他所 box 住的 Publisher 的相关信息, 完全进行了隐藏 .
@@ -78,6 +82,7 @@ public struct AnyPublisher<Output, Failure: Error>
 : CustomStringConvertible,
   CustomPlaygroundDisplayConvertible {
     
+    // 这个 base 存在的意义是???
     @usableFromInline
     internal let box: PublisherBoxBase<Output, Failure>
     
@@ -149,6 +154,7 @@ internal class PublisherBoxBase<Output, Failure: Error>: Publisher {
  它对于协议的实现, 完全是转交给了 Box 成员变量.
  它对外暴露的, 是隐藏了完整的类型信息的类型, 所以, 隐藏的关键所在, 其实就是 box 的存在. 
  */
+// 没太明白, base 存在的意义在哪里.
 @usableFromInline
 internal final class PublisherBox<PublisherType: Publisher>
 : PublisherBoxBase<PublisherType.Output, PublisherType.Failure>

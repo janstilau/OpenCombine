@@ -3,7 +3,7 @@ extension Publisher {
     
     /// Applies a closure that collects each element of a stream and publishes a final
     /// result upon completion.
-
+    
     /// Use `reduce(_:_:)` to collect a stream of elements and produce an accumulated
     /// value based on a closure you provide.
     
@@ -162,6 +162,7 @@ extension Publishers.Reduce {
       Upstream.Output,
       Output,
       Upstream.Failure,
+    // 这个泛型绑定的个数是真的长. 
       (Output, Upstream.Output) -> Output>
     where Downstream.Input == Output, Upstream.Failure == Downstream.Failure
     {
@@ -186,7 +187,7 @@ extension Publishers.TryReduce {
       (Output, Upstream.Output) throws -> Output>
     where Downstream.Input == Output, Downstream.Failure == Error
     {
-        // 相比较上面的实现, 增加了 Error 的处理. 
+        // 相比较上面的实现, 增加了 Error 的处理.
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {

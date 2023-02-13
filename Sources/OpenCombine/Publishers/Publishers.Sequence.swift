@@ -1,11 +1,13 @@
-
+/*
+ 在 Publisher 上面定义函数, 在函数内进行 Operator Inner 节点的创建, 这是 Operator 的模式
+ 
+ 对于 Publisher 角色来说, 就是显式的进行相关类型的创建.
+ */
 extension Publishers {
-    
     /// A publisher that publishes a given sequence of elements.
     
     /// When the publisher exhausts the elements in the sequence, the next request
     /// causes the publisher to finish.
-    
     public struct Sequence<Elements: Swift.Sequence, Failure: Error>: Publisher {
         public typealias Output = Elements.Element
         /// The sequence of elements to publish.
@@ -49,7 +51,7 @@ extension Publishers.Sequence {
         
         private var iterator: Iterator
         private var next: Element?
-        private var pendingDemand = Subscribers.Demand.none // 记录后续节点的需求. 对于
+        private var pendingDemand = Subscribers.Demand.none // 记录后续节点的需求
         private var recursion = false
         private var lock = UnfairLock.allocate()
         
@@ -83,7 +85,7 @@ extension Publishers.Sequence {
             // 这是一个头结点, 并且里面的值是确定的.
             // 每次, 在后续节点要求 Demand 的时候, 就进行 Next 事件的发送.
             while let downstream = self.downstream,
-                    pendingDemand > 0 {
+                  pendingDemand > 0 {
                 // 一个循环体里面, 进行 Demand 的管理工作.
                 if let current = self.next {
                     pendingDemand -= 1
@@ -95,6 +97,8 @@ extension Publishers.Sequence {
                     
                     // 然后让后方节点接受值. 拿到后方节点的 Demand 更新自己.
                     // 然后继续这个信号产生的循环.
+                    // 这里 recursion 的作用在于, downstream.receive(current) 本身可能会触发下游的重新 request demand 的需求.
+                    // 所以需要一个标志位, 在下发数据的时候, 如果下游又调用了 request demand, 不触发下发数据的操作, 因为目前就在下发数据的过程中. 
                     let additionalDemand = downstream.receive(current)
                     lock.lock()
                     recursion = false

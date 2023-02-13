@@ -40,56 +40,56 @@ private final class ContinuationSubscriber<Input,
     
     private var continuation: UnsafeContinuation<Input, ErrorOrNever>?
     private var subscription: Subscription?
-    private let lock = UnfairLock.allocate()
+    private let innerLock = UnfairLock.allocate()
     
     private init(_ continuation: UnsafeContinuation<Input, ErrorOrNever>) {
         self.continuation = continuation
     }
     
     deinit {
-        lock.deallocate()
+        innerLock.deallocate()
     }
     
     func receive(subscription: Subscription) {
-        lock.lock()
+        innerLock.lock()
         guard self.subscription == nil else {
             assertionFailure("Unexpected state: received subscription twice")
-            lock.unlock()
+            innerLock.unlock()
             subscription.cancel()
             return
         }
         self.subscription = subscription
-        lock.unlock()
+        innerLock.unlock()
         subscription.request(.max(1))
     }
     
     func receive(_ input: Input) -> Subscribers.Demand {
-        lock.lock()
+        innerLock.lock()
         if let continuation = self.continuation.take() {
-            lock.unlock()
+            innerLock.unlock()
             continuation.resume(returning: input)
         } else {
             assertionFailure("Unexpected state: already completed")
-            lock.unlock()
+            innerLock.unlock()
         }
         return .none
     }
     
     func receive(completion: Subscribers.Completion<Failure>) {
-        lock.lock()
+        innerLock.lock()
         subscription = nil
-        lock.unlock()
+        innerLock.unlock()
         completion.failure.map(handleFailure)
     }
     
     private func handleFailure(_ error: Failure) {
-        lock.lock()
+        innerLock.lock()
         if let continuation = self.continuation.take() {
-            lock.unlock()
+            innerLock.unlock()
             continuation.resume(throwing: error as! ErrorOrNever)
         } else {
             assertionFailure("Unexpected state: already completed")
-            lock.unlock()
+            innerLock.unlock()
         }
     }
 }

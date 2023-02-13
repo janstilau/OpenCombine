@@ -42,7 +42,7 @@ where Downstream.Input == Output
     // 作为, 一个 Subscription, 应该有 downstream 这个数据.
     private let downstream: Downstream
     
-    private let lock = UnfairLock.allocate()
+    private let innerLock = UnfairLock.allocate()
 
     // 如果, 下游节点调用了 RequestDemand, 这个值会设置为 True.
     private var downstreamRequested = false
@@ -63,7 +63,7 @@ where Downstream.Input == Output
     }
     
     deinit {
-        lock.deallocate()
+        innerLock.deallocate()
     }
     
     // MARK: - Abstract methods
@@ -82,8 +82,8 @@ where Downstream.Input == Output
     // MARK: - CustomReflectable
     
     internal var customMirror: Mirror {
-        lock.lock()
-        defer { lock.unlock() }
+        innerLock.lock()
+        defer { innerLock.unlock() }
         
         let children: [Mirror.Child] = [
             ("downstream", downstream),
@@ -99,7 +99,7 @@ where Downstream.Input == Output
     /// - Precondition: `lock` is held.
     private func receiveFinished() {
         guard !cancelled, !completed, !upstreamCompleted else {
-            lock.unlock()
+            innerLock.unlock()
             // This should never happen, because `receive(completion:)`
             // (from which this function is called) early exists if
             // `status` is `.terminal`.
@@ -113,7 +113,7 @@ where Downstream.Input == Output
         }
         let completed = self.completed
         let result = self.result
-        lock.unlock()
+        innerLock.unlock()
         
         if completed {
             sendResultAndFinish(result)
@@ -123,7 +123,7 @@ where Downstream.Input == Output
     /// - Precondition: `lock` is held.
     private func receiveFailure(_ failure: UpstreamFailure) {
         guard !cancelled, !completed, !upstreamCompleted else {
-            lock.unlock()
+            innerLock.unlock()
             // This should never happen, because `receive(completion:)`
             // (from which this function is called) early exists if
             // `status` is `.terminal`.
@@ -132,7 +132,7 @@ where Downstream.Input == Output
         }
         upstreamCompleted = true
         completed = true
-        lock.unlock()
+        innerLock.unlock()
         downstream.receive(completion: .failure(failure as! Downstream.Failure))
     }
     
@@ -149,16 +149,16 @@ where Downstream.Input == Output
 extension ReduceProducer: Subscriber {
     
     internal func receive(subscription: Subscription) {
-        lock.lock()
+        innerLock.lock()
         // 防卫式的判断.
         guard case .awaitingSubscription = status else {
-            lock.unlock()
+            innerLock.unlock()
             subscription.cancel()
             return
         }
         // 存储, 上方传递过来的 subscription 对象 .
         status = .subscribed(subscription)
-        lock.unlock()
+        innerLock.unlock()
         // 自己, 作为 subscription, 接受下游节点的 RequestDemand, Cancel 请求.
         downstream.receive(subscription: self)
         // 自己, 作为 Subscriber, 要求上游节点发送数据, 尽量多发.
@@ -170,13 +170,15 @@ extension ReduceProducer: Subscriber {
     // 之所以, 需要存储 subscription, 就是在 Receive 的时候.
     // 在 Reduce 的节点里面, 可能会在接受到上游节点的数据之后, 直接进行上游的取消, 下游的取消.
     // 这个时候, 就得保存上游的节点, 才能完成这样的操作.
+    
+    // 其实不是很明白, 为什么要上锁, 按照目前的设计, 应该就是一条链路各自的状态是分离的才对. 
     internal func receive(_ input: Input) -> Subscribers.Demand {
-        lock.lock()
+        innerLock.lock()
         guard case let .subscribed(subscription) = status else {
-            lock.unlock()
+            innerLock.unlock()
             return .none
         }
-        lock.unlock()
+        innerLock.unlock()
         
         // 在子类的 receive(newValue 中, 根据 Reduce Block, 现有的 Result, 新来的 Input 值, 对 Result 进行更新.
         // 并且, 输出是否结束的返回值.
@@ -187,7 +189,7 @@ extension ReduceProducer: Subscriber {
             break
         case .finished:
             // 正常结束了. 该输出 result 的值给下游节点了.
-            lock.lock()
+            innerLock.lock()
             upstreamCompleted = true
             let downstreamRequested = self.downstreamRequested
             if downstreamRequested {
@@ -197,7 +199,7 @@ extension ReduceProducer: Subscriber {
             // 自身的状态改变. 不会在接受响应中的各种事件.
             status = .terminal
             let result = self.result
-            lock.unlock()
+            innerLock.unlock()
             // 触发上游节点的取消动作.
             subscription.cancel()
             guard downstreamRequested else { break }
@@ -205,11 +207,11 @@ extension ReduceProducer: Subscriber {
             // 这里体现了 Combine 的 Demand 管理的思想. 上游已经发送结束了, 但是如果下游还没有明确的表示, 自己想要这个数据, 那么还是不应该将 Result 的值, 发送给下游的节点.
             sendResultAndFinish(result)
         case let .failure(error):
-            lock.lock()
+            innerLock.lock()
             upstreamCompleted = true
             completed = true
             status = .terminal
-            lock.unlock()
+            innerLock.unlock()
             // 触发上游节点的取消动作.
             subscription.cancel()
             // 如果, 发生了错误, 是不受下游的 Demand 管理的, 直接将错误发送给下游节点.
@@ -220,9 +222,9 @@ extension ReduceProducer: Subscriber {
     }
     
     internal func receive(completion: Subscribers.Completion<UpstreamFailure>) {
-        lock.lock()
+        innerLock.lock()
         guard case .subscribed = status else {
-            lock.unlock()
+            innerLock.unlock()
             return
         }
         status = .terminal
@@ -239,9 +241,9 @@ extension ReduceProducer: Subscription {
     
     internal func request(_ demand: Subscribers.Demand) {
         demand.assertNonZero()
-        lock.lock()
+        innerLock.lock()
         guard !downstreamRequested, !cancelled, !completed else {
-            lock.unlock()
+            innerLock.unlock()
             return
         }
         // 监听下游节点的 Demand 请求,
@@ -250,24 +252,24 @@ extension ReduceProducer: Subscription {
         downstreamRequested = true
         
         guard upstreamCompleted else  {
-            lock.unlock()
+            innerLock.unlock()
             return
         }
         completed = true
         let result = self.result
-        lock.unlock()
+        innerLock.unlock()
         sendResultAndFinish(result)
     }
     
     internal func cancel() {
-        lock.lock()
+        innerLock.lock()
         guard case let .subscribed(subscription) = status else {
-            lock.unlock()
+            innerLock.unlock()
             return
         }
         cancelled = true
         status = .terminal
-        lock.unlock()
+        innerLock.unlock()
         subscription.cancel()
     }
 }

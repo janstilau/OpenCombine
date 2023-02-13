@@ -3,7 +3,8 @@
  这个非常重要.
  @Published 的属性, 一般会当做 UI 的 Binding 机制存在.
  那么如何引起  @Published 的修改呢.
- 如果, 在组合好一个业务相关的 Publihser 之后, 需要手动 Sink 一下, 在进行 Published 的修改, 就太麻烦了.
+
+ 使用传统的命令式模式, 将信号和 UI 绑定是一个非常复杂的构成, 并且构建 UI 也是一个繁琐复杂的过程.
  在 ViewModel 的创建过程中, 组合好一个复杂的 Publisher 之后, 将他和 @Published 的 Subject 进行挂钩, 然后, @Published 和 UI 进行挂钩.
  这样, ViewAction, 触发 ModelAction, 然后 ModelAction 触发信号改变. 就能够全部自动了.
  
@@ -49,8 +50,8 @@ extension Publisher where Failure == Never {
     // 上游触发的操作, 可以直接影响到 PublishedPublisher 对象.
     // 这是一个响应链条的终点.
     // 而这个终点之后的触发, 和之前的链条, 没有太大的关系.
-    public func assign(to published: inout Published<Output>.PublishedPublisher) {
-        subscribe(PublishedSubscriber(published.subject))
+    public func assign(to published: inout OpenPublished<Output>.PublishedPublisher) {
+        subscribe(PublishedSubscriber(published.internalSubject))
     }
 }
 
@@ -79,21 +80,17 @@ extension Publisher where Failure == Never {
 ///     // Prints:
 ///     // Temperature now: 20.0
 ///     // Temperature now: 25.0
-///
+
 /// When the property changes, publishing occurs in the property's `willSet` block,
 /// meaning subscribers receive the new value before it's actually set on the property.
 /// In the above example, the second time the sink executes its closure, it receives
 /// the parameter value `25`. However, if the closure evaluated `weather.temperature`,
 /// the value returned would be `20`.
 ///
-/// > Important: The `@Published` attribute is class constrained. Use it with properties
-/// of classes, not with non-class types like structures.
-///
 
 // 非常重要的一个 PropertyWrapper
-
 @propertyWrapper
-public struct Published<Value> {
+public struct OpenPublished<Value> {
     
     // 专门建立了一个 Publisher 的类型. 可以看到, 真正的实现, 是里面藏了一个 Subject 实现的.
     /*
@@ -108,24 +105,22 @@ public struct Published<Value> {
         public typealias Failure = Never
         
         // @Published 的真正信号发送, 要依靠内部的一个 PublishedSubject 对象来实现.
-        fileprivate let subject: PublishedSubject<Value>
+        // 这是一个引用值.
+        fileprivate let internalSubject: PublishedSubject<Value>
         
-        // Publisher
+        // Publisher 的首先, 接收到后续节点, 移交给了 internalSubject
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Downstream.Input == Value, Downstream.Failure == Never
         {
-            subject.subscribe(subscriber)
+            internalSubject.subscribe(subscriber)
         }
         
         // 在赋初值的时候, 进行了 subject 的构造.
         fileprivate init(_ output: Output) {
-            // 这种写法, 在第三方类库里面, 非常常见.
-            subject = .init(output)
+            internalSubject = .init(output)
         }
     }
     
-    // 这里其实写的有点复杂了, 就是直接创建一个 PublishedPublisher 更加的清晰.
-    // 目前应该是性能的考虑, 当不需要 Publisher 的功能的时候, 就使用值语义的存储.
     private enum Storage {
         case value(Value)
         case publisher(PublishedPublisher)
@@ -141,22 +136,21 @@ public struct Published<Value> {
             self.wrappedValue = wrappedValue
         }
     }
-    
-    // 这里实现的有点复杂啊.
-    // 如果我实现, 可能里面就一个 PublishedSubject 属性就完事了.
+
+    // 这个 Box 并不是凭空出现的, 它的主要作用, 就是把值装到了一个引用类型里面.
     @PublishedBox private var storage: Storage
     
-    internal var objectWillChange: ObservableObjectPublisher? {
+    internal var _objectWillChange: ObservableObjectPublisher? {
         get {
             switch storage {
             case .value:
                 return nil
             case .publisher(let publisher):
-                return publisher.subject.objectWillChange
+                return publisher.internalSubject.objectWillChange
             }
         }
         nonmutating set {
-            getPublisher().subject.objectWillChange = newValue
+            getPublisher().internalSubject.objectWillChange = newValue
         }
     }
     
@@ -165,6 +159,7 @@ public struct Published<Value> {
     }
     
     public init(wrappedValue: Value) {
+        // 最初的是简单的 Value 的存储, 并没有 Publisher 的责任在.
         _storage = PublishedBox(wrappedValue: .value(wrappedValue))
     }
     
@@ -205,34 +200,41 @@ public struct Published<Value> {
     @available(*, unavailable, message: """
                @Published is only available on properties of classes
                """)
+    // 这是使用 wrappedValue 有什么问题???
+    // get 使用 storage 中的 subject value 来获取值.
+    // set 使用 storage 中的 subject send 来发送信号.
+    // 下面的 subscript 实现过于复杂, 到最后还是找到 storage, 进行 value 的 get, 和信号的 send.
     public var wrappedValue: Value {
         get { fatalError() }
         set { fatalError() } // swiftlint:disable:this unused_setter_value
     }
-    // swiftlint:enable let_var_whitespace
     
-    // 这是什么意思.
+    // swiftlint:enable let_var_whitespace
+    // 这里原理不是很清楚, 不过, 给 @Publihsed 属性进行赋值的时候, 就会走到这里.
+    // 这里的泛型, 只有一种限制, 那就死 object 要是一个引用值.
     public static subscript<EnclosingSelf: AnyObject>(
         _enclosingInstance object: EnclosingSelf,
         wrapped wrappedKeyPath: ReferenceWritableKeyPath<EnclosingSelf, Value>,
-        storage storageKeyPath: ReferenceWritableKeyPath<EnclosingSelf, Published<Value>>
+        storage storageKeyPath: ReferenceWritableKeyPath<EnclosingSelf, OpenPublished<Value>>
     ) -> Value {
+        // object[keyPath: storageKeyPath] 的结果, 就是一个 @Published 对象.
         get {
             switch object[keyPath: storageKeyPath].storage {
             case .value(let value):
                 return value
             case .publisher(let publisher):
-                return publisher.subject.value
+                return publisher.internalSubject.value
             }
         }
+        
         set {
             // 每次赋值, 都会触发内部真正的 Subject 对象, 相关信号的发射.
             switch object[keyPath: storageKeyPath].storage {
             case .value:
                 object[keyPath: storageKeyPath].storage = .publisher(PublishedPublisher(newValue))
             case .publisher(let publisher):
-                // 在这里, 触发了改变.
-                publisher.subject.value = newValue
+                // 这是是真正的触发信号发送的地方.
+                publisher.internalSubject.value = newValue
             }
         }
     }

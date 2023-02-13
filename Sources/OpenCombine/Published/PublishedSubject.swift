@@ -35,6 +35,7 @@ internal final class PublishedSubject<Output>: Subject {
             return currentValue
         }
         set {
+            // 值进行修改的时候, 在这里进行了修改.
             send(newValue)
         }
     }
@@ -91,7 +92,8 @@ internal final class PublishedSubject<Output>: Subject {
         let downstreams = self.downstreams
         lock.unlock()
         
-        // 这个类存在的最大的意义, 就是 @Published 属性, 每次修改的时候, 都会主动的触发存储的 changePublisher 的信号发送.
+        // 这个类存在的最大的意义, 就是 @Published 属性, 每次修改的时候,
+        // 都会主动的触发存储的 changePublisher 的信号发送.
         objectWillChange?.send()
         
         // 然后, 才是真正的后续监听者, 收到发生改变的值.
@@ -100,7 +102,7 @@ internal final class PublishedSubject<Output>: Subject {
             conduit.offer(input)
         }
         lock.lock()
-        // 存储一下当前值.
+        // 在最后, 才进行值的存储.
         currentValue = input
         lock.unlock()
     }

@@ -1,3 +1,14 @@
+/*
+ 
+ ObservableObject -> Model 这里面会有 @Published 类型的数据.
+ @Published
+ 
+ ObservableObject 会有一个 ObjectWillChangePublisher 的属性. 
+ ObjectWillChangePublisher <- ObservableObjectPublisher
+ 
+ 这是三个不同的概念.
+ */
+
 /// A type of object with a publisher that emits before the object has changed.
 /// By default an `ObservableObject` synthesizes an `objectWillChange` publisher that
 /// emits the changed value before any of its `@Published` properties changes.
@@ -29,6 +40,7 @@
 ///     // Prints "25"
 
 // 这是非常重要的一个 Protocol. SwiftUI 的各种监听, 都是建立在 ObservableObject 的基础上的.
+// 这必须是一个引用类.
 public protocol ObservableObject: AnyObject {
     
     /// The type of publisher that emits before the object has changed.
@@ -38,71 +50,78 @@ public protocol ObservableObject: AnyObject {
     where ObjectWillChangePublisher.Failure == Never
     
     /// A publisher that emits before the object has changed.
+    // 对于 ObservableObject 类型的 Model 来说, 他会有一个 objectWillChange 这个 publisher, 供外界进行使用.
     var objectWillChange: ObjectWillChangePublisher { get }
 }
 
 // 这里是一个小技巧, 专门做一个私有协议, 然后让特定的类型来实现该协议.
 // 其实, 就是类型判断. 不过如果类型过多的话, 使用协议判断, 代码会更加的清晰.
 private protocol _ObservableObjectProperty {
-    var objectWillChange: ObservableObjectPublisher? { get nonmutating set }
+    var _objectWillChange: ObservableObjectPublisher? { get nonmutating set }
 }
 
 #if swift(>=5.1)
-extension Published: _ObservableObjectProperty {}
+// 只有 Published 实现了这个协议.
+// 这是一个泛型, 可以直接完成对于协议的遵守.
+extension OpenPublished: _ObservableObjectProperty {}
 
 // ObservableObject 的 objectWillChange 会自动合成. 就是在 get 的时候, 进行了懒加载.
 // 并且, 对于每个 Published 属性中, 隐藏的 Publisher 的 objectWillChange 进行了赋值操作.
 extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPublisher {
     
     /// A publisher that emits before the object has changed.
+    // 一个 Obj 只会有一个 objectWillChange 对象, 这个对象, 是存到了 @Published 属性里面了.
+    // 因为 Protocol 无法增加实例变量
     public var objectWillChange: ObservableObjectPublisher {
-        var installedPublisher: ObservableObjectPublisher?
+        var thePublisherForSelf: ObservableObjectPublisher?
         
         // 使用元信息, 查找到 Published 类型. 对里面的值 objectWillChange 属性进行了赋值 .
+        // 这里是将所有的, 包括父类的 @published 属性, 都增加了同样的一个 Publisher 作为信号源.
         var reflection: Mirror? = Mirror(reflecting: self)
         while let aClass = reflection {
             for (_, property) in aClass.children {
                 // 首先判断, 是否是 Published 的类型.
+                // 使用 is OpenPublished 是无法成功的, 因为 OpenPublished 是泛型, 不能单独当做
                 guard let property = property as? _ObservableObjectProperty else {
-                    // Visit other fields until we meet a @Published field
                     continue
                 }
+//                guard let property = property is OpenPublished else {
+//                    continue
+//                }
                 
                 // 然后判断, 是否 Published 类型, 是否已经有了 objectWillChange 属性了.
-                // 如果一个有了, 那就是全都有了.
-                if let alreadyInstalledPublisher = property.objectWillChange {
-                    installedPublisher = alreadyInstalledPublisher
+                // 对于一个类型来说, 如果一个 property 有了, 就是这个类型的 property 都有了.  break.
+                if let alreadyInstalledPublisher = property._objectWillChange {
+                    thePublisherForSelf = alreadyInstalledPublisher
                     // Don't visit other fields, as all @Published fields
                     // already have a publisher installed.
                     break
                 }
                 
-                // 如果 @Published 已经有了 objectWillChange, 那就证明, 这个 ObservableObject 已经初始化过 objectWillChange 属性了. 直接返回.
-                // 如果, 还没有, 那么将所有的 @Published 属性的 objectWillChange 统一赋值成为 installedPublisher
-                // 正是因为如此, 所有的 @Published 都是使用了同样的一个 Publisher, 才能实现, 每个值修改之前, 都能触发同一个信号的发射.
                 // Okay, this field doesn't have a publisher installed.
                 // This means that other fields don't have it either
                 // (because we install it only once and fields can't be added at runtime).
+                // 原来可以这样初始化, 之前还一直用 = {}() 这种方式.
                 var lazilyCreatedPublisher: ObjectWillChangePublisher {
-                    if let publisher = installedPublisher {
+                    if let publisher = thePublisherForSelf {
                         return publisher
                     }
                     let publisher = ObservableObjectPublisher()
-                    installedPublisher = publisher
+                    thePublisherForSelf = publisher
                     return publisher
                 }
                 // 注意, 这里 lazilyCreatedPublisher 的构建过程.
                 // 如果 installedPublisher 有值了, 那么就使用 installedPublisher 的值.
                 // 所以, 最终所有的 Property 都是使用的同样的一个 installedPublisher.
                 // 真的是令人困恼的代码.
-                property.objectWillChange = lazilyCreatedPublisher
+                property._objectWillChange = lazilyCreatedPublisher
                 // Continue visiting other fields.
             }
             reflection = aClass.superclassMirror
         }
         
         // 如果, 没有 installedPublisher, 那就是里面根本就没有 @Published 属性. 随便给一个值.
-        return installedPublisher ?? ObservableObjectPublisher()
+        return thePublisherForSelf ?? ObservableObjectPublisher()
     }
 }
 
@@ -119,10 +138,12 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
  这个 Publisher 只会有一个. 从这个意义上来说, 很像是 Subject.
  所以里面的实现, 和 Subject 非常像.
  */
+
+
 /*
  想一下, ObservableObject 的实现方案.
  当, ObservableObject 内有一个 @Published 属性发生改变的时候, ObservableObject 的 objectWillChange 都要发出通知.
- 这就要求了, ObservableObjectPublisher 一定要有一个办法, 使得所有属性, 以及 ObservableObject 的 objectWillChange, 可以将监听这件事归并到一个地方.
+ 这就要求了, ObservableObjectPublisher 一定要有一个办法, 使得所有属性的监听这件事归并到一个地方.
  这样, 在所有的 ObservableObjectPublisher.send 触发的时候, 都会引起后续节点的 receiveOuput 的触发.
  这个机制, 是在 ObservableObjectPublisher 内部完成的.
  这里面有存储, 这是一个引用语义的值.
