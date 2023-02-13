@@ -12,10 +12,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        swift_version: ["5.4.2", "5.5.1"]
-    runs-on: windows-2019
+        swift_version: ["5.4.2", "5.5.1", "5.6.1", "5.7"]
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: MaxDesiatov/swift-windows-action@v1
+      - uses: compnerd/gha-setup-swift@main
         with:
-          swift-version: ${{ matrix.swift_version }}
+          branch: swift-${{ matrix.swift_version }}-release
+          tag: ${{ matrix.swift_version }}-RELEASE
+      - name: Building and running tests in debug mode
+        run: swift test

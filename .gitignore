@@ -157,3 +157,78 @@ dmypy.json
 
 .bundle/
 node_modules/
+CombineCocoa-main/Example/Example.xcworkspace/contents.xcworkspacedata
+CombineCocoa-main/Example/Example.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+CombineCocoa-main/Example/Pods/Manifest.lock
+CombineCocoa-main/Example/Pods/Local Podspecs/CombineCocoa.podspec.json
+CombineCocoa-main/Example/Pods/Pods.xcodeproj/project.pbxproj
+CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa-dummy.m
+CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa-Info.plist
+CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa-prefix.pch
+CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa-umbrella.h
+CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa.debug.xcconfig
+CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa.modulemap
+CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa.release.xcconfig
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-acknowledgements.markdown
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-acknowledgements.plist
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-dummy.m
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-frameworks-Debug-input-files.xcfilelist
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-frameworks-Debug-output-files.xcfilelist
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-frameworks-Release-input-files.xcfilelist
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-frameworks-Release-output-files.xcfilelist
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-frameworks.sh
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-Info.plist
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-umbrella.h
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example.debug.xcconfig
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example.modulemap
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example.release.xcconfig
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-acknowledgements.markdown
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-acknowledgements.plist
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-dummy.m
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-frameworks-Debug-input-files.xcfilelist
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-frameworks-Debug-output-files.xcfilelist
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-frameworks-Release-input-files.xcfilelist
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-frameworks-Release-output-files.xcfilelist
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-frameworks.sh
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-Info.plist
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-umbrella.h
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests.debug.xcconfig
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests.modulemap
+CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests.release.xcconfig
+CombineExample/CombineCocoa-main/Example/Example.xcworkspace/contents.xcworkspacedata
+CombineExample/CombineCocoa-main/Example/Pods/Manifest.lock
+CombineExample/CombineCocoa-main/Example/Pods/Local Podspecs/CombineCocoa.podspec.json
+CombineExample/CombineCocoa-main/Example/Pods/Pods.xcodeproj/project.pbxproj
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa-dummy.m
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa-Info.plist
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa-prefix.pch
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa-umbrella.h
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa.debug.xcconfig
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa.modulemap
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/CombineCocoa/CombineCocoa.release.xcconfig
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-acknowledgements.markdown
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-acknowledgements.plist
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-dummy.m
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-frameworks-Debug-input-files.xcfilelist
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-frameworks-Debug-output-files.xcfilelist
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-frameworks-Release-input-files.xcfilelist
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-frameworks-Release-output-files.xcfilelist
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-frameworks.sh
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-Info.plist
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example-umbrella.h
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example.debug.xcconfig
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example.modulemap
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example/Pods-Example.release.xcconfig
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-acknowledgements.markdown
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-acknowledgements.plist
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-dummy.m
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-frameworks-Debug-input-files.xcfilelist
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-frameworks-Debug-output-files.xcfilelist
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-frameworks-Release-input-files.xcfilelist
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-frameworks-Release-output-files.xcfilelist
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-frameworks.sh
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-Info.plist
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests-umbrella.h
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests.debug.xcconfig
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests.modulemap
+CombineExample/CombineCocoa-main/Example/Pods/Target Support Files/Pods-Example-ExampleTests/Pods-Example-ExampleTests.release.xcconfig

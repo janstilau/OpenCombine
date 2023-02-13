@@ -169,10 +169,10 @@ extension Future {
             }
             
             state = .terminal
+            let parent = self.parent.take()
             lock.unlock()
             downstreamLock.lock()
             lockedFulfill(downstream: downstream, result: result)
-            let parent = self.parent.take()
             downstreamLock.unlock()
             // 然后, 上级把自己移除了.
             parent?.disassociate(self)
@@ -207,6 +207,7 @@ extension Future {
                 // If the promise is already resolved, send the result downstream
                 // immediately
                 state = .terminal
+                self.parent = nil
                 lock.unlock()
                 downstreamLock.lock()
                 lockedFulfill(downstream: downstream, result: result)

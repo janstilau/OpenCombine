@@ -39,8 +39,8 @@ where Upstream.Failure == Never
         
         public mutating func next() async -> Element? {
             return await withTaskCancellationHandler(
-                handler: { [inner] in inner.cancel() },
-                operation: { [inner] in await inner.next() }
+                operation: { [inner] in await inner.next() },
+                onCancel: { [inner] in inner.cancel() }
             )
         }
     }
@@ -178,8 +178,8 @@ public struct AsyncThrowingPublisher<Upstream: Publisher>: AsyncSequence
         
         public mutating func next() async throws -> Element? {
             return try await withTaskCancellationHandler(
-                handler: { [inner] in inner.cancel() },
-                operation: { [inner] in try await inner.next() }
+                operation: { [inner] in try await inner.next() },
+                onCancel: { [inner] in inner.cancel() }
             )
         }
     }

@@ -40,8 +40,8 @@ public struct ${instantiation}<Upstream: Publisher>: AsyncSequence
 
         public mutating func next() async ${'throws ' if throwing else ''}-> Element? {
             return ${'try ' if throwing else ''}await withTaskCancellationHandler(
-                handler: { [inner] in inner.cancel() },
-                operation: { [inner] in ${'try ' if throwing else ''}await inner.next() }
+                operation: { [inner] in ${'try ' if throwing else ''}await inner.next() },
+                onCancel: { [inner] in inner.cancel() }
             )
         }
     }
