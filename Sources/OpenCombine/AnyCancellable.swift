@@ -1,4 +1,3 @@
-
 /// A type-erasing cancellable object that executes a provided closure when canceled.
 
 /// Subscriber implementations can use this type to provide a “cancellation token” that
@@ -6,8 +5,8 @@
 /// `Subscription` object to request items.
 
 /// An `AnyCancellable` instance automatically calls `cancel()` when deinitialized.
+// 这是最最重要的, 将 cancel 这件事和对象的生命周期绑定在了一起.
 
-// 这个和 Rx 的相比, 增加了 deinit 的自动调用的机制. 其他的没有太大的变化.
 // AnyCancellable 是一个引用数据类型.
 
 /*
@@ -32,6 +31,7 @@ public final class AnyCancellable: Cancellable, Hashable {
     }
     
     // 各种 Any, 都有着这样的一个实现方式.
+    // 但是实际上, 传递过来的都会是一个引用类型实现的 Cancellable 对象.
     public init<OtherCancellable: Cancellable>(_ canceller: OtherCancellable) {
         /*
          Cancellable 可不是一个 class protocol.
@@ -74,6 +74,7 @@ extension AnyCancellable {
         collection.append(self)
     }
     
+    // 这是一个 Bag 的实现. 
     /// Stores this type-erasing cancellable instance in the specified collection.
     ///
     /// - Parameter collection: The collection in which to store this `AnyCancellable`.

@@ -23,7 +23,6 @@ public final class Future<Output, Failure: Error>: Publisher {
     
     /// Creates a publisher that invokes a promise closure when the publisher emits
     /// an element.
-    //
     /// - Parameter attemptToFulfill: A `Promise` that the publisher invokes when
     ///   the publisher emits an element or terminates with an error.
     // 这是一个饿汉式的触发场景. 所以在初始化的时候, 就进行了相关闭包的调用.
@@ -39,7 +38,9 @@ public final class Future<Output, Failure: Error>: Publisher {
         internalLock.deallocate()
     }
     
-    // resolve 函数.
+    /*
+     在这里面, 进行自身 Result 状态的修改.
+     */
     private func promise(_ result: Result<Output, Failure>) {
         internalLock.lock()
         guard self.result == nil else {
@@ -64,7 +65,7 @@ public final class Future<Output, Failure: Error>: Publisher {
     }
     
     /*
-     当, 有新的 Subscriber 的时候, 将值包装成为一个 Conduit 值, 存储到自己的 downstreams 当中.
+     当有新的 Subscriber 的时候, 将值包装成为一个 Conduit 值, 存储到自己的 downstreams 当中.
      */
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Output == Downstream.Input, Failure == Downstream.Failure

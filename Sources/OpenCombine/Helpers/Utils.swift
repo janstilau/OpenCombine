@@ -9,7 +9,8 @@ internal protocol HasDefaultValue {
     init()
 }
 
-// 将自己的值全部取出来, 然后自己赋值成为一个空状态. 
+// 将自己的值全部取出来, 然后自己赋值成为一个空状态.
+// 这是一个比较好的尝试, 可以用到自己的项目里面. 
 extension HasDefaultValue {
     internal mutating func take() -> Self {
         let taken = self

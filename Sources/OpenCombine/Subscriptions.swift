@@ -1,7 +1,7 @@
 
 /// A namespace for symbols related to subscriptions.
 
-// 这个 namespace 没啥用, 处理  _EmptySubscription 之外, 没有其他的定义. 
+// 这种专门定义一个命名空间, 进行相关类型的封装是一个非常优秀的设计里面. 
 public enum Subscriptions {}
 
 extension Subscriptions {

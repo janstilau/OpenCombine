@@ -9,6 +9,7 @@ internal protocol SubscriberTapMarker {
     var inner: Any { mutating get }
 }
 
+// Debug 相关的东西. 
 internal struct SubscriberTap<Subscriber: OpenCombine.Subscriber>
 : OpenCombine.Subscriber,
   CustomStringConvertible,

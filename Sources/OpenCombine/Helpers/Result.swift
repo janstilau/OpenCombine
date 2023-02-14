@@ -1,10 +1,11 @@
 extension Result {
-    
+    // 根据闭包返回值的类型, 来决定函数返回值的类型, 这是一种十分常见的编码技巧.
     internal func tryMap<NewSuccess>(
         _ transform: (Success) throws -> NewSuccess
     ) -> Result<NewSuccess, Error> {
         switch self {
         case .success(let success):
+            // 将, 闭包里面的操作进行了封装, 外界只会得到 Result 类型的结果.
             do {
                 return try .success(transform(success))
             } catch {
@@ -15,6 +16,7 @@ extension Result {
         }
     }
     
+    // 强制的返回一个 Success 类型的结果, 提供了 failure 状态下转化为 Success 的闭包.
     internal func unwrapOr(_ handleError: (Failure) -> Success) -> Success {
         switch self {
         case .success(let success):
@@ -24,6 +26,7 @@ extension Result {
         }
     }
     
+    // 强制的返回一个 Success 类型的结果, 不需要处理 error, 闭包直接返回一个默认值. 
     internal func unwrapOr(_ handleError: @autoclosure () -> Success) -> Success {
         return unwrapOr { _ in handleError() }
     }

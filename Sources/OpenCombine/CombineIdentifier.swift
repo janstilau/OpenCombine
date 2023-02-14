@@ -19,9 +19,10 @@ internal func __nextCombineIdentifier() -> UInt64 {
 ///
 ///     let combineIdentifier = CombineIdentifier()
 
-// 就是一个 Int 值的封装.
-// 使用类型来更好的进行表达.
-
+/*
+ 如果使用一个 Int 来进行表示, 那么使用方每次初始化的时候, 会使用 getNextId() 这个方法进行获取.
+ 使用特殊的类型, CombineIdentifier 将 getNextId 这个实现封装到了内部, 这个特殊的类型, 也暴露出返回原始类型 Id 的方法, 是一种更加优秀的设计理念. 
+ */
 public struct CombineIdentifier: Hashable, CustomStringConvertible {
     
     private let rawValue: UInt64

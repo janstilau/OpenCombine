@@ -14,6 +14,8 @@ internal enum SubscriptionStatus {
     case terminal
 }
 
+// 惯例实现, Enum 应该提供更好的属性来进行其中值的抽取.
+// 本身状态就可以当做是值的一部分进行判断.
 extension SubscriptionStatus {
     internal var isAwaitingSubscription: Bool {
         switch self {
@@ -32,6 +34,8 @@ extension SubscriptionStatus {
         case .awaitingSubscription, .terminal:
             return nil
         case let .subscribed(subscription), let .pendingTerminal(subscription):
+            // 可以通过这样的方式, 进行值的抽取. 只要是两个不同的状态, 可以使用同样的变量名抽取就可以了.
+            // 模式匹配, 主要是位置的匹配. 
             return subscription
         }
     }

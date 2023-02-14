@@ -1,10 +1,3 @@
-//
-//  Codable.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 11.06.2019.
-//
-
 /// A type that defines methods for decoding.
 public protocol TopLevelDecoder {
     
