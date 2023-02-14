@@ -38,9 +38,9 @@ internal final class SubjectSubscriber<Downstream: Subject>
     internal func receive(subscription: Subscription) {
         lock.lock()
         guard upstreamSubscription == nil, let subject = downstreamSubject else {
-                  lock.unlock()
-                  return
-              }
+            lock.unlock()
+            return
+        }
         
         // 记录上游节点. 这里会有循环引用.
         upstreamSubscription = subscription
@@ -55,9 +55,9 @@ internal final class SubjectSubscriber<Downstream: Subject>
     internal func receive(_ input: Downstream.Output) -> Subscribers.Demand {
         lock.lock()
         guard let subject = downstreamSubject, upstreamSubscription != nil else {
-                  lock.unlock()
-                  return .none
-              }
+            lock.unlock()
+            return .none
+        }
         lock.unlock()
         // 当前节点收到上游节点的数据的时候, 是直接转交给了存储的 subject 节点.
         subject.send(input)
@@ -91,9 +91,9 @@ internal final class SubjectSubscriber<Downstream: Subject>
     internal func cancel() {
         lock.lock()
         guard !isCancelled, let subscription = upstreamSubscription else {
-                  lock.unlock()
-                  return
-              }
+            lock.unlock()
+            return
+        }
         
         // 上游资源的释放, 是打破和上游资源一起构成的循环引用
         upstreamSubscription = nil

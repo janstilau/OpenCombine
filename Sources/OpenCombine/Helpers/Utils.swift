@@ -9,7 +9,7 @@ internal protocol HasDefaultValue {
     init()
 }
 
-// Take 的意思是, 将这个类型里面的值全部取出, 然后将 Self 设置成为一个初始的空值状态. 
+// 将自己的值全部取出来, 然后自己赋值成为一个空状态. 
 extension HasDefaultValue {
     internal mutating func take() -> Self {
         let taken = self

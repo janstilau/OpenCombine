@@ -2,6 +2,9 @@
  在 Publisher 上面定义函数, 在函数内进行 Operator Inner 节点的创建, 这是 Operator 的模式
  
  对于 Publisher 角色来说, 就是显式的进行相关类型的创建.
+ 
+ 就算是一个 Publisher, 还是要进行节点的生成.
+ 真正的头结点, 不会是 Publisher. 因为大部分的 Publisher 就是收集信息的, 里面不会有收集到的信息的数据变化. 
  */
 extension Publishers {
     /// A publisher that publishes a given sequence of elements.

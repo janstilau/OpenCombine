@@ -6,6 +6,7 @@ extension NotificationCenter {
     
     public struct OCombine {
         
+        // 类似于 base 的含义.
         public let center: NotificationCenter
         
         public init(_ center: NotificationCenter) {
@@ -87,7 +88,7 @@ extension NotificationCenter {
     /// - Returns: A publisher that emits events when broadcasting notifications.
     public func publisher(for name: Notification.Name,
                           object: AnyObject? = nil) -> OCombine.Publisher {
-        return ocombine.publisher(for: name, object: object)
+        return self.ocombine.publisher(for: name, object: object)
     }
 #endif
 }
@@ -114,7 +115,7 @@ extension Notification {
     where Downstream.Input == Notification,
     // 不会出错.
     // 这是一个头结点, 所以, 它不用作为一个 Subscriber 存在.
-          Downstream.Failure == Never
+    Downstream.Failure == Never
     {
         // 大量的, Private 的权限控制. 甚至整个类型, 都是 Private 的.
         // 这是一个非常好的习惯.
@@ -176,6 +177,8 @@ extension Notification {
             lock.unlock()
         }
         
+        // 下游 demand 调整, 这里仅仅是记录 demand 的量.
+        // 因为这个节点没有缓存当前值的概念, 所以不会在下游节点 demand 变化的时候, 发送自己的存储值.
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             // 在这里, 对于 demand 进行了更改.
@@ -186,10 +189,12 @@ extension Notification {
         // Cancel, 则是将自己从 NotificaitonCenter 里面移除.
         func cancel() {
             lock.lock()
-            guard let center = self.center.take(), let observation = self.observation.take() else {
-                      lock.unlock()
-                      return
-                  }
+            // 这里是 optional 的 take 函数.
+            guard let center = self.center.take(),
+                  let observation = self.observation.take() else {
+                lock.unlock()
+                return
+            }
             
             self.object = nil
             lock.unlock()

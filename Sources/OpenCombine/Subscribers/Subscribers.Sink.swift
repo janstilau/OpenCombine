@@ -1,5 +1,5 @@
-// 只有, 永远不会失败, 才可以仅仅处理, Next 的情况.
 extension Publisher where Failure == Never {
+    // Never 非常重要, 只有 Failure 是 Never 的时候, 才能调用 receiveValue 这个方法.
     /// Attaches a subscriber with closure-based behavior to a publisher that never fails.
     
     /// Use `sink(receiveValue:)` to observe values received by the publisher and print
@@ -137,12 +137,10 @@ extension Subscribers {
          还可以进行 Subscription 的 cancel 操作. 这是 Cancellable 应该做的事情, 在做完自己的资源释放之后, 要触发上游的 cancel
          */
         // 这个一个通用的设计, 各个 Operator 的 Subscription, 基本内部都有着这样的一个值.
-        // 这可以认为是, enum 当做存储类型来使用的一个例子. 既可以当做标识类型, 也可以当做存储类型. 并且, 具有内存管理的作用.
         private var status = SubscriptionStatus.awaitingSubscription
         
         private let lock = UnfairLock.allocate()
         
-        public var description: String { return "Sink" }
         
         // 因为, Sink 是最后节点, 所以没有 Subscribe 后方节点的操作, 他是一个 Subscriber, 而不是一个 Publisher
         public init(receiveCompletion: @escaping (Subscribers.Completion<Failure>) -> Void,
@@ -188,6 +186,7 @@ extension Subscribers {
             lock.unlock()
             // Sink 里面, 接收到数据之后, 就是调用存储的闭包, 来处理这个数据.
             receiveValue(value)
+            // 本身的 demand 就是 unlimited 了, 所以这里返回 none.
             return .none
         }
         
@@ -233,5 +232,7 @@ extension Subscribers {
         }
         
         public var playgroundDescription: Any { return description }
+        
+        public var description: String { return "Sink" }
     }
 }

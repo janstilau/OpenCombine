@@ -61,6 +61,7 @@ extension Publisher where Failure == Never {
 
 extension Subscribers {
     // A simple subscriber that assigns received elements to a property indicated by a key path.
+    // 这个 Subsciber, 自动要进行 Cancellable 的实现.
     public final class Assign<Root, Input>: Subscriber, // 承接上端的数据.
                                             Cancellable, // 末尾节点, 不需要接受 Demand 的管理.
                                             CustomStringConvertible,
@@ -141,6 +142,7 @@ extension Subscribers {
             terminateAndConsumeLock()
         }
         
+        // 对于 Cancellable 的实现. 
         public func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = status else {
@@ -154,8 +156,7 @@ extension Subscribers {
         
         // 对于 Assign 来说, 它是终点,
         private func terminateAndConsumeLock() {
-            // 消除对于上游节点的引用. 打破了循环引用.
-            // 这里才是, 真正的资源释放的地方.
+            // enum 的状态改变, 完成了对于上游 subscription 的释放.
             status = .terminal
             withExtendedLifetime(toAssignObject) {
                 // 触发, 存储的 root 对象的释放 .

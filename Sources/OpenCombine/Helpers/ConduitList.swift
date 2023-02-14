@@ -52,6 +52,7 @@ extension ConduitList {
         switch self {
         case .single(conduit):
             self = .empty
+            // 这里 fallthrough 了
         case .empty, .single:
             break
         case .many(var set):

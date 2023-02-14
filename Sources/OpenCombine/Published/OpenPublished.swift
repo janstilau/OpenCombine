@@ -1,16 +1,10 @@
 
 /*
- 这个非常重要.
- @Published 的属性, 一般会当做 UI 的 Binding 机制存在.
- 那么如何引起  @Published 的修改呢.
-
- 使用传统的命令式模式, 将信号和 UI 绑定是一个非常复杂的构成, 并且构建 UI 也是一个繁琐复杂的过程.
- 在 ViewModel 的创建过程中, 组合好一个复杂的 Publisher 之后, 将他和 @Published 的 Subject 进行挂钩, 然后, @Published 和 UI 进行挂钩.
- 这样, ViewAction, 触发 ModelAction, 然后 ModelAction 触发信号改变. 就能够全部自动了.
- 
- Bind 的机制, 就是 ViewAction, 自动触发 Model Action 的过程.
+ 这是一个类似于信号传递的工作.
+ 信号发送过来, 改变了 ViewModel 里面的数据, ViewModel 里面的数据更改, 会触发 View 的改变.
  */
 extension Publisher where Failure == Never {
+    
     /// Republishes elements received from a publisher, by assigning them to a property
     /// marked as a publisher.
     
@@ -20,8 +14,6 @@ extension Publisher where Failure == Never {
     /// automatically when the `Published` instance deinitializes. Because of this,
     /// the `assign(to:)` operator doesn't return an `AnyCancellable` that you're
     /// responsible for like `assign(to:on:)` does.
-    
-    // Published 作为 downstream, 是一个弱指针. 当 Published 对象消失之后, 该指针消失, 也就无法向后进行事件的传送了.
     
     /// The example below shows a model class that receives elements from an internal
     /// `Timer.TimerPublisher`, and assigns them to a `@Published` property called
@@ -47,9 +39,8 @@ extension Publisher where Failure == Never {
     /// - Parameter published: A property marked with the `@Published` attribute, which
     ///   receives and republishes all elements received from the upstream publisher.
     
-    // 上游触发的操作, 可以直接影响到 PublishedPublisher 对象.
-    // 这是一个响应链条的终点.
-    // 而这个终点之后的触发, 和之前的链条, 没有太大的关系.
+    // assign(to 专门为 @Published 进行了适配, 和 Assign 的实现是两回事.
+    // 这个方式是没有 cancelable 的返回值的. 因为实际上, 并不需要外界进行取消操作. 
     public func assign(to published: inout OpenPublished<Output>.PublishedPublisher) {
         subscribe(PublishedSubscriber(published.internalSubject))
     }

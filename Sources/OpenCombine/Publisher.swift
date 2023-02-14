@@ -148,6 +148,7 @@ extension Publisher {
                 hook.didReceive(publisher: self, subscriber: subscriber)
             }
         } else {
+            // 这个方法, 是整个响应链路建立的起点 .
             receive(subscriber: subscriber)
         }
     }

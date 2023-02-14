@@ -25,7 +25,7 @@ internal final class PublishedSubject<Output>: Subject {
     // 在 send 方法里面, 所有记录的 downstreams 会被使用到.
     private var downstreams = ConduitList<Output, Failure>.empty
     
-    // 这是 @Published 存在的最重要的原因, 在值改动前, 会主动调用 ObservableObjectPublisher 的 send 方法, 通知所有的监听节点.
+    // 这个 Subject 存在的原因就在这里了, 存储了一个 ObservableObjectPublisher 
     private var changePublisher: ObservableObjectPublisher?
     
     internal var value: Output {

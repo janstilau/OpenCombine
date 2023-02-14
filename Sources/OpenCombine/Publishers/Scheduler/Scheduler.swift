@@ -1,5 +1,5 @@
-
 /// A protocol that provides to a scheduler with an expression for relative time.
+
 // SchedulerTimeType 是每种 Scheduler 的时间单位, 它的要求是 Strideable. 也就是, 知道了一个位置之后, 可以快速的根据计量单位, 来计算出下一个为孩子.
 // SchedulerTimeType.Strde 的每种 Scheduler 的时间计量单位, 它的要求是 SchedulerTimeIntervalConvertible. 也就是, 可以通过下面的, 具有人类识别语言定义的各个接口, 来获取计量对象出来.
 // 例如, 如果按照中国传统 12 时辰的方法计时, 那么 SchedulerTimeType 就是各种 xx时, 而 SchedulerTimeType.Strde 就是刻. 刻这种计量单位, 应该提供下面各种秒相关的换算方法.
@@ -65,14 +65,6 @@ public protocol SchedulerTimeIntervalConvertible {
  /                 """)
  /             }
  /         )
- */
-/*
- 上面的 Delay 的用法, 是 scheduler 的实际用法.
- 这个类型, 其实并不是给 Combine 的使用者使用的, 而是给 Operator 的设计者来使用的.
- Operator 首先会保存一个 Scheduler 的实例. 这是 Operator 对应的 Publisher 方法里面传递过来的.
- SchedulerOptions, 和 SchedulerTimeType 是和传递过来的 Scheduler 实例强绑定的, 当调用相关方法的时候, 在传入对应 Scheduler 实例的时候, 其他的参数, 就应该锁定到相关的 associatedtype 了.
- 这体现了泛型编程的类型锁定的用途. 这个时候, 也体现了面向接口的好处, 因为 SchedulerTimeIntervalConvertible 的限定, 使得各个 Scheduler 相关的 SchedulerTimeType.Stride 参数在使用的时候, 可以使用上面的 seconds, millionseconds 方法, 这样使得该参数的使用, 是一个统一的方式.
- 在 Operator 的内部逻辑里面,
  */
 public protocol Scheduler {
     

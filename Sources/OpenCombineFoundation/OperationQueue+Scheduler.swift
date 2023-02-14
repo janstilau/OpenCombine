@@ -161,8 +161,7 @@ extension OperationQueue {
                 }
             }
             
-            private static let readySchedulingQueue =
-            DispatchQueue(label: "DelayReadyOperation")
+            private static let readySchedulingQueue = DispatchQueue(label: "DelayReadyOperation")
             
             private let readyFromAfterLock = UnfairLock.allocate()
             private var action: (() -> Void)?

@@ -49,6 +49,7 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
     // 将上游节点进行存储. 如果
     public func send(subscription: Subscription) {
         lock.lock()
+        // 循环引用
         upstreamSubscriptions.append(subscription)
         let hasAnyDownstreamDemand = self.hasAnyDownstreamDemand
         lock.unlock()
@@ -67,6 +68,7 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
             let conduit = Conduit(parent: self, downstream: subscriber)
             downstreams.insert(conduit)
             lock.unlock()
+            // 这里会引起循环引用.
             subscriber.receive(subscription: conduit)
         } else {
             // 这里有点 promise 的感觉, 如果已经有了 completionEvent 就直接将向下游发送, 这个时候, 其实不用存储下游到自己的成员变量里面.
@@ -87,6 +89,7 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
         // 从这里可以看出, Subject 作为分发器的基础, 就是他存储了所有的 Subscriber 对象了.
         let downstreams = self.downstreams
         lock.unlock()
+        // 自己接受到改变之后, 向下游进行值的传递.
         downstreams.forEach { conduit in
             conduit.offer(input)
         }
