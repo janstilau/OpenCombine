@@ -18,12 +18,6 @@
 /// Calling `send(_:)` on a `CurrentValueSubject` also updates the current value, making
 /// it equivalent to updating the `value` directly.
 
-/*
- Subject 的实现, 和 Rx 差不多.
- 最重要的是, 这是一个可以缓存多个下游节点的节点.
- 
- 所以, Share 这件事, 天然就是可以使用 Subject 来实现.
- */
 public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     
     /*
@@ -31,7 +25,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
      */
     private let subjectInnerLock = UnfairLock.allocate()
     
-    private var isSubjectActive = true
+    private var isActive = true
     
     // 存储一下结束事件.
     // 在 Subject 接收到上游的结束事件的时候, 会将这个值进行存储.
@@ -71,6 +65,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
             return currentValue
         }
         set {
+            // 在 Value 的赋值语句中, 会触发后面的 send 操作.
             subjectInnerLock.lock()
             // 赋值, 必须在锁的环境, 并且触发后续的信号发送.
             currentValue = newValue
@@ -78,23 +73,20 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         }
     }
     
-    // 命名很明确, 里面应该进行 Lock 的 Unlock 的操作才可以.
+    // 使用函数命令, 表明了在方法内部, 其实是处于 Lock 的状态, 需要在内部进行 unlock 的触发.
     private func sendValueAndConsumeLock(_ newValue: Output) {
         // 必须要做这样的判断. 因为 Subject 的各个函数, 其实是手动触发的.
         // 如果使用者 sendComplete 之后, 又进行了 send value, 就触发了已经完成了但是有进行 Send 的场景了.
         // 业务逻辑复杂了之后, 类的设计者应该保证自己类的健壮性.
-        guard isSubjectActive else {
+        guard isActive else {
             subjectInnerLock.unlock()
             return
         }
-        // 先是记录一下当前值.
         currentValue = newValue
         let downstreams = self.downstreams
         subjectInnerLock.unlock()
         
-        // 先取出所有的下游节点, 然后就 unlock
-        // 因为给下游节点喂食, 可能会引发各种后续操作, 时间不可控的.
-        // 当, CurrentValue 发生变化的时候, 给所有的下游节点喂食.
+        // 给下游节点进行数据投喂的操作, 集中在这里.
         downstreams.forEach { conduit in
             conduit.offer(newValue)
         }
@@ -147,7 +139,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     where Output == Downstream.Input, Failure == Downstream.Failure
     {
         subjectInnerLock.lock()
-        if isSubjectActive {
+        if isActive {
             // 作为头结点, 自己管理的各个子响应链条的挂载操作.
             let conduit = Conduit(parent: self, downstream: subscriber)
             downstreams.insert(conduit)
@@ -174,14 +166,14 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     // 不论, Subject 作为多少条链条的终止节点, 只要有一条发送了 Completion, 都结束.
     public func send(completion: Subscribers.Completion<Failure>) {
         subjectInnerLock.lock()
-        guard isSubjectActive else {
+        guard isActive else {
             subjectInnerLock.unlock()
             return
         }
         
         // 记录一下 Completion, 之后的 subscriber 可以直接使用.
         // active 和 completion 是绑定在一起的, 可以使用一个 Enum 来进行管理.
-        isSubjectActive = false
+        isActive = false
         self.completion = completion
         
         // 将, 所有的下游节点, 进行了清空的操作.
@@ -195,7 +187,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     // 作为头结点, 所管理的各个子响应联调的卸载操作.
     private func disassociate(_ conduit: ConduitBase<Output, Failure>) {
         subjectInnerLock.lock()
-        guard isSubjectActive else {
+        guard isActive else {
             subjectInnerLock.unlock()
             return
         }

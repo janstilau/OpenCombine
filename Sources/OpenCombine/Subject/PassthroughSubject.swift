@@ -2,6 +2,7 @@
 
 /// As a concrete implementation of `Subject`, the `PassthroughSubject` provides
 /// a convenient way to adapt existing imperative code to the Combine model.
+// 从这里可以看出, Subject 一大作用, 就是命令式到响应式的迁移.
 
 /// Unlike `CurrentValueSubject`, a `PassthroughSubject` doesn’t have an initial value or
 /// a buffer of the most recently-published element.
@@ -13,20 +14,19 @@
  1. 多路分发.
  2. 原有代码迁移到 Combine 中.
  */
-/*
- PassthroughSubject  和 CurrentValueSubject 没有太大的区别.
- */
 public final class PassthroughSubject<Output, Failure: Error>: Subject {
-    private let lock = UnfairLock.allocate()
+    private let internalLock = UnfairLock.allocate()
     
     private var active = true
     
-    // 存储结束事件, 主要是给新来的 Subscriber 使用的.
+    // 数据值, 结束事件.
+    // 当上游
     private var completionEvent: Subscribers.Completion<Failure>?
     
     // 存储, 所有的下游节点. 这是 Subject 可以作为分发器的原因.
     private var downstreams = ConduitList<Output, Failure>.empty
     // 存储, 所有的上游节点, 这是 Subject 可以作为多次作为 Subscriber 的原因.
+    // Subscription 是一个接口对象. 
     internal var upstreamSubscriptions: [Subscription] = []
     
     internal var hasAnyDownstreamDemand = false
@@ -42,17 +42,17 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
-        lock.deallocate()
+        internalLock.deallocate()
     }
-
+    
     // 当 Subject 作为一个新的通路终点的时候, 会触发到这里.
-    // 将上游节点进行存储. 如果
+    // 将上游节点进行存储.
     public func send(subscription: Subscription) {
-        lock.lock()
+        internalLock.lock()
         // 循环引用
         upstreamSubscriptions.append(subscription)
         let hasAnyDownstreamDemand = self.hasAnyDownstreamDemand
-        lock.unlock()
+        internalLock.unlock()
         if hasAnyDownstreamDemand {
             subscription.request(.unlimited)
         }
@@ -63,38 +63,43 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Output == Downstream.Input, Failure == Downstream.Failure
     {
-        lock.lock()
+        internalLock.lock()
         if active {
             let conduit = Conduit(parent: self, downstream: subscriber)
             downstreams.insert(conduit)
-            lock.unlock()
+            internalLock.unlock()
             // 这里会引起循环引用.
             subscriber.receive(subscription: conduit)
         } else {
             // 这里有点 promise 的感觉, 如果已经有了 completionEvent 就直接将向下游发送, 这个时候, 其实不用存储下游到自己的成员变量里面.
             let completion = self.completionEvent!
-            lock.unlock()
+            internalLock.unlock()
             subscriber.receive(subscription: Subscriptions.empty)
             subscriber.receive(completion: completion)
         }
     }
     
     public func send(_ input: Output) {
-        lock.lock()
+        internalLock.lock()
+        /*
+         Subject 本身可能是作为 Subscriber 来使用的.
+         所以可能会是多个链条中的一环. 如果其中一条发送了 completion 事件, 那么这个 Subject 就应该是 Completion 的状态.
+         Subject 可以认为是一个 Funnel, 自己管理者多个下游, 将上游的数据, 分发给所有的下游.
+         */
         guard active else {
-            lock.unlock()
+            internalLock.unlock()
             return
         }
         // 当, 接收到上游的 Next 事件, 会将给所有的后续节点, 进行分发的操作.
         // 从这里可以看出, Subject 作为分发器的基础, 就是他存储了所有的 Subscriber 对象了.
         let downstreams = self.downstreams
-        lock.unlock()
+        internalLock.unlock()
         // 自己接受到改变之后, 向下游进行值的传递.
         downstreams.forEach { conduit in
             conduit.offer(input)
         }
     }
-
+    
     /*
      当任意的一个上游节点, 发送了结束事件之后, 都会让整个 Subject 处于结束的事件.
      从这里可以看出, downstreams 在这里就被释放了.
@@ -103,16 +108,16 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
      如果出现了问题, 可以在这里梳理一下.
      */
     public func send(completion: Subscribers.Completion<Failure>) {
-        lock.lock()
+        internalLock.lock()
         guard active else {
-            lock.unlock()
+            internalLock.unlock()
             return
         }
         active = false
         self.completionEvent = completion
         // Take 就是有着释放资源的含义.
         let downstreams = self.downstreams.take()
-        lock.unlock()
+        internalLock.unlock()
         downstreams.forEach { conduit in
             conduit.finish(completion: completion)
         }
@@ -122,30 +127,31 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
     // Subject 只有接受到后方的要求之后, 才会向前进行申请.
     // 是所有的上方节点, 无限申请.
     private func acknowledgeDownstreamDemand() {
-        lock.lock()
+        internalLock.lock()
         if hasAnyDownstreamDemand {
-            lock.unlock()
+            internalLock.unlock()
             return
         }
         hasAnyDownstreamDemand = true
         let upstreamSubscriptions = self.upstreamSubscriptions
-        lock.unlock()
+        internalLock.unlock()
         for subscription in upstreamSubscriptions {
             subscription.request(.unlimited)
         }
     }
     
     private func disassociate(_ conduit: ConduitBase<Output, Failure>) {
-        lock.lock()
+        internalLock.lock()
         guard active else {
-            lock.unlock()
+            internalLock.unlock()
             return
         }
         downstreams.remove(conduit)
-        lock.unlock()
+        internalLock.unlock()
     }
 }
 
+// 每一个具有多路分发的 Funnel 节点里面, 都有着 Conduit 的类型的存在.
 extension PassthroughSubject {
     
     /*
@@ -164,7 +170,7 @@ extension PassthroughSubject {
         
         fileprivate var downstream: Downstream?
         
-        fileprivate var demand = Subscribers.Demand.none
+        fileprivate var demand = Subscribers.Demand.none // 每个 demand 分别管理.
         
         private var lock = UnfairLock.allocate()
         
@@ -181,7 +187,6 @@ extension PassthroughSubject {
             downstreamLock.deallocate()
         }
         
-        // 在 Subject 的分发线路中, 头结点有着 Demand 管理的含义在.
         override func offer(_ output: Output) {
             lock.lock()
             guard demand > 0, let downstream = self.downstream else {
@@ -199,6 +204,7 @@ extension PassthroughSubject {
             lock.unlock()
         }
         
+        // 当发送了完毕信号之后, 这里其实有着生命周期的关闭.
         override func finish(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard let downstream = self.downstream.take() else {
@@ -230,7 +236,7 @@ extension PassthroughSubject {
          Conduit 和 downstream 之间有循环引用.
          Conduit 还被 PassThroughSubject 强引用着.
          
-         cancel, 打破了循环引用, 取消了 PassThroughSubject 的强引用. 
+         cancel, 打破了循环引用, 取消了 PassThroughSubject 的强引用.
          */
         override func cancel() {
             lock.lock()
@@ -242,6 +248,9 @@ extension PassthroughSubject {
             lock.unlock()
             parent?.disassociate(self)
         }
+        
+        
+        
         
         var description: String { return "PassthroughSubject" }
         

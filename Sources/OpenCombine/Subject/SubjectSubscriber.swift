@@ -4,9 +4,9 @@
 // SubjectSubscriber 并不关心, 具体的 Subject 是什么类型. 这里使用的泛型.
 // 这里不能用 Protocol 进行存储, 因为在 Publisher 类型里面, associatedtype Output, 是有着关联类型的.
 // 所以, 实际上 SubjectSubscriber 在真正被使用的时候, 还是有着类型信息在里面的.
-internal final class SubjectSubscriber<Downstream: Subject>
+internal final class SubjectSubscriber<SubjectDownSubject: Subject>
 : Subscriber,
-  Subscription,
+  Subscription, // 自身就是 Inner 节点. 
   CustomStringConvertible,
   CustomReflectable,
   CustomPlaygroundDisplayConvertible {
@@ -16,13 +16,13 @@ internal final class SubjectSubscriber<Downstream: Subject>
     // 记录下游 Subject 节点.
     // 这是一个弱引用, 所以, 当 Subject 节点析构了之后, 上游节点, 是不会触发到下游的 Subject 的.
     // 这符合了 Combine 里面, 最后的一个节点数据, 自动是 cancel 的通用设计.
-    private weak var downstreamSubject: Downstream?
+    private weak var downstreamSubject: SubjectDownSubject?
     // 记录上游 Subscription 节点. 这是惯例的实现, 和上游节点, 形成的了循环引用的关系.
     private var upstreamSubscription: Subscription?
     
     private var isCancelled: Bool { return downstreamSubject == nil }
     
-    internal init(_ parent: Downstream) {
+    internal init(_ parent: SubjectDownSubject) {
         self.downstreamSubject = parent
     }
     
@@ -37,7 +37,8 @@ internal final class SubjectSubscriber<Downstream: Subject>
      */
     internal func receive(subscription: Subscription) {
         lock.lock()
-        guard upstreamSubscription == nil, let subject = downstreamSubject else {
+        guard upstreamSubscription == nil,
+              let download = downstreamSubject else {
             lock.unlock()
             return
         }
@@ -48,11 +49,11 @@ internal final class SubjectSubscriber<Downstream: Subject>
         
         // 这是在库里面, 唯一的一个 Subject 调用 send(subscription 的场景.
         // Subject, 对于上游其实是 unlimited Demand 管理的.
-        subject.send(subscription: self)
+        download.send(subscription: self)
     }
     
     // 收到上游的事件数据, 透传到 subject 中.
-    internal func receive(_ input: Downstream.Output) -> Subscribers.Demand {
+    internal func receive(_ input: SubjectDownSubject.Output) -> Subscribers.Demand {
         lock.lock()
         guard let subject = downstreamSubject, upstreamSubscription != nil else {
             lock.unlock()
@@ -64,7 +65,7 @@ internal final class SubjectSubscriber<Downstream: Subject>
         return .none
     }
     
-    internal func receive(completion: Subscribers.Completion<Downstream.Failure>) {
+    internal func receive(completion: Subscribers.Completion<SubjectDownSubject.Failure>) {
         lock.lock()
         guard let subject = downstreamSubject, upstreamSubscription != nil else {
             lock.unlock()

@@ -159,9 +159,9 @@ extension Publishers {
         }
         
         // 虽然这个 Publisher 很新颖, 但还是一个惯例的 Publisher.
-        public func receive<Downstream: Subscriber>(subscriber: Downstream)
-        where Upstream.Failure == Downstream.Failure,
-              Upstream.Output == Downstream.Input
+        public func receive<SubjectDownSubject: Subscriber>(subscriber: SubjectDownSubject)
+        where Upstream.Failure == SubjectDownSubject.Failure,
+              Upstream.Output == SubjectDownSubject.Input
         {
             upstream.subscribe(Inner(self, downstream: subscriber))
         }
@@ -170,23 +170,23 @@ extension Publishers {
 
 extension Publishers.Breakpoint {
     
-    private struct Inner<Downstream: Subscriber>
+    private struct Inner<SubjectDownSubject: Subscriber>
     : Subscriber,
       CustomStringConvertible,
       CustomReflectable,
       CustomPlaygroundDisplayConvertible
-    where Downstream.Input == Upstream.Output, Downstream.Failure == Upstream.Failure
+    where SubjectDownSubject.Input == Upstream.Output, SubjectDownSubject.Failure == Upstream.Failure
     {
         typealias Input = Upstream.Output
         typealias Failure = Upstream.Failure
         
-        private let downstream: Downstream
+        private let downstream: SubjectDownSubject
         private let breakpoint: Publishers.Breakpoint<Upstream>
         
         let combineIdentifier = CombineIdentifier()
         
         init(_ breakpoint: Publishers.Breakpoint<Upstream>,
-             downstream: Downstream) {
+             downstream: SubjectDownSubject) {
             self.downstream = downstream
             self.breakpoint = breakpoint
         }
