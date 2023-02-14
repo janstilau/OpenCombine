@@ -1,4 +1,3 @@
-
 // 直接发送错误, 这在组建复杂逻辑的时候, 是很好用的小部件.
 /// A publisher that immediately terminates with the specified error.
 public struct Fail<Output, Failure: Error>: Publisher {

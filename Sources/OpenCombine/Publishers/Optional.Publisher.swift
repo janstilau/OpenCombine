@@ -39,7 +39,7 @@ extension Optional {
             /// The kind of value published by this publisher.
             ///
             /// This publisher produces the type wrapped by the optional.
-            public typealias Output = Wrapped
+            public typealias Output = Wrapped // 直接使用 Wrapped 当做 Output 的类型, 这个 Wrapped 本身已经是泛型固定的类型.
             
             /// The kind of error this publisher might publish.
             ///
@@ -63,11 +63,12 @@ extension Optional {
             ///
             /// - Parameter subscriber: The subscriber to add.
             // 当, 收到下游节点的时候, 如果 Optinal 有值, 发送 next 事件和 Completion 事件
-            // 否则, 直接发送 Finsihed 事件. 
+            // 否则, 直接发送 Finsihed 事件.
             public func receive<Downstream: Subscriber>(subscriber: Downstream)
             where Output == Downstream.Input, Failure == Downstream.Failure
             {
                 if let output = output {
+                    // 如果有值, 那么交给自己内部的节点来处理 demand 请求.
                     subscriber.receive(subscription: Inner(value: output,
                                                            downstream: subscriber))
                 } else {
@@ -119,10 +120,11 @@ extension Optional.OCombine {
             self.downstream = downstream
         }
         
+        // 在下游真正需要数据的时候, 才进行值的发送.
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             guard let downstream = self.downstream.take() else { return }
-            // 当, 下游真正的 Request Demand 的时候, 上游节点才会触发生成信号的事件. 
+            // 当, 下游真正的 Request Demand 的时候, 上游节点才会触发生成信号的事件.
             _ = downstream.receive(output)
             downstream.receive(completion: .finished)
         }
@@ -130,6 +132,9 @@ extension Optional.OCombine {
         func cancel() {
             downstream = nil
         }
+        
+        
+        
         
         var description: String { return "Optional" }
         

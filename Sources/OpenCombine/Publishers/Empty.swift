@@ -1,5 +1,5 @@
 /// A publisher that never publishes any values, and optionally finishes immediately.
-///
+
 /// You can create a ”Never” publisher — one which never sends values and never
 /// finishes or fails — with the initializer `Empty(completeImmediately: false)`.
 
@@ -10,6 +10,7 @@ public struct Empty<Output, Failure: Error>: Publisher, Equatable {
     ///
     /// - Parameter completeImmediately: A Boolean value that indicates whether
     ///   the publisher should immediately finish.
+    // 如果 completeImmediately 为 false, 那么其实就是一个空转的 Publisher了. 
     public init(completeImmediately: Bool = true) {
         self.completeImmediately = completeImmediately
     }

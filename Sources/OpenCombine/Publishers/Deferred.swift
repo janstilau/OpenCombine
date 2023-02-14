@@ -1,6 +1,7 @@
-
 // 不太明白, 意义在哪里, 本身 Publisher 就是 subscribe 的时候, 才会触发真正的信号的生成.
 // 延时生成 Publisher.
+// 如果创建出来的是 Future 这个就有意义了.
+
 /// A publisher that awaits subscription before running the supplied closure
 /// to create a publisher for the new subscriber.
 public struct Deferred<DeferredPublisher: Publisher>: Publisher {
@@ -18,14 +19,14 @@ public struct Deferred<DeferredPublisher: Publisher>: Publisher {
     /// Receives the incoming subscription.
     // 真正的, 生成 Publisher 的闭包, 这要在创建的时候, 进行存储.
     // 这是这个类型, 最最重要的属性了.
-    public let createPublisher: () -> DeferredPublisher
+    public let publisherCreator: () -> DeferredPublisher
     
     /// Creates a deferred publisher.
     ///
     /// - Parameter createPublisher: The closure to execute
     /// when calling `subscribe(_:)`.
     public init(createPublisher: @escaping () -> DeferredPublisher) {
-        self.createPublisher = createPublisher
+        self.publisherCreator = createPublisher
     }
     
     /*
@@ -44,7 +45,7 @@ public struct Deferred<DeferredPublisher: Publisher>: Publisher {
     where Failure == Downstream.Failure,
           Output == Downstream.Input
     {
-        let deferredPublisher = createPublisher()
+        let deferredPublisher = publisherCreator()
         deferredPublisher.subscribe(subscriber)
     }
 }

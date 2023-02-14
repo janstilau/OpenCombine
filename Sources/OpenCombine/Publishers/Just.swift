@@ -25,6 +25,7 @@ public struct Just<Output>: Publisher {
     
     // 同惯例一样, 在 receive(subscriber 中, 生成了这个 Operator 对应的节点对象, 然后交给下游, 当做是 Subscription 来进行使用.
     // 因为, Just 一般就是响应链路的头结点, 所以, 在生成 Inner 的过程中, 不会有 upstream 相关的逻辑.
+    // 大部分的 Operator, Publsiher 其实都有着 Inner 的生成过程.
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Downstream.Input == Output, Downstream.Failure == Never
     {
@@ -61,6 +62,10 @@ extension Just where Output: Equatable {
     }
 }
 
+// 这是 Just 的融合操作.
+// 如果按照原有的逻辑, 会是将所有的 Operator 创建一个中间节点, 然后数据从最初的节点, 按照顺序运转到最后的节点.
+// 但是对于 Sequence, Just 这种 Publisher 来说, 里面的数据是固定的. 所以可以减少中间节点的创建, 直接替换 Publisher, 替换后的 Publisher 的数据可以直接运算出来.
+// 这样可以带来效率的提升.
 extension Just {
     public func allSatisfy(_ predicate: (Output) -> Bool) -> Just<Bool> {
         return .init(predicate(output))
@@ -295,15 +300,17 @@ extension Just {
             self.value = value
         }
         
-        // Combine 里面, 信号产生的逻辑的触发, 不是在 Receive Subscriber 中.
         // 因为 Combine 是一个 Pull 的逻辑, 为了尊重这个逻辑, 应该在每个节点的 request(_ demand 中, 进行真正的生成逻辑的触发.
+        // 这是非常重要的.
         // 这个方法, 是各个下游节点, 主动调用存储的 subscription 触发的.
-        // 对于一个 Publisher 来说, 他需要在
+        // 而作为上游节点, 则是在下游 request(_ demand 的时候, 查看自己生产状态, 将自己的生产出来的数据, 投喂到下游.
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             // 并不是 Downstream 可以调用 take. 这里是 Optional 调用的 Take.
             // 也就是, 把值取出来之后, 对 optinal 进行 nil 的赋值.
-            // 这是非常优秀的一个写法 
+            // 这是非常优秀的一个写法
+            
+            // just 是一个单独的链路, 只会有一个 downstream
             guard let downstream = self.downstream.take() else { return }
             
             // 真正的, 进行下游节点接受数据的操作.
