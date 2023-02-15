@@ -1,9 +1,7 @@
-
 // 就是收集所有的 Ele, 然后当做一个数组一次性的发射出来给后面的节点.
 extension Publisher {
     /// Collects all received elements, and emits a single array of the collection when
     /// the upstream publisher finishes.
-    // 只有上级节点 Finish 之后, 才会向下游节点发送数据. 可以猜测, 一定的 unlimited demand 管理.
     
     /// Use `collect()` to gather elements into an array that the operator emits after
     /// the upstream publisher finishes.
@@ -19,6 +17,7 @@ extension Publisher {
     /// The `collect()` operator only sends the collected array to its downstream receiver
     /// after a request whose demand is greater than 0 items. Otherwise, `collect()` waits
     /// until it receives a non-zero request.
+    
     // 因为, Combine 的 Pull 模型, 所以条件是 1. 上游 finish 了. 2. 下游 request 了.
     
     /// In the example below, an Integer range is a publisher that emits an array of

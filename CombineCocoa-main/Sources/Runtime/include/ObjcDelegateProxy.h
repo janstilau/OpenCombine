@@ -12,7 +12,7 @@
 
 @property (nonnull, strong, atomic, readonly) NSSet <NSValue *> *selectors;
 
-- (void)triggerInterceptedSelector:(SEL _Nonnull)selector arguments:(NSArray * _Nonnull)arguments;
+- (void)interceptedSelector:(SEL _Nonnull)selector arguments:(NSArray * _Nonnull)arguments;
 - (BOOL)respondsToSelector:(SEL _Nonnull)aSelector;
 - (BOOL)canRespondToSelector:(SEL _Nonnull)selector;
 
