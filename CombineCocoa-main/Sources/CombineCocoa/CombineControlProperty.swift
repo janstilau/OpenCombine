@@ -1,11 +1,3 @@
-//
-//  CombineControlProperty.swift
-//  CombineCocoa
-//
-//  Created by Shai Mishali on 01/08/2019.
-//  Copyright © 2020 Combine Community. All rights reserved.
-//
-
 #if !(os(iOS) && (arch(i386) || arch(arm)))
 import Combine
 import Foundation
