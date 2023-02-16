@@ -3,7 +3,6 @@ extension Publisher {
     
     /// Terminates publishing if the upstream publisher exceeds the specified time
     /// interval without producing an element.
-    // 不过, 不能在时间范围内发射新的信号, 这个 Publisher 就 cancel 掉了
     
     /// Use `timeout(_:scheduler:options:customError:)` to terminate a publisher if
     /// an element isn’t delivered within a timeout interval you specify.
@@ -299,12 +298,13 @@ extension Publishers.Timeout {
         
         private func timeoutClock() -> AnyCancellable {
             // 一个单次的定时器, 来触发超时的相关逻辑.
-            // 可以看到, 其实单词的定时器, 使用的也很频繁. 
+            // 可以看到, 其实单词的定时器, 使用的也很频繁.
             let cancellable = scheduler
                 .schedule(after: scheduler.now.advanced(by: interval),
                           interval: interval,
                           tolerance: scheduler.minimumTolerance,
                           options: options,
+                          // 这个 timeOut 是一个反复噶.
                           timedOut)
             return AnyCancellable(cancellable.cancel)
         }

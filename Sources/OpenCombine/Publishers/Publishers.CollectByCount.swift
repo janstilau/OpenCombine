@@ -125,6 +125,7 @@ extension Publishers.CollectByCount {
             }
             let output = self.buffer.take()
             lock.unlock()
+            // 这里一次性把积攒的 demand 都加回来了. 
             return downstream.receive(output) * count
         }
         

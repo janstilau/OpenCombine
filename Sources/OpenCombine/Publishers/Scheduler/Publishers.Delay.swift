@@ -1,6 +1,6 @@
 
 extension Publisher {
-    
+    // 上游接到数据之后, 延时一段时间再往下游进行传递.
     /// Delays delivery of all output to the downstream receiver by a specified amount of
     /// time on a particular scheduler.
     
@@ -21,6 +21,7 @@ extension Publisher {
     ///         .handleEvents(receiveOutput: { date in
     ///             print ("Sending Timestamp \'\(df.string(from: date))\' to delay()")
     ///         })
+    ///         这里不是 second, 而是.second, 传递过来的还是 scheduler 配对的 TimeType. 优雅.
     ///         .delay(for: .seconds(3), scheduler: RunLoop.main, options: .none)
     ///         .sink(
     ///             receiveCompletion: { print ("completion: \($0)", terminator: "\n") },
@@ -49,7 +50,7 @@ extension Publisher {
     ///     //    At 5:02:38 PM PDT received  Timestamp '5:02:35 PM PDT' sent: 3.00
     ///     //    secs ago
     ///
-
+    
     /// The delay affects the delivery of elements and completion, but not of the original
     /// subscription.
     // subscription 不会被 Dealy, 各种 Event 事件的传递, 会被 Delay.
@@ -61,10 +62,6 @@ extension Publisher {
     ///   - options: Options relevant to the scheduler’s behavior.
     /// - Returns: A publisher that delays delivery of elements and completion to
     ///   the downstream receiver.
-    
-    // Publisher 的 Operator 方法, 是为了生成对应的 Publisher 对象.
-    // Publisher 对象的 Init 方法, 可以确定里面的类型参数.
-    // 但是, Publisher 的 Operator 方法的各个参数, 是被 Context 所限制的, 这是泛型的类型绑定的功劳. 所以, 在使用 delay 方法的时候, 要确保各个参数的类型, 是在同一个 Context 的定义条件下.
     public func delay<Context: Scheduler>(
         for interval: Context.SchedulerTimeType.Stride,
         tolerance: Context.SchedulerTimeType.Stride? = nil,
@@ -81,8 +78,6 @@ extension Publisher {
 
 extension Publishers {
     
-    // 惯例的 Publisher. 收集数据, 生成 Inner 节点.
-    // Delay 的主要作用, 是 DownStream 的各种 receive 动作被 Delay 了.
     /// A publisher that delays delivery of elements and completion
     /// to the downstream receiver.
     // Context 类型的确定, 是在 init 方法中确认的.
@@ -120,6 +115,7 @@ extension Publishers {
             self.options = options
         }
         
+        // Publisher 的作用, 就是在下游挂钩的时候, 生成 Subscription 来真正的进行链条的构建.
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Upstream.Failure == Downstream.Failure,
               Upstream.Output == Downstream.Input
@@ -177,8 +173,10 @@ extension Publishers.Delay {
         // 具体的使用方式, 所需要的参数, 都是在 Operator 生成的 Subscription 中环境中进行的保存.
         private func schedule(_ work: @escaping () -> Void) {
             scheduler
+            // 在这, scheduler.now 被用到了. 都是 scheduler 应该提供的能力.
                 .schedule(after: scheduler.now.advanced(by: interval),
                           tolerance: tolerance,
+                          // 使用不同的 scheduler, 那么传递的就是不同的 Options.
                           options: options,
                           work)
         }
@@ -213,7 +211,7 @@ extension Publishers.Delay {
         
         // 当一个节点, 需要实现 Subscription 的时候, 是因为这个节点
         // 1. 可以提前退出, 所以需要在 Receive Input 的时候, 在适当的时机 调用 保存的 Subscription 的 cancel 方法
-        // 2. 当下游节点调用 request demand 的方法的时候, 需要进行控制. 
+        // 2. 当下游节点调用 request demand 的方法的时候, 需要进行控制.
         private func scheduledReceive(_ input: Input) {
             lock.lock()
             guard state.subscription != nil else {
@@ -225,9 +223,11 @@ extension Publishers.Delay {
             let newDemand = downstream.receive(input)
             downstreamLock.unlock()
             if newDemand == .none { return }
+            
             lock.lock()
             let subscription = state.subscription
             lock.unlock()
+            // 在讲数据发送给后面之后, 要使用返回值向前面要钱.
             subscription?.request(newDemand)
         }
         
@@ -237,6 +237,7 @@ extension Publishers.Delay {
                 lock.unlock()
                 return
             }
+            // pendingTerminal 的意义就在于, 上游的完结事件, 也是 delay 才发送给下游的. 
             state = .pendingTerminal(subscription)
             lock.unlock()
             schedule {
@@ -267,7 +268,7 @@ extension Publishers.Delay {
                 return
             }
             lock.unlock()
-            // 可以看到, Schedule 相关的 Operator, 也是没有管理 Demand 的能力. 仅仅是传递给上级节点. 
+            // 可以看到, Schedule 相关的 Operator, 也是没有管理 Demand 的能力. 仅仅是传递给上级节点.
             subscription.request(demand)
         }
         

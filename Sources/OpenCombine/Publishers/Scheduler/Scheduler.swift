@@ -1,10 +1,5 @@
 /// A protocol that provides to a scheduler with an expression for relative time.
 
-// SchedulerTimeType 是每种 Scheduler 的时间单位, 它的要求是 Strideable. 也就是, 知道了一个位置之后, 可以快速的根据计量单位, 来计算出下一个为孩子.
-// SchedulerTimeType.Strde 的每种 Scheduler 的时间计量单位, 它的要求是 SchedulerTimeIntervalConvertible. 也就是, 可以通过下面的, 具有人类识别语言定义的各个接口, 来获取计量对象出来.
-// 例如, 如果按照中国传统 12 时辰的方法计时, 那么 SchedulerTimeType 就是各种 xx时, 而 SchedulerTimeType.Strde 就是刻. 刻这种计量单位, 应该提供下面各种秒相关的换算方法.
-// 在真正 scheduler 被使用的时候, 是使用的下面 SchedulerTimeIntervalConvertible 的统一的接口.
-
 public protocol SchedulerTimeIntervalConvertible {
     
     /// Converts the specified number of seconds into an instance of this scheduler time
@@ -84,6 +79,7 @@ public protocol Scheduler {
     var now: SchedulerTimeType { get }
     
     /// The minimum tolerance allowed by the scheduler.
+    // 这个值主要是当做函数调用默认值的. 
     var minimumTolerance: SchedulerTimeType.Stride { get }
     
     /// Performs the action at the next possible opportunity.
