@@ -1,4 +1,3 @@
-
 /// A scheduler for performing synchronous actions.
 // 同步, 所有的方法, 都是在同步调用概念上. 应该说, 这个类型, 是失去了调度的抽象含义的\
 
@@ -19,6 +18,7 @@ public struct ImmediateScheduler: Scheduler {
         ///
         /// - Parameter other: The other scheduler time.
         /// - Returns: `0`, as a `Stride`.
+        // Strideable 的要求.
         public func distance(to other: SchedulerTimeType) -> Stride { return 0 }
         
         /// Advances the time by the specified amount; this is meaningless in the context
@@ -27,6 +27,7 @@ public struct ImmediateScheduler: Scheduler {
         /// - Parameter n: The amount to advance by. The `ImmediateScheduler` ignores this
         ///   value.
         /// - Returns: An empty `SchedulerTimeType`.
+        // Strideable 的要求.
         public func advanced(by _: Stride) -> SchedulerTimeType {
             return SchedulerTimeType()
         }

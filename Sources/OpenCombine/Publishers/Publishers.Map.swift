@@ -123,6 +123,8 @@ extension Publishers {
     
     // 和 Rx 里面的观念一样, Map 的生成, 仅仅是一些值的记录工作.
     // 真正的节点的构建, 链条的搭建, 是在 subscribe 的时候.
+    
+    // 真正的 Map 的类型, 是带有 Upstream 完整信息的.
     public struct Map<Upstream: Publisher, Output>: Publisher {
         
         public typealias Failure = Upstream.Failure

@@ -145,7 +145,6 @@ extension Publishers {
         
         private var generatedSubject: SubjectType?
         
-        // 懒加载.
         private var lazySubject: SubjectType {
             lock.lock()
             if let subject = generatedSubject {
@@ -191,7 +190,7 @@ extension Publishers {
 }
 
 extension Publishers.Multicast {
-    // 没有太明白, 这个意义太哪里. 直接把 Downstream 和 Subject 相连会有什么问题. 
+     
     private final class Inner<Downstream: Subscriber>
     : Subscriber,
       Subscription,

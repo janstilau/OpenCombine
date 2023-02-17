@@ -261,6 +261,7 @@ void opencombine_unfair_recursive_lock_dealloc(OpenCombineUnfairRecursiveLock lo
     return delete static_cast<PlatformIndependentMutex*>(lock.opaque);
 }
 
+// 使用这种方式, 来完成断点的达成. 
 void opencombine_stop_in_debugger(void) {
 #if _WIN32
     DebugBreak();

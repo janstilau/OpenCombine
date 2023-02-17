@@ -159,9 +159,7 @@ extension Publishers.SubscribeOn {
             downstream.receive(completion: completion)
         }
         
-        // 收到, 下游节点的 Request Demand 的时间.
-        // 调度, 在对应的环境中, 完整真正的 Demand 管理.
-        // 一般来说, 真正的触发产生信号的逻辑, 就在该方法里面, 所以在这个方法里面调度, 其实才能将耗时操作转移到对应调度器环境.
+        // 在 SubscribeOn 里面, 是所有对于上游行为的影响, 才使用到了调度器. 
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = state else {

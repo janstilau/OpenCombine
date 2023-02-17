@@ -48,7 +48,8 @@ internal final class SubjectSubscriber<SubjectDownSubject: Subject>
         lock.unlock()
         
         // 这是在库里面, 唯一的一个 Subject 调用 send(subscription 的场景.
-        // Subject, 对于上游其实是 unlimited Demand 管理的.
+        // 在各个 Subject 的实现里面, 就是把上游的 subscription 存储起来了.
+        // 由此可见, 对于 Subject 来说, 他要是有上游, 就是在这里, 把 subject 当做 subscriber 来使用的时候发生的. 
         download.send(subscription: self)
     }
     

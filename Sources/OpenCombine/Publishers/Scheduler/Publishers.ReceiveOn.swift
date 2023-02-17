@@ -1,4 +1,3 @@
-
 // 该 Sink 节点, 不会做任何的数据操作, 或者中间节点的插入.
 // 它所做的, 就是调度, 将下游节点接收到上游节点这件事, 进行了调度.
 extension Publisher {
@@ -8,6 +7,7 @@ extension Publisher {
     /// a specific scheduler, such as performing UI work on the main run loop. In contrast
     /// with `subscribe(on:options:)`, which affects upstream messages,
     /// `receive(on:options:)` changes the execution context of downstream messages.
+    // 这里说的很明白了, 就是数据来上游来临之后, 将数据的传递环境在这里进行了改变.
     
     /// In the following example, the `subscribe(on:options:)` operator causes
     /// `jsonPublisher` to receive requests on `backgroundQueue`, while
@@ -27,7 +27,7 @@ extension Publisher {
     ///         .subscribe(on: backgroundQueue)
     ///         .receive(on: RunLoop.main)
     ///         .subscribe(labelUpdater)
-
+    
     
     // 倾向于使用调度器, 来进行后续链路的搭建. 因为 Operator 就是, 各个业务节点的分割, 然后组成一副复杂的业务逻辑流.
     // 将, 任务分割出去, 使得各个业务节点可以在简单的逻辑中, 完成自己的任务 .
@@ -59,17 +59,18 @@ extension Publisher {
      传入的 scheduler 参数, 会限制住真正使用的类型, 泛型方法一定要在真正使用的时候, 能够确定具体的类型, 才能够编译通过.
      scheduler 的确定, 就代表着 options 参数的确定. 如果传入的参数不匹配, 编译报错.
      */
+    // Scheduler 里面有着关联类型, 不能单独当做类型来使用.
+    // 使用 <Context: Scheduler> 这种方式, 就是代表着, 传入的参数的类型是确定了的.
     public func receive<Context: Scheduler>(
         on scheduler: Context,
         options: Context.SchedulerOptions? = nil
     ) -> Publishers.ReceiveOn<Self, Context> {
-        // 直接就是 .init 了, 不用将 Publishers.ReceiveOn 写出来了. 
+        // 直接就是 .init 了, 不用将 Publishers.ReceiveOn 写出来了.
         return .init(upstream: self, scheduler: scheduler, options: options)
     }
 }
 
 extension Publishers {
-
     /// A publisher that delivers elements to its downstream subscriber on a specific scheduler.
     public struct ReceiveOn<Upstream: Publisher, Context: Scheduler>: Publisher {
         
@@ -151,6 +152,7 @@ extension Publishers.ReceiveOn {
         // 对于上游节点的接收, 这里没有使用调度器.
         func receive(subscription: Subscription) {
             lock.lock()
+            // 一定要习惯, if case, guard case 这样的写法.
             guard case .awaitingSubscription = state else {
                 lock.unlock()
                 subscription.cancel()
@@ -183,7 +185,7 @@ extension Publishers.ReceiveOn {
             scheduler.schedule(options: options) {
                 self.scheduledReceive(input)
             }
-            // receive(_ input: Input) 里面, 返回 .None, 不会影响到上游节点的 Demand 管理.
+            // Scheduler 节点, 不会造成 demand 的管理.
             return .none
         }
         

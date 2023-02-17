@@ -181,6 +181,7 @@ extension Publishers.Breakpoint {
         typealias Failure = Upstream.Failure
         
         private let downstream: SubjectDownSubject
+        // 对于这种, 不会改变的工厂类, 存引用没有什么问题.
         private let breakpoint: Publishers.Breakpoint<Upstream>
         
         let combineIdentifier = CombineIdentifier()

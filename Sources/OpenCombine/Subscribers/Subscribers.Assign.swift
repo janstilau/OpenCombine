@@ -69,6 +69,7 @@ extension Subscribers {
                                             CustomPlaygroundDisplayConvertible
     {
         // 上层节点的 Error, 必须是 Never 类型的才可以.
+        // Assign 不是不会接收到结束事件, 而是不可以接收到代表着 Failure 的结束事件. 
         public typealias Failure = Never
         
         private let lock = UnfairLock.allocate()
