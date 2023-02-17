@@ -142,6 +142,8 @@ extension Publisher {
                 receive(subscriber: subscriber)
                 hook.didReceive(publisher: self, subscriber: anySubscriber)
             } else {
+                // 专门为了 Debug, 包装了一层. 在 SubscriberTap 里面, Subscription 也进行了包装.
+                // SubscriberTap 是 subscriber 的代理.
                 let tap = SubscriberTap(subscriber: subscriber)
                 hook.willReceive(publisher: self, subscriber: subscriber)
                 receive(subscriber: tap)

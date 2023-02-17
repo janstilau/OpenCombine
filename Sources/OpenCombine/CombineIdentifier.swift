@@ -34,6 +34,7 @@ public struct CombineIdentifier: Hashable, CustomStringConvertible {
     }
     
     /// Creates a Combine identifier, using the bit pattern of the provided object.
+    // 使用 引用对象初始化, 直接使用引用对象的地址进行 rawValue 的赋值. 
     public init(_ obj: AnyObject) {
         rawValue = UInt64(UInt(bitPattern: ObjectIdentifier(obj)))
     }

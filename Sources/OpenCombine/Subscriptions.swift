@@ -22,6 +22,8 @@ extension Subscriptions {
                                        CustomStringConvertible,
                                        CustomReflectable,
                                        CustomPlaygroundDisplayConvertible {
+        // 只能在 fileprivate 中可见, 使得唯一可以使用这个内部类型的方式就是 Subscriptions.empty
+        // 而 Subscriptions.empty 实际上, 只是一个接口对象. 
         fileprivate static let singleton = _EmptySubscription()
         
         let combineIdentifier = CombineIdentifier()
