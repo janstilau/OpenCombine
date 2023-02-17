@@ -466,8 +466,8 @@
 			isa = PBXGroup;
 			children = (
 				1C07B219CDB3BE4DE53082D38FA363DD /* Subject.swift */,
-				6B1408ACA34B6AE1B4348ACCF2EB0B17 /* CurrentValueSubject.swift */,
 				179D3731CC08E0D7F07C0FEC53B2A933 /* PassthroughSubject.swift */,
+				6B1408ACA34B6AE1B4348ACCF2EB0B17 /* CurrentValueSubject.swift */,
 				55FE584375A2692DCB12E12A3C1878D9 /* SubjectSubscriber.swift */,
 			);
 			path = Subject;

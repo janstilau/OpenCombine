@@ -9,6 +9,8 @@
 import COpenCombineHelpers
 #endif
 
+// 从这里看, deallocate 没有做任何的事情.
+// 猜测可能会使用 C 风格的 API, 那么最后其实需要使用 deallocate 去做资源的回收的. 
 #if WASI
 internal struct __UnfairLock { // swiftlint:disable:this type_name
     internal static func allocate() -> UnfairLock { return .init() }

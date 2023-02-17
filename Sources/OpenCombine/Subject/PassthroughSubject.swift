@@ -11,22 +11,22 @@
 
 /*
  Subject 的使用场景.
- 1. 多路分发.
+ 1. 多路分发. 各种 Share 的语义, 最终都是使用 Subject 实现的.
  2. 原有代码迁移到 Combine 中.
  */
 public final class PassthroughSubject<Output, Failure: Error>: Subject {
     private let internalLock = UnfairLock.allocate()
     
+    // 这个 active 其实和 completionEvent 重叠了, 目前来说, completionEvent 有值的时候, active 一定改为 false.
     private var active = true
     
     // 数据值, 结束事件.
-    // 当上游
     private var completionEvent: Subscribers.Completion<Failure>?
     
     // 存储, 所有的下游节点. 这是 Subject 可以作为分发器的原因.
     private var downstreams = ConduitList<Output, Failure>.empty
     // 存储, 所有的上游节点, 这是 Subject 可以作为多次作为 Subscriber 的原因.
-    // Subscription 是一个接口对象. 
+    // Subscription 是一个接口对象.
     internal var upstreamSubscriptions: [Subscription] = []
     
     internal var hasAnyDownstreamDemand = false
@@ -45,14 +45,21 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
         internalLock.deallocate()
     }
     
+    /*
+     Subject 这里的 Demand 管理出现了一个问题.
+     一般来说, 我们使用 Subject 是将它用作 Origin Publisher 来使用, 但是它确实可以包装成为 SubjectSubscriber, 成为下游节点.
+     Subject 作为一个 Funnel, 承担了所有的上游的数据, 然后将所有数据发送给所有的下游.
+     当它作为 Funnel 的时候, 是在自己内部管理了下游节点的 Demand, 自己还是当做这些下游节点的 Origin 来使用, 但是对于上游来说, 则是 Unlimit 的索取.
+     */
+    
     // 当 Subject 作为一个新的通路终点的时候, 会触发到这里.
-    // 将上游节点进行存储.
     public func send(subscription: Subscription) {
         internalLock.lock()
         // 循环引用
         upstreamSubscriptions.append(subscription)
         let hasAnyDownstreamDemand = self.hasAnyDownstreamDemand
         internalLock.unlock()
+        // 代表着下游已经要数据了, 新进来的上游被无限进行索取.
         if hasAnyDownstreamDemand {
             subscription.request(.unlimited)
         }
@@ -123,9 +130,9 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
         }
     }
     
-    // 还是尊重了, Combine 的 Pull 原因.
-    // Subject 只有接受到后方的要求之后, 才会向前进行申请.
-    // 是所有的上方节点, 无限申请.
+    /*
+     Subject 作为一个
+     */
     private func acknowledgeDownstreamDemand() {
         internalLock.lock()
         if hasAnyDownstreamDemand {
