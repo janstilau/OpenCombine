@@ -1,10 +1,9 @@
 /*
  A subject that wraps a single value and publishes a new element whenever the value changes.
- Declaration
- final class CurrentValueSubject<Output, Failure> where Failure : Error
  
  Overview
- Unlike PassthroughSubject, CurrentValueSubject maintains a buffer of the most recently published element.
+ Unlike PassthroughSubject
+ CurrentValueSubject maintains a buffer of the most recently published element.
  Calling send(_:) on a CurrentValueSubject also updates the current value, making it equivalent to updating the value directly.
  */
 
@@ -19,18 +18,10 @@
 /// it equivalent to updating the `value` directly.
 
 public final class CurrentValueSubject<Output, Failure: Error>: Subject {
-    
-    /*
-     Combine 就是为了在多线程环境下进行的, 所以, 一定会有锁的存在.
-     */
     private let subjectInnerLock = UnfairLock.allocate()
     
     private var isActive = true
     
-    // 存储一下结束事件.
-    // 在 Subject 接收到上游的结束事件的时候, 会将这个值进行存储.
-    // 后续新的 Subscriber 来临的时候, 可以直接收到这个存储的事件.
-    // 这个概念, 和 Promise 是一致的. 不过, Completion 的时候, 是不会存储 Result 的值的, 只是存储了 Complete 的状态.
     private var completion: Subscribers.Completion<Failure>?
     
     // 存储一下, 上游节点. 上游节点, 只会在 Deinit 的时候, 对于所有的上游节点进行 cancel.
@@ -38,9 +29,6 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
      1. 如果, 这个 Subject 是一个单独没有共享的响应链路, 那么取消上游, 是整个响应链路取消. 没有问题, 因为下游节点已经取消了.
      2. 如果, 这个 Subject 所在链路在一个 Share 的 Dispatch 中, 那么取消仅仅是让自己所在的链路消失, Share 的整个 DisPatch 不受影响.
      */
-    
-    // 一个 Subject 对象, 可能会有很多的上游节点. 因为, 可能会有很多的信号, 触发 Object 的修改.
-    // 一个 Subject 对象, 可能会有很多的下游节点. 每次自己修改之后, 都会把修改信号, 发送给所有的下游节点.
     private var upstreamSubscriptions: [Subscription] = []
     
     // 所以, 实际上, Subject 是天然的分发器.
@@ -117,18 +105,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         upstreamSubscriptions.append(subscription)
         subjectInnerLock.unlock()
         
-        /*
-         Subject, 是一个 Pivot
-         作为尾结点, 收集上游节点的各种数据.
-         作为头节点, 当自身的 Value 发生变化后, 给所有自己记录的 Subscriber 发送新的信号.
-         
-         它所管理的几条后续链条, 它所管理的 ConduiteList 是各个链条的起始节点
-         这些各自独立的链条的 Demand, 是在 Subject 中独立进行的管理.
-         作为上一段链条的终点, 它不做 Demand 管理, 上游 Publisher 的 Next 事件全部接受.
-         但是转发个给下游节点的时候, 如果这个链路上的 Demand 不足, 那么这个链路, 就失去了 Current Value 的值.
-         
-         从这个意义上来说, Subject 是作为尾节点存在的, 就和 Sink 一样.
-         */
+        // 这里没有和 Pass Subject 一样, 直接
         subscription.request(.unlimited)
     }
     
@@ -319,6 +296,14 @@ extension CurrentValueSubject {
             lock.unlock()
             parent?.disassociate(self)
         }
+        
+        
+        
+        
+        
+        
+        
+        
         
         var description: String { return "CurrentValueSubject" }
         

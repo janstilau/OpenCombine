@@ -14,6 +14,7 @@
 		06FAF81F2816920B00D4D26F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 06FAF81E2816920B00D4D26F /* Assets.xcassets */; };
 		06FAF8222816920B00D4D26F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 06FAF8202816920B00D4D26F /* LaunchScreen.storyboard */; };
 		4558B8DBBF51F2A11BC4D4E6 /* Pods_AnalysisCombine.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D45BA5CC7AE7CB3D1985EE95 /* Pods_AnalysisCombine.framework */; };
+		AA33DC29299F888D0087A5D8 /* Person.m in Sources */ = {isa = PBXBuildFile; fileRef = AA33DC28299F888D0087A5D8 /* Person.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +28,9 @@
 		06FAF8232816920B00D4D26F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		4505690765A797C7CAECE5E2 /* Pods-AnalysisCombine.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AnalysisCombine.release.xcconfig"; path = "Target Support Files/Pods-AnalysisCombine/Pods-AnalysisCombine.release.xcconfig"; sourceTree = "<group>"; };
 		6A187E3327CCF7D6F2AED283 /* Pods-AnalysisCombine.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AnalysisCombine.debug.xcconfig"; path = "Target Support Files/Pods-AnalysisCombine/Pods-AnalysisCombine.debug.xcconfig"; sourceTree = "<group>"; };
+		AA33DC26299F888C0087A5D8 /* AnalysisCombine-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AnalysisCombine-Bridging-Header.h"; sourceTree = "<group>"; };
+		AA33DC27299F888D0087A5D8 /* Person.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Person.h; sourceTree = "<group>"; };
+		AA33DC28299F888D0087A5D8 /* Person.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Person.m; sourceTree = "<group>"; };
 		D45BA5CC7AE7CB3D1985EE95 /* Pods_AnalysisCombine.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AnalysisCombine.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -66,10 +70,13 @@
 				06FAF8152816920A00D4D26F /* AppDelegate.swift */,
 				06FAF8172816920A00D4D26F /* SceneDelegate.swift */,
 				06FAF8192816920A00D4D26F /* ViewController.swift */,
+				AA33DC27299F888D0087A5D8 /* Person.h */,
+				AA33DC28299F888D0087A5D8 /* Person.m */,
 				06FAF81B2816920A00D4D26F /* Main.storyboard */,
 				06FAF81E2816920B00D4D26F /* Assets.xcassets */,
 				06FAF8202816920B00D4D26F /* LaunchScreen.storyboard */,
 				06FAF8232816920B00D4D26F /* Info.plist */,
+				AA33DC26299F888C0087A5D8 /* AnalysisCombine-Bridging-Header.h */,
 			);
 			path = AnalysisCombine;
 			sourceTree = "<group>";
@@ -88,7 +95,6 @@
 				6A187E3327CCF7D6F2AED283 /* Pods-AnalysisCombine.debug.xcconfig */,
 				4505690765A797C7CAECE5E2 /* Pods-AnalysisCombine.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -126,6 +132,7 @@
 				TargetAttributes = {
 					06FAF8112816920A00D4D26F = {
 						CreatedOnToolsVersion = 13.2.1;
+						LastSwiftMigration = 1420;
 					};
 				};
 			};
@@ -209,6 +216,7 @@
 			files = (
 				06FAF81A2816920A00D4D26F /* ViewController.swift in Sources */,
 				06FAF8162816920A00D4D26F /* AppDelegate.swift in Sources */,
+				AA33DC29299F888D0087A5D8 /* Person.m in Sources */,
 				06FAF8182816920A00D4D26F /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -357,6 +365,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = GAJJ4F72ZK;
@@ -376,6 +385,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yami.AnalysisCombine;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "AnalysisCombine/AnalysisCombine-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -387,6 +398,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = GAJJ4F72ZK;
@@ -406,6 +418,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yami.AnalysisCombine;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "AnalysisCombine/AnalysisCombine-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

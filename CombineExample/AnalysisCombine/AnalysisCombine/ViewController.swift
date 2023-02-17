@@ -15,6 +15,11 @@ class Weather {
     init(temperature: Double) {
         self.temperature = temperature
     }
+    
+    func change() {
+        // self 是 imutable 的.
+        // self = Weather()
+    }
 }
 
 

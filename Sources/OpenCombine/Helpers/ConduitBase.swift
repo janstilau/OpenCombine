@@ -1,4 +1,5 @@
 
+// 这是一个抽象类, 主要是进行 API 的设计. 
 internal class ConduitBase<Output, Failure: Error>: Subscription {
     
     internal init() {}

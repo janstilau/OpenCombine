@@ -246,8 +246,6 @@ extension Future {
         }
         
         
-        
-        
         var description: String { return "Future" }
         
         var customMirror: Mirror {
