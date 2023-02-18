@@ -1,6 +1,8 @@
 extension ConnectablePublisher {
     /// Automates the process of connecting or disconnecting from this connectable
     /// publisher.
+    // 这里还有 disconnecting 的语义. 所以实际上, 当没有 subscriber 的时候, 会有 disconnect 的操作.
+    
     /// Use `autoconnect()` to simplify working with `ConnectablePublisher` instances,
     /// such as `TimerPublisher` in `OpenCombineFoundation`.
     
@@ -43,7 +45,7 @@ extension Publishers {
             case connected(refcount: Int, connection: Cancellable)
         }
         
-        public final let upstream: Upstream
+        public final let upstream: Upstream // ConnectablePublisher
         
         private let lock = UnfairLock.allocate()
         
@@ -133,6 +135,7 @@ extension Publishers.Autoconnect {
         }
         
         fileprivate func receive(subscription: Subscription) {
+            // 差异点在这里.
             let sideEffectSubscription = SideEffectSubscription(subscription,
                                                                 parent: parent)
             downstream.receive(subscription: sideEffectSubscription)
@@ -145,6 +148,9 @@ extension Publishers.Autoconnect {
         fileprivate func receive(completion: Subscribers.Completion<Failure>) {
             downstream.receive(completion: completion)
         }
+        
+        
+        
         
         fileprivate var description: String { return "Autoconnect" }
         
@@ -178,12 +184,16 @@ extension Publishers.Autoconnect {
             upstreamSubscription.request(demand)
         }
         
+        // 这个类的最大的作用在这里, cancel 的时候, 会触发 parent 的自动 disconnect 的操作.
         fileprivate func cancel() {
             // parent.willCancel 是为了通知, 是否应该触发整个链路的 cancel 了
             parent.willCancel()
             // upstreamSubscription.cancel 通知上游通路, 进行 cancel
             upstreamSubscription.cancel()
         }
+        
+        
+        
         
         fileprivate var combineIdentifier: CombineIdentifier {
             return upstreamSubscription.combineIdentifier

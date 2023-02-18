@@ -79,16 +79,16 @@ extension Publishers {
         
         private let inner: Autoconnect<Multicast<Upstream, MulticastSubject>>
         
-        public let upstream: Upstream
         
         // Share 就是一个 自动连接的, Multicast.
         // Multicast 是 Share 最主要的需求, 就是共享前面链路的数据.
         // AutoConnect 是为了不改变之前 Publisher 的行为, 不应该强制进行 connect 的调用.
         public init(upstream: Upstream) {
-            // 和惯例的不通过. 这个 Inner 是提前生成的. 这个 Inner 就是一个分发器.
-            // 上有节点, 连接到这个 Inner, Inner 连接到后续节点. 
+            /*
+             通过 multicast 实现了多路复用
+             通过 autoconnect 实现了有一个 subscriber 就进行上游的信号产生逻辑触发.
+             */
             self.inner = upstream.multicast(subject: .init()).autoconnect()
-            self.upstream = upstream
         }
         
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
