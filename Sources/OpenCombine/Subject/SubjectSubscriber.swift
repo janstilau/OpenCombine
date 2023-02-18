@@ -99,6 +99,7 @@ internal final class SubjectSubscriber<SubjectDownSubject: Subject>
         
         // 上游资源的释放, 是打破和上游资源一起构成的循环引用
         upstreamSubscription = nil
+        // 这里的释放, 会导致 Subject 的释放
         downstreamSubject = nil
         lock.unlock()
         // 然后触发上游资源的 cancel.

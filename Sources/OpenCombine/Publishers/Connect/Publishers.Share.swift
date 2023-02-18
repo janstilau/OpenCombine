@@ -1,16 +1,3 @@
-/*
- 定义一个新的 Operator, 定义对应的Publisher
- 
- Publisher 用来做信息收集的, 收集业务所需要的参数, 收集 Upstream Publisher
- 
- 定义对应的 Subscription
- 
- Subscription 是真正的响应链条中的节点. 他要是 Subscriber, 用来处理上游的信息.
- 他要是一个 Subscription, 用来处理下游的 Demand 管理, 以及下游的 Cancel 请求.
- 
- 要定义一个 Publsiher 的方法, 在该方法的内部, 进行 Publisher 初始化, 完成收集信息的工作.
- 要实现 Publsiher 的 Receive 方法, 完成 Subscription 的生成, 触发整个响应链路的搭建.
- */
 extension Publisher {
     /// Shares the output of an upstream publisher with multiple subscribers.
     // 实现的方式是, 将一个 Subject 作为 Upstream 的终点.

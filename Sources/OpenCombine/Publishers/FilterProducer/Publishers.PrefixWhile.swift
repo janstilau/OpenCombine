@@ -146,6 +146,7 @@ extension Publishers.PrefixWhile {
         override func receive(
             newValue: Input
         ) -> PartialCompletion<Upstream.Output?, Downstream.Failure> {
+            // 如果返回值为 false, 就代表着这个响应链路结束了. 
             return filter(newValue) ? .continue(newValue) : .finished
         }
         

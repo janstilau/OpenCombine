@@ -1,11 +1,4 @@
-/*
- 添加一个 Operator 有着非常固定的流程.
- 1. Protocol 增加定义方法.
- 2. 增加一个特殊的对象, 在上述的方法里面, 生成这个特殊的对象.
- 3. 确保, 这个特殊的对象, 也符合 Publisher. 这样返回的数据, 可以继续进行 Publisher 对应方法的串联.
- */
 extension Publisher {
-    
     /// Republishes all elements that match a provided closure.
     
     /// OpenCombine’s `filter(_:)` operator performs an operation similar to that of
@@ -74,6 +67,7 @@ extension Publisher {
 
 extension Publishers.Filter {
     
+    // 融合.
     public func filter(
         _ isIncluded: @escaping (Output) -> Bool
     ) -> Publishers.Filter<Upstream> {
@@ -154,6 +148,7 @@ extension Publishers {
         /// The kind of errors this publisher might publish.
         ///
         /// Use `Never` if this `Publisher` does not publish errors.
+        // 所有的 try 相关的, 最终的 Error 都会变为最上层的 Error 协议.
         public typealias Failure = Error
         
         /// The publisher from which this publisher receives elements.
@@ -185,9 +180,7 @@ extension Publishers {
 }
 
 extension Publishers.Filter {
-    
     // Filter 真正的在响应链中的节点.
-    // 不需要作为 Subscription, 因为, 直接把 Subscription 交给了下游, 所以下游节点可以直接和上游节点交互.
     private struct Inner<Downstream: Subscriber>
     : Subscriber,
       CustomStringConvertible,
@@ -229,6 +222,8 @@ extension Publishers.Filter {
             downstream.receive(completion: completion)
         }
         
+        
+        
         var description: String { return "Filter" }
         
         var customMirror: Mirror {
@@ -249,6 +244,7 @@ extension Publishers.TryFilter {
       (Upstream.Output) throws -> Bool>
     where Downstream.Input == Upstream.Output, Downstream.Failure == Error
     {
+        
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Upstream.Output?, Error> {

@@ -49,22 +49,20 @@ extension Publishers {
     /// Use the `makeConnectable()` operator to wrap an upstream publisher with
     /// an instance of this publisher.
     
-    // 将一个 Publisher, 变为 ConnectablePublisher, 一定是要由复用的问题.
-    // 不然, 在 connect 之前调用的那些 subscribe downstream 的数据, 要存到哪里.
-    // 这里是利用了 multicast 技术. 将所有的配置, 都在 PassthroughSubject 对象那进行了拦截.
-    // 然后 connect 的时候, 将 PassthroughSubject 在前半程的链路进行注册.
     public struct MakeConnectable<Upstream: Publisher>: ConnectablePublisher {
         
         public typealias Output = Upstream.Output
         
         public typealias Failure = Upstream.Failure
         
+        // 直接使用 PassthroughSubject 了 .
         private let inner: Multicast<Upstream, PassthroughSubject<Output, Failure>>
         
         /// Creates a connectable publisher, attached to the provide upstream publisher.
         ///
         /// - Parameter upstream: The publisher from which to receive elements.
         public init(upstream: Upstream) {
+            // 这里 .init(), 是 PassthroughSubject 的构造函数创建. 让人难以理解.
             inner = upstream.multicast(subject: .init())
         }
         

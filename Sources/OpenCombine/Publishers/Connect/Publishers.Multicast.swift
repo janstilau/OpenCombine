@@ -118,7 +118,8 @@ extension Publisher {
 }
 
 extension Publishers {
-    
+        
+    // Subject, 天然就是一个多路分发器, 所以在实现 Multicast 语义的 Publisher 的时候, 就是使用了 Subject
     /// A publisher that uses a subject to deliver elements to multiple subscribers.
     
     /// Use a multicast publisher when you have multiple downstream subscribers, but you
@@ -145,6 +146,8 @@ extension Publishers {
         
         private var generatedSubject: SubjectType?
         
+        // 这里直接使用 lazy 什么问题吗
+        // 不过, 这里倒是展示了 lazy 的实现方式.
         private var lazySubject: SubjectType {
             lock.lock()
             if let subject = generatedSubject {
@@ -190,7 +193,7 @@ extension Publishers {
 }
 
 extension Publishers.Multicast {
-     
+    // 直接将 subscriber 放到 Subject 上有什么问题.
     private final class Inner<Downstream: Subscriber>
     : Subscriber,
       Subscription,
@@ -288,6 +291,8 @@ extension Publishers.Multicast {
             // 将自己, 从 Subject 中进行删除.
             subjectSubscription.cancel()
         }
+        
+        
         
         fileprivate var description: String { return "Multicast" }
         

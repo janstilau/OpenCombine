@@ -1,5 +1,4 @@
 extension ConnectablePublisher {
-    // autoconnect 其实还是会 auto disconnect 的.
     /// Automates the process of connecting or disconnecting from this connectable
     /// publisher.
     /// Use `autoconnect()` to simplify working with `ConnectablePublisher` instances,
@@ -18,6 +17,7 @@ extension ConnectablePublisher {
     ///         }
     /// - Returns: A publisher which automatically connects to its upstream connectable
     ///   publisher.
+    // 只有 ConnectablePublisher 才可以调用 autoconnect
     public func autoconnect() -> Publishers.Autoconnect<Self> {
         return .init(upstream: self)
     }
@@ -43,7 +43,6 @@ extension Publishers {
             case connected(refcount: Int, connection: Cancellable)
         }
         
-        // 存储的上层节点. Publisher 就是一个收集器.
         public final let upstream: Upstream
         
         private let lock = UnfairLock.allocate()
@@ -74,10 +73,7 @@ extension Publishers {
                 // 将次数和 cancel 存储到这个状态里面.
                 lock.unlock()
                 upstream.subscribe(inner)
-                // upstream.connect, 就是上游链路注册 Subject 返回的对象
-                // 如果下游已经没有了链路, 那么上游的链路也可以取消.
-                // 所以, 关键点就是, 响应链路的两段式管理.
-                // 一切从两段式进行思考, 逻辑就清晰了. 
+                // connection 调用 cancel, 完成的是 上游到 subject 之间的连接的切断.
                 let connection = upstream.connect()
                 lock.lock()
                 state = .connected(refcount: 1, connection: connection)
@@ -91,6 +87,9 @@ extension Publishers {
             lock.lock()
             switch state {
             case let .connected(refcount, connection):
+                // 使用 enum, 进行了状态的管理.
+                // 每次 enum 的状态改变的时候, 都是整个 enum 值的替换. \
+                // 其实是有点繁琐的.
                 if refcount <= 1 {
                     self.state = .disconnected
                     lock.unlock()

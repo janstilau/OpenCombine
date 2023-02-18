@@ -1,4 +1,3 @@
-
 /// A helper class that acts like both subscriber and subscription.
 /// Filter-like operators send an instance of their `Inner` class that is subclass
 /// of this class to the upstream publisher (as subscriber) and
@@ -14,12 +13,12 @@
 // 将, Filter 相关的逻辑, 全部积累到了这里.
 // 子类的差异, 仅仅在 func receive(newValue: Input) 的时候进行变化, 其他的时候, 其他时候的逻辑, 都可以公用
 // 这是一个节点对象, 不是一个 Publisher 对象
+
 internal class FilterProducer<Downstream: Subscriber,
                               Input,
                               Output,
                               UpstreamFailure: Error,
                               Filter>
-// Filter 不能简单的认为是 (Output) -> Bool
 : CustomStringConvertible,
   CustomReflectable
 where Downstream.Input == Output {
@@ -86,7 +85,6 @@ extension FilterProducer: Subscriber {
     internal func receive(subscription: Subscription) {
         lock.lock()
         
-        // 防卫式处理.
         guard case .awaitingSubscription = state else {
             lock.unlock()
             subscription.cancel()
@@ -128,17 +126,17 @@ extension FilterProducer: Subscriber {
                 // 无值, 代表着这个值被过滤掉了, 向上游节点继续要一个数据.
                 return .max(1)
                 
-            case .finished:
+            case .finished: // 在 PrefixWhile 的时候, 会出现这种情况. 
                 lock.lock()
                 // 状态管理
                 state = .completed
                 lock.unlock()
                 // 上游 cancel
                 subscription.cancel()
-                // 下游 cancel
+                // 下游 Completion
                 downstream.receive(completion: .finished)
                 
-            case let .failure(error):
+            case let .failure(error):  // 出现了错误.
                 lock.lock()
                 state = .completed
                 lock.unlock()
