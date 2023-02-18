@@ -4,6 +4,8 @@ extension Publisher {
     /// Measures and emits the time interval between events received from an upstream
     /// publisher.
     
+    // 使用这个可以完成信号之间时间的判断.
+    // 第一时间, 没有想到太多这样的需求, 感觉要使用这个, 最好还是上游是 share 才有意义. 真正的业务信号照常发送, 这个只是做 debug 使用.
     /// Use `measureInterval(using:options:)` to measure the time between events delivered
     /// from an upstream publisher.
     
@@ -98,6 +100,7 @@ extension Publishers.MeasureInterval {
         
         private var state = SubscriptionStatus.awaitingSubscription
         
+        // 记录上一次.
         private var last: Context.SchedulerTimeType?
         
         init(scheduler: Context, downstream: Downstream) {
@@ -109,7 +112,7 @@ extension Publishers.MeasureInterval {
             lock.deallocate()
         }
         
-        // 惯例试下.
+        // 惯例的 Operator Subscription 的实现.
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = state else {
@@ -118,6 +121,7 @@ extension Publishers.MeasureInterval {
                 return
             }
             state = .subscribed(subscription)
+            // 在构建响应链路的时候, last 就进行了记录.
             last = scheduler.now
             lock.unlock()
             downstream.receive(subscription: self)
@@ -127,16 +131,16 @@ extension Publishers.MeasureInterval {
             lock.lock()
             guard case let .subscribed(subscription) = state,
                   let previousTime = last else {
-                      // 第一次从上游节点, 接收到数据, 不会触发. 因为后续节点想要得到的, 是两次事件的差值.
-                      lock.unlock()
-                      return .none
-                  }
+                // 第一次从上游节点, 接收到数据, 不会触发. 因为后续节点想要得到的, 是两次事件的差值.
+                lock.unlock()
+                return .none
+            }
             
             // 使用 now 直接获取当前时间.
             let now = scheduler.now
             last = now
             lock.unlock()
-            // 后续节点, 接收到的是, 两个 next 事件的时间差.
+            // 这里是将两次信号之间的时间差计算出来之后, 才向下游进行的投递.
             let newDemand = downstream.receive(previousTime.distance(to: now))
             if newDemand > 0 {
                 subscription.request(newDemand)
@@ -157,7 +161,7 @@ extension Publishers.MeasureInterval {
             downstream.receive(completion: completion)
         }
         
-        // 惯例实现.
+        // 透传到上游.
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = state else {

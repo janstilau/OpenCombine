@@ -159,7 +159,8 @@ extension Publishers.SubscribeOn {
             downstream.receive(completion: completion)
         }
         
-        // 在 SubscribeOn 里面, 是所有对于上游行为的影响, 才使用到了调度器. 
+        
+        // 在 SubscribeOn 里面, 是所有对于上游行为的影响, 才使用到了调度器.
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = state else {
@@ -181,6 +182,7 @@ extension Publishers.SubscribeOn {
         }
         
         // Cancel 事件, 进行调度.
+        // 因为 Cancel 这件事, 是从下往上传递的
         func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = state else {
@@ -189,18 +191,21 @@ extension Publishers.SubscribeOn {
             }
             state = .terminal
             lock.unlock()
-            // 没太明白, 为什么这个需要调度.
-            // 不过, 就和 request(_ demand 一样, 上游节点接收数据, 统一需要调度. 
+            
             scheduler.schedule(options: options) {
                 self.scheduledCancel(subscription)
             }
         }
         
+        // 用特殊的名字, + 功能名. 这是一个好的编码的方式 .
         private func scheduledCancel(_ subscription: Subscription) {
             upstreamLock.lock()
             subscription.cancel()
             upstreamLock.unlock()
         }
+        
+        
+        
         
         var description: String { return "SubscribeOn" }
         

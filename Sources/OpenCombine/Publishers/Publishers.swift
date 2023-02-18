@@ -4,5 +4,4 @@
 /// functionality as classes or structures that extend this enumeration.
 /// For example, the `contains(_:)` operator returns a `Publishers.Contains` instance.
 
-//
 public enum Publishers {}

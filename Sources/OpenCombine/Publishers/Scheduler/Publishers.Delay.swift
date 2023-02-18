@@ -142,7 +142,7 @@ extension Publishers.Delay {
         
         // 所有的数据, 都是在 Init 中传递过来的.
         // 这充分表现了, Operator 的实现, 是隐藏起来的.
-        private let lock = UnfairLock.allocate()
+        private let internalLock = UnfairLock.allocate()
         private let downstream: Downstream
         private let interval: Context.SchedulerTimeType.Stride
         private let tolerance: Context.SchedulerTimeType.Stride
@@ -164,7 +164,7 @@ extension Publishers.Delay {
         }
         
         deinit {
-            lock.deallocate()
+            internalLock.deallocate()
             downstreamLock.deallocate()
         }
         
@@ -182,26 +182,26 @@ extension Publishers.Delay {
         }
         
         func receive(subscription: Subscription) {
-            lock.lock()
+            internalLock.lock()
             guard case .awaitingSubscription = state else {
-                lock.unlock()
+                internalLock.unlock()
                 subscription.cancel()
                 return
             }
             state = .subscribed(subscription)
-            lock.unlock()
+            internalLock.unlock()
             downstreamLock.lock()
             downstream.receive(subscription: self)
             downstreamLock.unlock()
         }
         
         func receive(_ input: Input) -> Subscribers.Demand {
-            lock.lock()
+            internalLock.lock()
             guard case .subscribed = state else {
-                lock.unlock()
+                internalLock.unlock()
                 return .none
             }
-            lock.unlock()
+            internalLock.unlock()
             //
             schedule {
                 self.scheduledReceive(input)
@@ -213,73 +213,73 @@ extension Publishers.Delay {
         // 1. 可以提前退出, 所以需要在 Receive Input 的时候, 在适当的时机 调用 保存的 Subscription 的 cancel 方法
         // 2. 当下游节点调用 request demand 的方法的时候, 需要进行控制.
         private func scheduledReceive(_ input: Input) {
-            lock.lock()
+            internalLock.lock()
             guard state.subscription != nil else {
-                lock.unlock()
+                internalLock.unlock()
                 return
             }
-            lock.unlock()
+            internalLock.unlock()
             downstreamLock.lock()
             let newDemand = downstream.receive(input)
             downstreamLock.unlock()
             if newDemand == .none { return }
             
-            lock.lock()
+            internalLock.lock()
             let subscription = state.subscription
-            lock.unlock()
+            internalLock.unlock()
             // 在讲数据发送给后面之后, 要使用返回值向前面要钱.
             subscription?.request(newDemand)
         }
         
         func receive(completion: Subscribers.Completion<Failure>) {
-            lock.lock()
+            internalLock.lock()
             guard case let .subscribed(subscription) = state else {
-                lock.unlock()
+                internalLock.unlock()
                 return
             }
             // pendingTerminal 的意义就在于, 上游的完结事件, 也是 delay 才发送给下游的. 
             state = .pendingTerminal(subscription)
-            lock.unlock()
+            internalLock.unlock()
             schedule {
                 self.scheduledReceive(completion: completion)
             }
         }
         
         private func scheduledReceive(completion: Subscribers.Completion<Failure>) {
-            lock.lock()
+            internalLock.lock()
             guard case .pendingTerminal = state else {
                 assertionFailure(
                     "This branch should not be reachable! Please report a bug."
                 )
-                lock.unlock()
+                internalLock.unlock()
                 return
             }
             state = .terminal
-            lock.unlock()
+            internalLock.unlock()
             downstreamLock.lock()
             downstream.receive(completion: completion)
             downstreamLock.unlock()
         }
         
         func request(_ demand: Subscribers.Demand) {
-            lock.lock()
+            internalLock.lock()
             guard case let .subscribed(subscription) = state else {
-                lock.unlock()
+                internalLock.unlock()
                 return
             }
-            lock.unlock()
+            internalLock.unlock()
             // 可以看到, Schedule 相关的 Operator, 也是没有管理 Demand 的能力. 仅仅是传递给上级节点.
             subscription.request(demand)
         }
         
         func cancel() {
-            lock.lock()
+            internalLock.lock()
             guard case let .subscribed(subscription) = state else {
-                lock.unlock()
+                internalLock.unlock()
                 return
             }
             state = .terminal
-            lock.unlock()
+            internalLock.unlock()
             subscription.cancel()
         }
     }

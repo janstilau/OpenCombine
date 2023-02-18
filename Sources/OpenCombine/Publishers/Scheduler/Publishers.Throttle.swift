@@ -2,7 +2,7 @@
 extension Publisher {
     /// Publishes either the most-recent or first element published by the upstream
     /// publisher in the specified time interval.
-    ///
+    
     /// Use `throttle(for:scheduler:latest:`` to selectively republish elements from
     /// an upstream publisher during an interval you specify. Other elements received from
     /// the upstream in the throttling interval aren’t republished.
@@ -142,7 +142,7 @@ extension Publishers.Throttle {
         private let lock = UnfairLock.allocate()
         private let interval: Context.SchedulerTimeType.Stride
         private let scheduler: Context
-        private let latest: Bool
+        private let usLastValue: Bool
         private var state: State
         private let downstreamLock = UnfairRecursiveLock.allocate()
         
@@ -151,7 +151,7 @@ extension Publishers.Throttle {
         private var pendingInput: Input?
         private var pendingCompletion: Subscribers.Completion<Failure>?
         
-        private var demand: Subscribers.Demand = .none
+        private var internalDemand: Subscribers.Demand = .none
         
         private var lastTime: Context.SchedulerTimeType
         
@@ -162,8 +162,7 @@ extension Publishers.Throttle {
             self.state = .awaitingSubscription(downstream)
             self.interval = interval
             self.scheduler = scheduler
-            self.latest = latest
-            
+            self.usLastValue = latest
             self.lastTime = scheduler.now
         }
         
@@ -198,28 +197,31 @@ extension Publishers.Throttle {
                 return .none
             }
             
-            let lastTime = scheduler.now
-            self.lastTime = lastTime
+            let nowTime = scheduler.now
+            self.lastTime = nowTime
             
-            guard demand > .none else {
+            guard internalDemand > .none else {
                 lock.unlock()
                 return .none
             }
             
             let hasScheduledOutput = (pendingInput != nil || pendingCompletion != nil)
             
-            if hasScheduledOutput && latest {
+            if hasScheduledOutput && usLastValue {
+                // usLastValue 就是不断地切换最后一个值到 pendingInput 就好了.
                 pendingInput = input
                 lock.unlock()
             } else if !hasScheduledOutput {
                 let minimumEmissionTime =
+                // 这里的 map 是 optional 的 map.
                 lastEmissionTime.map { $0.advanced(by: interval) }
                 
                 let emissionTime =
-                minimumEmissionTime.map { Swift.max(lastTime, $0) } ?? lastTime
+                minimumEmissionTime.map { Swift.max(nowTime, $0) } ?? nowTime
                 
-                demand -= 1
+                internalDemand -= 1
                 
+                // 如果还没有 pendingInput, 新来的就是 pendingInput
                 pendingInput = input
                 lock.unlock()
                 
@@ -227,9 +229,10 @@ extension Publishers.Throttle {
                     self?.scheduledEmission()
                 }
                 
-                if emissionTime == lastTime {
+                if emissionTime == nowTime {
                     scheduler.schedule(action)
                 } else {
+                    // 只会在 !hasScheduledOutput 的时候才会注册一次 after 的行为.
                     scheduler.schedule(after: emissionTime, action)
                 }
             } else {
@@ -245,6 +248,7 @@ extension Publishers.Throttle {
                 lock.unlock()
                 return
             }
+            
             let lastTime = scheduler.now
             self.lastTime = lastTime
             state = .pendingTerminal(subscription, downstream)
@@ -309,9 +313,11 @@ extension Publishers.Throttle {
             
             guard newDemand > 0 else { return }
             self.lock.lock()
-            demand += newDemand
+            internalDemand += newDemand
             self.lock.unlock()
         }
+        
+        
         
         func request(_ demand: Subscribers.Demand) {
             guard demand > 0 else { return }
@@ -320,7 +326,7 @@ extension Publishers.Throttle {
                 lock.unlock()
                 return
             }
-            self.demand += demand
+            self.internalDemand += demand
             lock.unlock()
         }
         
@@ -341,6 +347,12 @@ extension Publishers.Throttle {
             
             subscription?.cancel()
         }
+        
+        
+        
+        
+        
+        
         
         var description: String { return "Throttle" }
         

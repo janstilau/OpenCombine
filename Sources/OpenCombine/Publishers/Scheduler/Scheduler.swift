@@ -94,6 +94,8 @@ public protocol Scheduler {
     
     /// Performs the action at some time after the specified date, at the specified
     /// frequency, optionally taking into account tolerance if possible.
+    // 对于 Scheduler 来说, 它的返回值为 Cancellable.
+    // 这个 cancel 不是做响应链条的销毁, 而是对于 schedule 这个行为的取消. 例如, 定时器的取消, 或者线程调度行为的取消. 
     func schedule(after date: SchedulerTimeType,
                   interval: SchedulerTimeType.Stride,
                   tolerance: SchedulerTimeType.Stride,

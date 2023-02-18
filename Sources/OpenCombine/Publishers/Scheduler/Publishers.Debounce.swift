@@ -1,6 +1,4 @@
-
 extension Publisher {
-    
     /// Publishes elements only after a specified time interval elapses between events.
     // 只有, 当上游节点一段时间不发送新的信号了, 才将上游节点的最后一个数据, 发送给下游节点.
     
@@ -8,6 +6,7 @@ extension Publisher {
     /// values and time between delivery of values from the upstream publisher. This
     /// operator is useful to process bursty or high-volume event streams where you need
     /// to reduce the number of values delivered to the downstream to a rate you specify.
+    // 之前的频率管理, 都是自己写的业务代码, 使用该 opertor, 可以复用已经写好的逻辑.
     
     /// In this example, a `PassthroughSubject` publishes elements on a schedule defined
     /// by the `bounces` array. The array is composed of tuples representing a value sent
@@ -161,12 +160,11 @@ extension Publishers.Debounce {
         
         private var state = SubscriptionStatus.awaitingSubscription
         
-        // 不是很明白, 为什么要多存. 每次来了新数据, 把原来的清了不得了. 怎么会出现, 多次需要 cancel 的情形. 
         private var currentCancellers = [Generation : CancellerState]()
         
         private var currentValue: Output?
         
-        private var currentGeneration: Generation = 0
+        private var currentId: Generation = 0
         
         private var downstreamDemand = Subscribers.Demand.none
         
@@ -194,10 +192,14 @@ extension Publishers.Debounce {
             }
             state = .subscribed(subscription)
             lock.unlock()
+            
             downstreamLock.lock()
             downstream.receive(subscription: self)
             downstreamLock.unlock()
-            // 无限 Demand. 因为该节点, 是需要上游节点的 exhanust 行为去决定下游节点的数据的.
+            
+            /*
+             对于这种中间节点需要上游节点的行为决定后续节点的行为的 Operator Sink. 可以自己决定 demand 的管理.
+             */
             subscription.request(.unlimited)
         }
         
@@ -207,23 +209,29 @@ extension Publishers.Debounce {
                 lock.unlock()
                 return .none
             }
-            currentGeneration += 1
-            let generation = currentGeneration
+            
+            currentId += 1
+            let newId = currentId
             currentValue = input
             let due = scheduler.now.advanced(by: dueTime)
             let previousCancellers = self.currentCancellers.take()
-            currentCancellers[generation] = .pending
+            // 没太明白, 这里的 pending 状态有什么用.
+            // 直接创建调度任务, 将调度任务的 cancel 放置到 tiggerPostToDownstream 里面有什么问题.
+            currentCancellers[newId] = .pending
             lock.unlock()
+            
             let newCanceller = scheduler.schedule(after: due,
                                                   interval: dueTime,
                                                   tolerance: scheduler.minimumTolerance,
                                                   options: options) {
-                self.due(generation: generation)
+                self.tiggerPostToDownstream(generation: newId)
             }
+            
             lock.lock()
-            currentCancellers[generation] = .active(newCanceller)
+            currentCancellers[newId] = .active(newCanceller)
             lock.unlock()
-            // 这里还不是把原来的都清了.
+            
+            // 对之前存储的调度任务, 都进行了取消.
             for canceller in previousCancellers.values {
                 canceller.cancel()
             }
@@ -239,6 +247,7 @@ extension Publishers.Debounce {
             state = .terminal
             let previousCancellers = currentCancellers.take()
             lock.unlock()
+            
             for canceller in previousCancellers.values {
                 canceller.cancel()
             }
@@ -275,7 +284,8 @@ extension Publishers.Debounce {
             subscription.cancel()
         }
         
-        private func due(generation: Generation) {
+        // 真正的向下游进行投食的行为.
+        private func tiggerPostToDownstream(generation: Generation) {
             lock.lock()
             guard case .subscribed = state else {
                 lock.unlock()
@@ -284,7 +294,7 @@ extension Publishers.Debounce {
             
             // If this condition holds, it means that no values were received
             // in this time frame => we should propagate the current value downstream.
-            guard generation == currentGeneration,
+            guard generation == currentId,
                   let value = currentValue else {
                 let canceller = currentCancellers[generation]
                 lock.unlock()
@@ -292,6 +302,7 @@ extension Publishers.Debounce {
                 return
             }
             
+            // ???
             guard let canceller = currentCancellers[generation].take() else {
                 lock.unlock()
                 return
