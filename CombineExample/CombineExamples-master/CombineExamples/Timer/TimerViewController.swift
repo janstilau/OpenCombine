@@ -16,6 +16,7 @@ class TimerViewController: UIViewController {
         didSet { tableView.dataSource = self }
     }
     
+    // 这是一个类似 @State 的存在, 它的责任是 ViewState 的数据表示.
     @Published private var currentTime: String = ""
     
     private var laps = [String]()
@@ -24,8 +25,8 @@ class TimerViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        Timer.publish(every: 0.1, on: .main, in: .default)
-            .autoconnect()
+        Timer.publish(every: 0.1, on: .main, in: .default) // 产生一个 connectable 对象.
+            .autoconnect() // 使用 connectable 产生一个代理类, 在 receive subscriber 的时候, 可以自动 connect
             .scan(0, { (acc, _ ) in return acc + 1 })
             .map { $0.timeInterval }
             .replaceError(with: "") // 这里为什么要 replace . 越界???
@@ -40,6 +41,8 @@ class TimerViewController: UIViewController {
             .store(in: &cancellableBag)
         
         splitButtonTaps
+        // 每次, 都发送新的 Publisher
+        // 通过 map 生成 Publisher + switchToLatest 实现了之前请求 cancel 的效果. 
             .map { [weak self] _ -> AnyPublisher<String, Never> in
                 guard let strongSelf = self else {
                     return Empty().eraseToAnyPublisher()

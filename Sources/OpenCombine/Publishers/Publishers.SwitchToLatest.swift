@@ -1,5 +1,4 @@
 extension Publisher where Output: Publisher, Output.Failure == Failure {
-    
     /// Republishes elements sent by the most recently received publisher.
     
     /// This operator works with an upstream publisher of publishers, flattening
@@ -218,7 +217,7 @@ extension Publishers.SwitchToLatest {
         }
         
         // Input 会是一个 Publsher 类型.
-        func receive(_ input: Input) -> Subscribers.Demand {
+        func receive(_ newPublisher: Input) -> Subscribers.Demand {
             lock.lock()
             if cancelled || finished {
                 lock.unlock()
@@ -238,7 +237,9 @@ extension Publishers.SwitchToLatest {
             nextInnerIndex += 1
             awaitingInnerSubscription = true
             lock.unlock()
-            input.subscribe(Side(inner: self, index: index))
+            // 新的数据传递过来, 会触发新的链条的构成.
+            // 因为新的数据, 是一个 Publisher 类型. 
+            newPublisher.subscribe(Side(inner: self, index: index))
             return .none
         }
         
@@ -315,10 +316,10 @@ extension Publishers.SwitchToLatest {
             guard currentInnerIndex == index &&
                     !cancelled &&
                     currentInnerSubscription == nil else {
-                        lock.unlock()
-                        subscription.cancel()
-                        return
-                    }
+                lock.unlock()
+                subscription.cancel()
+                return
+            }
             
             // 记录 Inner 的上层节点.
             currentInnerSubscription = subscription
@@ -430,6 +431,10 @@ extension Publishers.SwitchToLatest.Outer {
         func receive(completion: Subscribers.Completion<Failure>) {
             outer.receiveInner(completion: completion, index)
         }
+        
+        
+        
+        
         
         var description: String { return "SwitchToLatest" }
         

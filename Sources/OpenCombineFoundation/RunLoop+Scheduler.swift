@@ -134,6 +134,7 @@ extension RunLoop {
         }
         
         /// Options that affect the operation of the run loop scheduler.
+        // 没有任何的意义, 但是 Scheduler 类型需要这样的一个类型, 所以定义了. 
         public struct SchedulerOptions { }
         
         public func schedule(options: SchedulerOptions?, _ action: @escaping () -> Void) {

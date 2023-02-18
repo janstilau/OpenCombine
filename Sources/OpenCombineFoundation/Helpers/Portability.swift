@@ -50,7 +50,7 @@ internal struct Timer {
         )
 #else
         underlyingTimer = UnderlyingTimer(
-            fire: date,
+            handleTimerTimeout: date,
             interval: interval,
             repeats: repeats,
             block: { block(Timer(underlyingTimer: $0)) }

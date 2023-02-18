@@ -166,6 +166,7 @@ extension Publishers.ReplaceError {
                 status = .terminal
                 lock.unlock()
                 // 发生了错误, 输出 replace 的值, 然后结束.
+                // ReplaceError 并不是忽略错误, 最终还是导致了完成.
                 _ = downstream.receive(output)
                 downstream.receive(completion: .finished)
             }

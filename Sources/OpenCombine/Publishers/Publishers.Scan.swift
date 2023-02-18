@@ -3,6 +3,8 @@ extension Publisher {
     
     /// Transforms elements from the upstream publisher by providing the current
     /// element to a closure along with the last value returned by the closure.
+    // 类似于 Reduce, 不过 reduce 是将每一个上游值操作之后, 在 finish 的时候统一发送给下游
+    // scan, 则是每一个上游值到来后, 操作后, 发送给下游.
     
     /// Use `scan(_:_:)` to accumulate all previously-published values into a single
     /// value, which you then combine with each newly-published value.
@@ -34,49 +36,6 @@ extension Publisher {
                      nextPartialResult: nextPartialResult)
     }
     
-    /// Transforms elements from the upstream publisher by providing the current element
-    /// to an error-throwing closure along with the last value returned by the closure.
-    ///
-    /// Use `tryScan(_:_:)` to accumulate all previously-published values into a single
-    /// value, which you then combine with each newly-published value.
-    /// If your accumulator closure throws an error, the publisher terminates with
-    /// the error.
-    ///
-    /// In the example below, `tryScan(_:_:)` calls a division function on elements of
-    /// a collection publisher. The `Publishers.TryScan` publisher publishes each result
-    /// until the function encounters a `DivisionByZeroError`, which terminates
-    /// the publisher.
-    ///
-    ///     struct DivisionByZeroError: Error {}
-    ///
-    ///     /// A function that throws a DivisionByZeroError if `current` provided by the
-    ///     /// TryScan publisher is zero.
-    ///     func myThrowingFunction(_ lastValue: Int, _ currentValue: Int) throws -> Int {
-    ///         guard currentValue != 0 else { throw DivisionByZeroError() }
-    ///         return (lastValue + currentValue) / currentValue
-    ///      }
-    ///
-    ///     let numbers = [1,2,3,4,5,0,6,7,8,9]
-    ///     cancellable = numbers.publisher
-    ///         .tryScan(10) { try myThrowingFunction($0, $1) }
-    ///         .sink(
-    ///             receiveCompletion: { print ("\($0)") },
-    ///             receiveValue: { print ("\($0)", terminator: " ") }
-    ///          )
-    ///
-    ///     // Prints: "11 6 3 1 1 -1 failure(DivisionByZeroError())".
-    ///
-    /// If the closure throws an error, the publisher fails with the error.
-    ///
-    /// - Parameters:
-    ///   - initialResult: The previous result returned by the `nextPartialResult`
-    ///     closure.
-    ///   - nextPartialResult: An error-throwing closure that takes as its arguments the
-    ///     previous value returned by the closure and the next element emitted from the
-    ///     upstream publisher.
-    /// - Returns: A publisher that transforms elements by applying a closure that
-    ///   receives its previous return value and the next element from the upstream
-    ///   publisher.
     public func tryScan<Result>(
         _ initialResult: Result,
         _ nextPartialResult: @escaping (Result, Output) throws -> Result
@@ -155,9 +114,6 @@ extension Publishers.Scan {
       CustomPlaygroundDisplayConvertible
     where Upstream.Failure == Downstream.Failure
     {
-        // NOTE: this class has been audited for thread safety.
-        // Combine doesn't use any locking here.
-        
         typealias Input = Upstream.Output
         
         typealias Failure = Upstream.Failure
@@ -193,6 +149,7 @@ extension Publishers.Scan {
         func receive(completion: Subscribers.Completion<Failure>) {
             downstream.receive(completion: completion)
         }
+        
         
         var description: String { return "Scan" }
         
@@ -268,6 +225,7 @@ extension Publishers.TryScan {
                 result = try nextPartialResult(result, input)
                 return downstream.receive(result)
             } catch {
+                // 如果, 在变化的过程中有错误, 直接就是 completion error 事件.
                 lock.lock()
                 guard case let .subscribed(subscription) = status else {
                     lock.unlock()
