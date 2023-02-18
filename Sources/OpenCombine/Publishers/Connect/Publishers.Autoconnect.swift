@@ -181,7 +181,7 @@ extension Publishers.Autoconnect {
         fileprivate func cancel() {
             // parent.willCancel 是为了通知, 是否应该触发整个链路的 cancel 了
             parent.willCancel()
-            // upstreamSubscription.cancel 会将分发链路的后半程, 从 Object 里面进行分离.
+            // upstreamSubscription.cancel 通知上游通路, 进行 cancel
             upstreamSubscription.cancel()
         }
         

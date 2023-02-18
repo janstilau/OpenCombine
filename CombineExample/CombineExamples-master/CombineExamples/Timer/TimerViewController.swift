@@ -17,6 +17,7 @@ class TimerViewController: UIViewController {
     }
     
     @Published private var currentTime: String = ""
+    
     private var laps = [String]()
     private var cancellableBag = Set<AnyCancellable>()
     
@@ -27,7 +28,7 @@ class TimerViewController: UIViewController {
             .autoconnect()
             .scan(0, { (acc, _ ) in return acc + 1 })
             .map { $0.timeInterval }
-            .replaceError(with: "")
+            .replaceError(with: "") // 这里为什么要 replace . 越界???
             .eraseToAnyPublisher()
             .assign(to: \.currentTime, on: self)
             .store(in: &cancellableBag)
@@ -60,7 +61,10 @@ class TimerViewController: UIViewController {
     }
     
     private let splitButtonTaps = PassthroughSubject<Void, Never>()
+    
     @IBAction func splitButtonDidTap(_ sender: UIButton) {
+        // Button 没有直接 whenOn 这样的一个 Publisher, 见到的都是第三方自定义的库.
+        // 所以, 还是使用 @objc 这种方式, 进行回调的管理, 在里面使用 Object 这种方式, 进行实际的信号发送.
         splitButtonTaps.send()
     }
 }

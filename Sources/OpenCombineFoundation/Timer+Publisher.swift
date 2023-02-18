@@ -30,6 +30,9 @@ extension Foundation.Timer {
     public enum OCombine {
         
         /// A publisher that repeatedly emits the current date on a given interval.
+        // TimerPublisher 本身就实现了多 subsriber 管理的需求.
+        // 或许应该这样说, ConnectablePublisher 在实现的时候, 应该就是想到如何实现多 subsriber
+        // 因为它出现的目的, 就是多个 scriber attach 之后, 才触发上游的信号产生. 所以存储下游是必然发生的事情. 
         public final class TimerPublisher: ConnectablePublisher {
             public typealias Output = Date
             public typealias Failure = Never
@@ -76,8 +79,8 @@ extension Foundation.Timer {
                 subscriber.receive(subscription: inner)
             }
             
-            // connect 函数里面, 才是真正的定时器的创建并且加到 Runloop 里面.
             public func connect() -> Cancellable {
+                // 直到真正 connect 的时候, 才进行了 timer 的创建.
                 let timer = Timer(timeInterval: interval, repeats: true, block: fire)
                 timer.tolerance = tolerance ?? 0
                 runLoop.add(timer, forMode: mode)

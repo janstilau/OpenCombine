@@ -73,6 +73,7 @@ extension Publishers.Sequence {
             return next == nil
         }
         
+        // 要记住, 在 Publisher 的设计的时候, 要考虑背压管理.
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard downstream != nil else {
