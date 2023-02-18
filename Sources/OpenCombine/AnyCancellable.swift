@@ -57,6 +57,7 @@ public final class AnyCancellable: Cancellable, Hashable {
         hasher.combine(ObjectIdentifier(self))
     }
     
+    // 这是实现 Bag 的基础所在. 在 Deinit 的时候, 自动触发 cancel 函数. 
     deinit {
         // 这里就没有必要调用 _cancel = nil. 内存管理会做这件事.
         _cancel?()

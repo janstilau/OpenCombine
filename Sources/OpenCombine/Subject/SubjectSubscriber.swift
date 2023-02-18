@@ -6,7 +6,7 @@
 // 所以, 实际上 SubjectSubscriber 在真正被使用的时候, 还是有着类型信息在里面的.
 internal final class SubjectSubscriber<SubjectDownSubject: Subject>
 : Subscriber,
-  Subscription, // 自身就是 Inner 节点. 
+  Subscription,
   CustomStringConvertible,
   CustomReflectable,
   CustomPlaygroundDisplayConvertible {
@@ -92,7 +92,8 @@ internal final class SubjectSubscriber<SubjectDownSubject: Subject>
     
     internal func cancel() {
         lock.lock()
-        guard !isCancelled, let subscription = upstreamSubscription else {
+        guard !isCancelled,
+              let subscription = upstreamSubscription else {
             lock.unlock()
             return
         }

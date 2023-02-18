@@ -45,9 +45,8 @@ public protocol ObservableObject: AnyObject {
     
     /// The type of publisher that emits before the object has changed.
     associatedtype ObjectWillChangePublisher: Publisher = ObservableObjectPublisher
-    // 不可能出现失败的情况, 因为是, Object 的属性发生改变.
-    // 失败, 是相应链条的业务场景中, 触发了失败的
     where ObjectWillChangePublisher.Failure == Never
+    // Failure == Never, 一位 ObjectProperty 的改变, 是不会有失败的风险的.
     
     /// A publisher that emits before the object has changed.
     // 对于 ObservableObject 类型的 Model 来说, 他会有一个 objectWillChange 这个 publisher, 供外界进行使用.
@@ -60,13 +59,22 @@ private protocol _ObservableObjectProperty {
     var _objectWillChange: ObservableObjectPublisher? { get nonmutating set }
 }
 
+/*
+ ObservableObject
+ 里面有着 _ObservableObjectProperty 类型的属性, 这些属性提供了和 ObservableObject 中 objectWillChange 相同类型的 Publisher
+ 从下面的实现得知, 这是同一个引用对象.
+ */
+
 #if swift(>=5.1)
 // 只有 Published 实现了这个协议.
 // 这是一个泛型, 可以直接完成对于协议的遵守.
 extension OpenPublished: _ObservableObjectProperty {}
 
-// ObservableObject 的 objectWillChange 会自动合成. 就是在 get 的时候, 进行了懒加载.
-// 并且, 对于每个 Published 属性中, 隐藏的 Publisher 的 objectWillChange 进行了赋值操作.
+/*
+ 这里体现了 Protocol 的好处. 提供默认实现.
+ 一个类型, 声明自己实现了某个 Protocol, 不需要做任何的实现, 直接使用 Protocol extension 里面的实现就可以了.
+ 这是一种代码组织的方式.
+ */
 extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPublisher {
     
     /// A publisher that emits before the object has changed.
@@ -128,26 +136,8 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
 #endif
 
 /// A publisher that publishes changes from observable objects.
-/*
- 实现, 是 Subject 的实现.
- 完成的, 是 Publisher 的功能.
- */
-/*
- 一般来说, Publisher 都是一个生成器, 每一个 Publisher 串联在一起, 在真正的进行生成响应链条的时候, 才会生成对应的节点.
- 但是, ObservableObjectPublisher 是直接和一个引用对象挂钩的.
- 这个 Publisher 只会有一个. 从这个意义上来说, 很像是 Subject.
- 所以里面的实现, 和 Subject 非常像.
- */
 
-
-/*
- 想一下, ObservableObject 的实现方案.
- 当, ObservableObject 内有一个 @Published 属性发生改变的时候, ObservableObject 的 objectWillChange 都要发出通知.
- 这就要求了, ObservableObjectPublisher 一定要有一个办法, 使得所有属性的监听这件事归并到一个地方.
- 这样, 在所有的 ObservableObjectPublisher.send 触发的时候, 都会引起后续节点的 receiveOuput 的触发.
- 这个机制, 是在 ObservableObjectPublisher 内部完成的.
- 这里面有存储, 这是一个引用语义的值.
- */
+// 这个 Publisher 的实现, 和 Subject 非常像.
 public final class ObservableObjectPublisher: Publisher {
     
     // 仅仅是, 值发生了改变, 并不告诉当前的值是什么.
@@ -181,6 +171,7 @@ public final class ObservableObjectPublisher: Publisher {
         subscriber.receive(subscription: inner)
     }
     
+    // Void 是 Nevel, 所以 send 没有 value 值. 只是事件而已.
     public func send() {
         lock.lock()
         let connections = self.connections
@@ -249,9 +240,11 @@ extension ObservableObjectPublisher {
             lock.lock()
             let state = self.state
             lock.unlock()
+            // 只有 active 的才进行发送.
             if state == .active {
                 downstreamLock.lock()
                 // 触发下游节点接收事件. 因为 Output 是 Never, 所以只有事件, 没有数据.
+                // 这里也不进行 demand 的处理. 
                 _ = downstream.receive()
                 downstreamLock.unlock()
             }
@@ -274,6 +267,9 @@ extension ObservableObjectPublisher {
             lock.unlock()
             parent?.remove(self)
         }
+        
+        
+        
         
         var description: String { return "ObservableObjectPublisher" }
         

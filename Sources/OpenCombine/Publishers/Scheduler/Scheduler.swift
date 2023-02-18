@@ -1,5 +1,4 @@
 /// A protocol that provides to a scheduler with an expression for relative time.
-
 public protocol SchedulerTimeIntervalConvertible {
     
     /// Converts the specified number of seconds into an instance of this scheduler time
@@ -22,6 +21,7 @@ public protocol SchedulerTimeIntervalConvertible {
     /// time type.
     static func nanoseconds(_ ns: Int) -> Self
 }
+// .delay(for: .seconds(3), scheduler: RunLoop.main, options: .none)
 
 // 调度, 只有两种, 调度环境, 一般就是线程.
 // 调度时间, 一般就是延时.

@@ -17,6 +17,7 @@ extension Result {
     }
     
     // 强制的返回一个 Success 类型的结果, 提供了 failure 状态下转化为 Success 的闭包.
+    // 这个 Failure 是 Result 里面定义的类型. 
     internal func unwrapOr(_ handleError: (Failure) -> Success) -> Success {
         switch self {
         case .success(let success):

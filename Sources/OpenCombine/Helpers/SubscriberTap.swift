@@ -21,6 +21,7 @@ internal struct SubscriberTap<Subscriber: OpenCombine.Subscriber>
     
     private let subscriber: Subscriber
     
+    // 这是一个 Lazy 的.
     internal lazy var inner: Any = AnySubscriber(self.subscriber)
     
     internal init(subscriber: Subscriber) {
@@ -33,6 +34,7 @@ internal struct SubscriberTap<Subscriber: OpenCombine.Subscriber>
     
     internal func receive(subscription: Subscription) {
         let hook = DebugHook.getGlobalHook()
+        // 不太明白为什么, 会收到 SubscriptionTap 的中间节点.
         if let subscriptionTap = subscription as? SubscriptionTap {
             hook?.willReceive(subscriber: subscriber,
                               subscription: subscriptionTap.subscription)
@@ -41,6 +43,7 @@ internal struct SubscriberTap<Subscriber: OpenCombine.Subscriber>
                              subscription: subscriptionTap.subscription)
         } else {
             hook?.willReceive(subscriber: subscriber, subscription: subscription)
+            // SubscriberTap 里面, 接收到上游 Subscription, 主动的包装一下 SubscriptionTap
             subscriber
                 .receive(subscription: SubscriptionTap(subscription: subscription))
             hook?.didReceive(subscriber: subscriber, subscription: subscription)

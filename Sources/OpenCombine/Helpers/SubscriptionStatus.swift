@@ -10,6 +10,7 @@ internal enum SubscriptionStatus {
     case awaitingSubscription
     // 这里使用 Subscription 整个 Protocol 来进行存储, 是怎么进行内存分配的呢. 
     case subscribed(Subscription)
+    // 这个状态, 会在 schedule 参与的场景中使用. 
     case pendingTerminal(Subscription)
     case terminal
 }

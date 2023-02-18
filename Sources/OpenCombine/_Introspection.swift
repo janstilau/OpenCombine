@@ -92,14 +92,17 @@ extension _Introspection {
     
     public func didCancel(subscription: Subscription) {}
     
+    // 向全局对象里面, 塞入自己
     public func enable() {
         DebugHook.enable(self)
     }
     
+    // 从全局对象里面, 删除自己
     public func disable() {
         DebugHook.disable(self)
     }
     
+    // 判断全局对象里面, 是否包含自己.
     public var isEnabled: Bool {
         return DebugHook.handlerIsEnabled(self)
     }

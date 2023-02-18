@@ -154,7 +154,7 @@ internal class PublisherBoxBase<Output, Failure: Error>: Publisher {
  它对于协议的实现, 完全是转交给了 Box 成员变量.
  它对外暴露的, 是隐藏了完整的类型信息的类型, 所以, 隐藏的关键所在, 其实就是 box 的存在. 
  */
-// 没太明白, base 存在的意义在哪里.
+// PublisherBox 是有着完整的类型信息的. 
 @usableFromInline
 internal final class PublisherBox<PublisherType: Publisher>
 : PublisherBoxBase<PublisherType.Output, PublisherType.Failure>

@@ -62,6 +62,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     }
     
     // 使用函数命令, 表明了在方法内部, 其实是处于 Lock 的状态, 需要在内部进行 unlock 的触发.
+    // 这里的实现, 其实和 Passthrough 里面没有太大的区别.
     private func sendValueAndConsumeLock(_ newValue: Output) {
         // 必须要做这样的判断. 因为 Subject 的各个函数, 其实是手动触发的.
         // 如果使用者 sendComplete 之后, 又进行了 send value, 就触发了已经完成了但是有进行 Send 的场景了.
@@ -105,31 +106,26 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         upstreamSubscriptions.append(subscription)
         subjectInnerLock.unlock()
         
-        // 这里没有和 Pass Subject 一样, 直接
+        // 直接就向上游索取所有的数据.
+        // 难道是因为, CurrentValueSubject 内部, 本身就可以消耗数据.
         subscription.request(.unlimited)
     }
     
     /*
-     当收到下游节点的 Subscriber 的时候, Subject 注册监听的逻辑.
+     这个逻辑和 PassThroughSubject 里面没有任何的区别.
      */
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Output == Downstream.Input, Failure == Downstream.Failure
     {
         subjectInnerLock.lock()
         if isActive {
-            // 作为头结点, 自己管理的各个子响应链条的挂载操作.
             let conduit = Conduit(parent: self, downstream: subscriber)
             downstreams.insert(conduit)
             subjectInnerLock.unlock()
-            // 下游节点, 面对的 Subscription 其实这个 Conduit 对象.
-            // 这个对象, 可以算作是 Privot 所管理的各个链条的头结点.
             subscriber.receive(subscription: conduit)
         } else {
-            // 如果, Subject 已经接受过了结束事件.
-            // 那么对于新的 Subscriber, 应该让他知道这件事.
             let completion = self.completion!
             subjectInnerLock.unlock()
-            // 一定要给后续的节点, 发送一个 subscription. 因为并不知道, 后续节点, 会根据这个做什么处理.
             subscriber.receive(subscription: Subscriptions.empty)
             subscriber.receive(completion: completion)
         }
@@ -198,7 +194,7 @@ extension CurrentValueSubject {
         private var downstreamLock = UnfairRecursiveLock.allocate()
         
         // 记录, 当前自己是否可以向后传递的状态.
-        private var deliveredCurrentValue = false
+        private var currentValueHasDeliveryed = false
         
         fileprivate init(parent: CurrentValueSubject,
                          downstream: Downstream) {
@@ -211,19 +207,26 @@ extension CurrentValueSubject {
             downstreamLock.deallocate()
         }
         
+        /*
+         currentValueHasDeliveryed 实现了这样的一个逻辑, 如果下游没有 demand 了, 那么不应该发送 current Value 到下游.
+         当下游又有 demand 的时候, 应该将 currentValue 发送给下游.
+         
+         如果一直没有 demand, offer 了好几次, 那么中间的值就废弃了. 这也符合 CurrentValueSubject 的创建初衷, 它拉取的是当前的最新值, 而不是缓存好几个值.
+         */
+        
         // 上游节点, 发送数据过来之后, forward 给下游节点.
         // 在这个函数内, 有着 Demand 的管理策略.
         override func offer(_ output: Output) {
             lock.lock()
             guard demand > 0, let downstream = self.downstream else {
-                deliveredCurrentValue = false
+                currentValueHasDeliveryed = false
                 lock.unlock()
                 return
             }
             
             // demand 的管理.
             demand -= 1
-            deliveredCurrentValue = true
+            currentValueHasDeliveryed = true
             lock.unlock()
             downstreamLock.lock()
             // 给下游节点喂食.
@@ -261,7 +264,7 @@ extension CurrentValueSubject {
                 lock.unlock()
                 return
             }
-            if deliveredCurrentValue {
+            if currentValueHasDeliveryed {
                 // 管理 Demand 的值.
                 self.demand += demand
                 lock.unlock()
@@ -271,7 +274,7 @@ extension CurrentValueSubject {
             // Hasn't yet delivered the current value
             
             self.demand += demand
-            deliveredCurrentValue = true
+            currentValueHasDeliveryed = true
             if let currentValue = self.parent?.value {
                 self.demand -= 1
                 lock.unlock()
