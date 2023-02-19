@@ -155,8 +155,9 @@ extension URLSession.OCombine.DataTaskPublisher {
                 lock.unlock()
                 return
             }
-            // 在这里, 才真正的进行了网络请求的发送.
-            // 只会发送一次.
+            /*
+             当下游请求 Demand 的时候, 使用原始的闭包的形式进行数据的采集, 在闭包中进行自身的信号发送.
+             */
             if self.task == nil {
                 task = parent.session.dataTask(with: parent.request,
                                                completionHandler: handleResponse)
@@ -170,8 +171,6 @@ extension URLSession.OCombine.DataTaskPublisher {
         private func handleResponse(data: Data?, response: URLResponse?, error: Error?) {
             lock.lock()
             // 在 DataTask 的回调里面, 根据收到的信息, 向后方节点发送对应的数据.
-            // 也可能失败.
-            // 和自己想象中的不太一样, 本以为是应 subject 完成的这件事.
             guard demand > 0,
                     parent != nil,
                     let downstream = self.downstream else {

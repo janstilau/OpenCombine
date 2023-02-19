@@ -23,6 +23,7 @@ extension Publisher {
     ///     let subject = CurrentValueSubject<String, Error>("initial value")
     ///     subject
     ///         .assertNoFailure()
+    ///         // 只有 Failure 为 Never 才能调用 sink 的这个方法.
     ///         .sink(receiveCompletion: { print ("completion: \($0)") },
     ///               receiveValue: { print ("value: \($0).") }
     ///         )
@@ -81,6 +82,10 @@ extension Publishers {
 }
 
 extension Publishers.AssertNoFailure {
+    /*
+     这个 Inner, 里面没有任何的状态管理, 上游 Subscription 到达之后, 直接移交给下游.
+     所以它并需要完成 Subscription 的责任, 它本身也只是一个 Struct, 本身并不进入响应链条中的一环. 
+     */
     private struct Inner<Downstream: Subscriber>
     : Subscriber,
       CustomStringConvertible,
@@ -109,7 +114,6 @@ extension Publishers.AssertNoFailure {
             self.line = line
         }
         
-        // 全部, 都是移交动作.
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
         }

@@ -159,6 +159,7 @@ extension RunLoop {
                              tolerance: SchedulerTimeType.Stride,
                              options: SchedulerOptions?,
                              _ action: @escaping () -> Void) -> Cancellable {
+            // 使用了 Timer 完成真正的 delay 效果.
             let timer = Timer(fire: date.date,
                               interval: interval.timeInterval,
                               repeats: true,
