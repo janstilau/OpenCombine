@@ -239,6 +239,8 @@ extension Publishers.TryCompactMap {
             newValue: Upstream.Output
         ) -> ReceiveValueCompletion<Output?, Error> {
             do {
+                // 因为是 try 的, 所以使用 do catch 进行包裹.
+                // 在链条里面, throw 的操作都要包装成为 error 事件, 然后向下游进行投递. 
                 return try .continue(valueJudgement(newValue))
             } catch {
                 return .failure(error)

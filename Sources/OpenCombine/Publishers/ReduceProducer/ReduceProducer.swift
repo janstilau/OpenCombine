@@ -30,7 +30,7 @@ where Downstream.Input == Output
     private let initial: Output?
     
     // 结束值.
-    internal final var result: Output?
+    internal final var result: Output? // Result 会在每次 Receive Input 的时候, 由子类进行变化.
     
     // 闭包. 使用这个闭包, 在每次获取 input 之后, 更新 result 的值
     // 这个闭包的类型, 是每个子类, 定义的时候指定的.
@@ -50,9 +50,8 @@ where Downstream.Input == Output
     private var upstreamCompleted = false
     // 因为 Combine 是 Pull 的机制, 所以只有上面的两个值都是 true 的时候, 才会真正向后方发送数据.
     
-    private var cancelled = false
-    
-    private var completed = false
+    private var chainCancelled = false
+    private var chainCompleted = false
     
     // 这些赋值, 都是必须的. 
     internal init(downstream: Downstream, initial: Output?, reduce: Reducer) {
@@ -97,8 +96,9 @@ where Downstream.Input == Output
     // MARK: - Private
     
     /// - Precondition: `lock` is held.
+    
     private func receiveFinished() {
-        guard !cancelled, !completed, !upstreamCompleted else {
+        guard !chainCancelled, !chainCompleted, !upstreamCompleted else {
             innerLock.unlock()
             // This should never happen, because `receive(completion:)`
             // (from which this function is called) early exists if
@@ -109,10 +109,12 @@ where Downstream.Input == Output
         // ReduceProducer 有着固定的模式. 就是上游要 Complete 之后, 才能发送下游的数据.
         upstreamCompleted = true
         if downstreamRequested {
-            self.completed = true
+            self.chainCompleted = true
         }
-        let completed = self.completed
+        let completed = self.chainCompleted
         let result = self.result
+        // 及时放开临界区, 然后由函数内的变量进行后续逻辑的触发.
+        // 函数内的变量, 不会收到其他线程的访问.
         innerLock.unlock()
         
         if completed {
@@ -122,7 +124,7 @@ where Downstream.Input == Output
     
     /// - Precondition: `lock` is held.
     private func receiveFailure(_ failure: UpstreamFailure) {
-        guard !cancelled, !completed, !upstreamCompleted else {
+        guard !chainCancelled, !chainCompleted, !upstreamCompleted else {
             innerLock.unlock()
             // This should never happen, because `receive(completion:)`
             // (from which this function is called) early exists if
@@ -131,13 +133,14 @@ where Downstream.Input == Output
             return
         }
         upstreamCompleted = true
-        completed = true
+        chainCompleted = true
         innerLock.unlock()
         downstream.receive(completion: .failure(failure as! Downstream.Failure))
     }
     
+    // 可能是上游发送 Complete 事件到达这里, 也可能是 ReceiveInput 判断链条该结束了, 到达这里.
     private func sendResultAndFinish(_ result: Output?) {
-        assert(completed && upstreamCompleted)
+        assert(chainCompleted && upstreamCompleted)
         if let result = result {
             _ = downstream.receive(result)
         }
@@ -159,19 +162,17 @@ extension ReduceProducer: Subscriber {
         // 存储, 上方传递过来的 subscription 对象 .
         status = .subscribed(subscription)
         innerLock.unlock()
-        // 自己, 作为 subscription, 接受下游节点的 RequestDemand, Cancel 请求.
         downstream.receive(subscription: self)
+        
         // 自己, 作为 Subscriber, 要求上游节点发送数据, 尽量多发.
         // 这是没有问题的. 因为, Reduce 节点, 是需要上游节点 completion 之后, 才可以向后发送数据的.
         // 所以, 应该尽量向上进行数据的索取.
         subscription.request(.unlimited)
     }
     
-    // 之所以, 需要存储 subscription, 就是在 Receive 的时候.
-    // 在 Reduce 的节点里面, 可能会在接受到上游节点的数据之后, 直接进行上游的取消, 下游的取消.
-    // 这个时候, 就得保存上游的节点, 才能完成这样的操作.
-    
-    // 其实不是很明白, 为什么要上锁, 按照目前的设计, 应该就是一条链路各自的状态是分离的才对. 
+    // 其实不是很明白, 为什么要上锁, 按照目前的设计, 应该就是一条链路各自的状态是分离的才对.
+    // 因为上游可能是 Subject 这样的分发节点, 而 Subject 的上游则是多个源头, 每个源头都可以指定自己的运行环境.
+    // 如果没有专门的进行运行环境的指定, 上游直接将值投喂给下游, 下游在调用 receive(_ input: Input) 的时候, 确实是会处于不同的环境中, 加锁是没有问题的.
     internal func receive(_ input: Input) -> Subscribers.Demand {
         innerLock.lock()
         guard case let .subscribed(subscription) = status else {
@@ -180,9 +181,6 @@ extension ReduceProducer: Subscriber {
         }
         innerLock.unlock()
         
-        // 在子类的 receive(newValue 中, 根据 Reduce Block, 现有的 Result, 新来的 Input 值, 对 Result 进行更新.
-        // 并且, 输出是否结束的返回值.
-        // 外界根据输出的返回值, 来判断是否使得当前的响应链进行 cancel.
         switch self.receive(newValue: input) {
         case .continue:
             // newValue 的值没问题, 但是还没达到结束的状态. 还应该收集上游节点的数据.
@@ -194,24 +192,25 @@ extension ReduceProducer: Subscriber {
             let downstreamRequested = self.downstreamRequested
             if downstreamRequested {
                 // 根据, upstreamCompleted downstreamRequested 共同过来决定 Complete 的状态.
-                completed = true
+                chainCompleted = true
             }
             // 自身的状态改变. 不会在接受响应中的各种事件.
             status = .terminal
             let result = self.result
             innerLock.unlock()
+            
             // 触发上游节点的取消动作.
             subscription.cancel()
             guard downstreamRequested else { break }
-            
             // 这里体现了 Combine 的 Demand 管理的思想. 上游已经发送结束了, 但是如果下游还没有明确的表示, 自己想要这个数据, 那么还是不应该将 Result 的值, 发送给下游的节点.
             sendResultAndFinish(result)
         case let .failure(error):
             innerLock.lock()
             upstreamCompleted = true
-            completed = true
+            chainCompleted = true
             status = .terminal
             innerLock.unlock()
+            
             // 触发上游节点的取消动作.
             subscription.cancel()
             // 如果, 发生了错误, 是不受下游的 Demand 管理的, 直接将错误发送给下游节点.
@@ -242,23 +241,21 @@ extension ReduceProducer: Subscription {
     internal func request(_ demand: Subscribers.Demand) {
         demand.assertNonZero()
         innerLock.lock()
-        guard !downstreamRequested, !cancelled, !completed else {
+        guard !downstreamRequested, !chainCancelled, !chainCompleted else {
             innerLock.unlock()
             return
         }
-        // 监听下游节点的 Demand 请求,
-        // 如果下游节点有需求, 那么应该记录状态.
-        // 当, 上游结束, 下游有需求的时候, 触发 sendResultAndFinish 的操作.
+        // 只有下游明确需要了 demand, 才进行最终的 Result 的发送.
         downstreamRequested = true
         
-        guard upstreamCompleted else  {
+        if upstreamCompleted  {
+            chainCompleted = true
+            let result = self.result
             innerLock.unlock()
-            return
+            sendResultAndFinish(result)
+        } else {
+            innerLock.unlock()
         }
-        completed = true
-        let result = self.result
-        innerLock.unlock()
-        sendResultAndFinish(result)
     }
     
     internal func cancel() {
@@ -267,7 +264,7 @@ extension ReduceProducer: Subscription {
             innerLock.unlock()
             return
         }
-        cancelled = true
+        chainCancelled = true
         status = .terminal
         innerLock.unlock()
         subscription.cancel()

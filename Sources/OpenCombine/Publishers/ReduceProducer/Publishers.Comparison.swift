@@ -304,6 +304,7 @@ extension Publishers.Comparison {
             downstream: Downstream,
             areInIncreasingOrder: @escaping (Upstream.Output, Upstream.Output) -> Bool
         ) {
+            // initial 是 nil
             super.init(downstream: downstream, initial: nil, reduce: areInIncreasingOrder)
         }
         
@@ -315,6 +316,7 @@ extension Publishers.Comparison {
                     self.result = newValue
                 }
             } else {
+                // 如果当前 result 没有值, 就新的值是 result .
                 self.result = newValue
             }
             return .continue

@@ -102,7 +102,7 @@ extension FilterProducer: Subscriber {
     
     // 当, 收到上游节点的 Output 之后, 应该使用 Filter 进行过滤处理.
     // 具体过滤完, 应该执行什么节奏, Filter, Compact, RemoveDup 各有各的不同.
-    // 这些各个子类, receive(newValue: Input) -> PartialCompletion<Output?, Downstream.Failure>  中进行自定义.
+    // 这些各个子类, receive(newValue: Input) -> 中进行自定义.
     // 根据以上方法的结果, 后续逻辑是统一的.
     internal func receive(_ input: Input) -> Subscribers.Demand {
         lock.lock()
@@ -112,7 +112,6 @@ extension FilterProducer: Subscriber {
             fatalError("Invalid state: Received value before receiving subscription")
         case .completed:
             lock.unlock() // 不应该出现的情况
-            
         case let .connected(subscription):
             lock.unlock()
             
@@ -121,30 +120,36 @@ extension FilterProducer: Subscriber {
                 // Continue, 表示响应链条还继续存在.
             case let .continue(output?):
                 // 有值, 根据下游节点的 receive 来决定 demand
+                // 可能不是很习惯, 但是这种 case 就是 optinal 的有值情况
                 return downstream.receive(output)
             case .continue(nil):
                 // 无值, 代表着这个值被过滤掉了, 向上游节点继续要一个数据.
                 return .max(1)
-                
-            case .finished: // 在 PrefixWhile 的时候, 会出现这种情况. 
+            case .finished:
+                // 在 PrefixWhile 的时候, 会出现这种情况.
+                // 某些 Opertor 在 Receive input 的时候, 可以终止整个响应链条的进行.
                 lock.lock()
                 // 状态管理
                 state = .completed
                 lock.unlock()
+                
+                // 终止整个响应链条
                 // 上游 cancel
                 subscription.cancel()
                 // 下游 Completion
                 downstream.receive(completion: .finished)
-                
             case let .failure(error):  // 出现了错误.
                 lock.lock()
                 state = .completed
                 lock.unlock()
+                
+                // 终止整个响应链条.
                 // 上游 cancel
                 subscription.cancel()
                 // 下游 cancel
                 downstream.receive(completion: .failure(error))
             }
+            // completion 和 failure 的逻辑是一样的, 不过是下游接收到的事件不同.
         }
         
         return .none
@@ -159,7 +164,7 @@ extension FilterProducer: Subscriber {
         case .completed:
             lock.unlock()
             return
-        case .connected:
+        case .connected: // 带有关联值的 case, 也可以直接这样的进行匹配.
             // 当, 接收到上游 cancel 的时候, 一定是上游已经 cancel 了.
             // 所以, 这里只用处理下游 cancel 就可以了.
             // 状态的变化, 其实就是当前节点的资源释放.
@@ -175,15 +180,6 @@ extension FilterProducer: Subscriber {
     }
 }
 
-/*
- 整个 Subscription 的协议实现, 其实都是转交给了上层节点了.
- 所以, 对于 Subscription 协议来说, FilterProducer 其实是没有什么意义的, 将上层节点 Subscription 交给下游节点就好了.
- 
- 之所以, 需要中间这一层保留 Subscription, 而不是将 Subscription 直接交给下一层. 是因为在 receive input 的时候, 其实是在本层中, 要根据业务来触发上层取消, 下层取消的, 也就是上面的逻辑.
- 
- 对于 map, filter 来说, 因为本层不会触发这层逻辑, 所以直接将上层节点交给了下层.
- 对于 tryMap, TryFilter 来说, 因为本层会触发响应链终止的逻辑, 所以对上层的 Subscription 继续了存储. 
- */
 extension FilterProducer: Subscription {
     
     // 作为 Subscription, 下游节点会主动调用以下的方法 .
@@ -199,8 +195,6 @@ extension FilterProducer: Subscription {
             return
         case let .connected(subscription):
             lock.unlock()
-            // 为什么要存储 Subscription, 需要使用存储的 Subscription, 向上进行 Demand 的管理.
-            // 这是惯例, 没有 Demand 惯例能力的节点, 就是将 Demand 惯例的相关操作, Forward 到自己的上游.
             subscription.request(demand)
         }
     }
