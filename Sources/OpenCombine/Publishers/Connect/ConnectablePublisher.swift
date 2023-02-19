@@ -1,8 +1,12 @@
 /// A publisher that provides an explicit means of connecting and canceling publication.
 
 // 这里说的很明白, 使用 ConnectablePublisher 目的就在于, 在真正的出发信号产生逻辑之前, 进行更多的配置.
-// 现在来看, 最常用的更多的配置其实是进行多个下游节点的 sink.
-//
+/*
+ 目前只有两个原生的 ConnectablePublisher
+ 一个是 Multicast, 一个是 TimerPublisher.
+ */
+
+
 /// Use a `ConnectablePublisher` when you need to perform additional configuration or
 /// setup prior to producing any elements.
 

@@ -201,11 +201,11 @@ extension Publishers.RemoveDuplicates {
         
         override func receive(
             newValue: Input
-        ) -> PartialCompletion<Upstream.Output?, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Upstream.Output?, Downstream.Failure> {
             let last = self.last
             self.last = newValue
             return last.map {
-                filter($0, newValue) ? .continue(nil) : .continue(newValue)
+                valueJudgement($0, newValue) ? .continue(nil) : .continue(newValue)
             } ?? .continue(newValue)
         }
         
@@ -234,14 +234,14 @@ extension Publishers.TryRemoveDuplicates {
         
         override func receive(
             newValue: Input
-        ) -> PartialCompletion<Upstream.Output?, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Upstream.Output?, Downstream.Failure> {
             let last = self.last
             self.last = newValue
             // 使用了 Optianl 的 map 方法. 这个自己用的很少.
             // 和上面的相比, 增加了对于 error 的处理
             return last.map {
                 do {
-                    return try filter($0, newValue)
+                    return try valueJudgement($0, newValue)
                     ? .continue(nil)
                     : .continue(newValue)
                 } catch {

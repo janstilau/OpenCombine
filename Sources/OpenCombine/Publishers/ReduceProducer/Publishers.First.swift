@@ -194,7 +194,7 @@ extension Publishers.First {
         // 第一个, 存储了值之后, 立马发送 completion.
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             result = newValue
             return .finished
         }
@@ -215,7 +215,7 @@ extension Publishers.FirstWhere {
         
         override func receive(
             newValue: Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             // 如果, 经过 reduce 的 predicate 之后, 存储该值, 立马结束. 
             if reduce(newValue) {
                 result = newValue
@@ -245,7 +245,7 @@ extension Publishers.TryFirstWhere {
         
         override func receive(
             newValue: Output
-        ) -> PartialCompletion<Void, Error> {
+        ) -> ReceiveValueCompletion<Void, Error> {
             do {
                 if try reduce(newValue) {
                     result = newValue

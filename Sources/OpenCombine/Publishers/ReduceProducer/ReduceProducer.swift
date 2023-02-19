@@ -71,7 +71,7 @@ where Downstream.Input == Output
     // 当, 收到上游的新值后, 应该怎么处理.
     internal func receive(
         newValue: Input
-    ) -> PartialCompletion<Void, Downstream.Failure> {
+    ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
         abstractMethod()
     }
     

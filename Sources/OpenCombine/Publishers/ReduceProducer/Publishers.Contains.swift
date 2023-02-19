@@ -234,7 +234,7 @@ extension Publishers.Contains {
         // 依赖于 Equatable 的协议限制.
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             if newValue == output {
                 result = true
                 return .finished
@@ -265,7 +265,7 @@ extension Publishers.ContainsWhere {
         
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             // 使用闭包来判断, 修改 Result 的值.
             if reduce(newValue) {
                 result = true
@@ -294,7 +294,7 @@ extension Publishers.TryContainsWhere {
         
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             // 明确的使用闭包来做判断, 但是有可能会出错.
             do {
                 if try reduce(newValue) {

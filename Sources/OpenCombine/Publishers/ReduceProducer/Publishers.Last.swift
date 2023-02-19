@@ -178,7 +178,7 @@ extension Publishers.Last {
         // Reduce 更新 Result 的逻辑, 就是不断的更新.
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             result = newValue
             return .continue
         }
@@ -203,7 +203,7 @@ extension Publishers.LastWhere {
         
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             // Reduce 更新 Result 的逻辑, 就是只要符合 Check 就更新.
             if reduce(newValue) {
                 result = newValue
@@ -231,7 +231,7 @@ extension Publishers.TryLastWhere {
         
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             // 增加了对于 Throw Error 的处理. 
             do {
                 if try reduce(newValue) {

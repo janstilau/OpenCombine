@@ -186,7 +186,7 @@ extension Publishers.AllSatisfy {
         // AllSatisfy.Inner 中, 返回对应的 PartialCompletion 结果.
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             if !reduce(newValue) {
                 result = false
                 return .finished
@@ -216,7 +216,7 @@ extension Publishers.TryAllSatisfy {
         
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             do {
                 if try !reduce(newValue) {
                     result = false

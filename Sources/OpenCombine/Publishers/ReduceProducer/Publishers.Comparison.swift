@@ -309,7 +309,7 @@ extension Publishers.Comparison {
         
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             if let result = self.result {
                 if reduce(result, newValue) {
                     self.result = newValue
@@ -345,7 +345,7 @@ extension Publishers.TryComparison {
         
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             do {
                 if let result = self.result {
                     if try reduce(result, newValue) {

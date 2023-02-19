@@ -82,7 +82,7 @@ extension Publishers.Collect {
         // Result 的更新逻辑, 就是不断的拼接到 Result 中. 
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             // ReduceProducer 的子类, 指定了 Result 的类型是 []了.
             result!.append(newValue)
             return .continue

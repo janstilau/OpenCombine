@@ -145,9 +145,9 @@ extension Publishers.PrefixWhile {
         // 当收到上游节点之后, 如果过滤了, 就是接着接收上游节点数据. 否则, 就应该结束接收上游节点数据.
         override func receive(
             newValue: Input
-        ) -> PartialCompletion<Upstream.Output?, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Upstream.Output?, Downstream.Failure> {
             // 如果返回值为 false, 就代表着这个响应链路结束了. 
-            return filter(newValue) ? .continue(newValue) : .finished
+            return valueJudgement(newValue) ? .continue(newValue) : .finished
         }
         
         override var description: String { return "PrefixWhile" }
@@ -170,9 +170,9 @@ extension Publishers.TryPrefixWhile {
         // 和 PrefixWhile 没有什么区别, 就是多了对于 Error 的处理. 
         override func receive(
             newValue: Input
-        ) -> PartialCompletion<Upstream.Output?, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Upstream.Output?, Downstream.Failure> {
             do {
-                return try filter(newValue) ? .continue(newValue) : .finished
+                return try valueJudgement(newValue) ? .continue(newValue) : .finished
             } catch {
                 return .failure(error)
             }

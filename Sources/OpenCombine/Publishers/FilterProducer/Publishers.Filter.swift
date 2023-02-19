@@ -247,11 +247,11 @@ extension Publishers.TryFilter {
         
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Upstream.Output?, Error> {
+        ) -> ReceiveValueCompletion<Upstream.Output?, Error> {
             do {
                 // 没有发生错误, 没过滤掉, 发送给后方, 过滤掉了, 后方什么都不知道.
                 // 然后管理 demand.
-                return try filter(newValue) ? .continue(newValue) : .continue(nil)
+                return try valueJudgement(newValue) ? .continue(newValue) : .continue(nil)
             } catch {
                 return .failure(error)
             }

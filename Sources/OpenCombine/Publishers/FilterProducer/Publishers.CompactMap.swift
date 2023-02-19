@@ -237,9 +237,9 @@ extension Publishers.TryCompactMap {
         // 自定义了 receive( newValue 的逻辑.
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Output?, Error> {
+        ) -> ReceiveValueCompletion<Output?, Error> {
             do {
-                return try .continue(filter(newValue))
+                return try .continue(valueJudgement(newValue))
             } catch {
                 return .failure(error)
             }

@@ -1,4 +1,6 @@
 /// A helper class that acts like both subscriber and subscription.
+// 这种一般都是 Operator 构建出来的对象.
+
 /// Filter-like operators send an instance of their `Inner` class that is subclass
 /// of this class to the upstream publisher (as subscriber) and
 /// to the downstream subscriber (as subscription).
@@ -12,7 +14,7 @@
 
 // 将, Filter 相关的逻辑, 全部积累到了这里.
 // 子类的差异, 仅仅在 func receive(newValue: Input) 的时候进行变化, 其他的时候, 其他时候的逻辑, 都可以公用
-// 这是一个节点对象, 不是一个 Publisher 对象
+// 这是一个 Sink 对象, 不是一个 Publisher 对象
 
 internal class FilterProducer<Downstream: Subscriber,
                               Input,
@@ -25,22 +27,17 @@ where Downstream.Input == Output {
     // MARK: - State
     
     private enum State {
-        case awaitingSubscription
-        case connected(Subscription)
+        case awaitingSubscription // 这个值没啥用, 就是逻辑上的补全.
+        case connected(Subscription) // 真正有用的部分, 有着存贮上游节点的功效.
         case completed
     }
     
-    // 存储过滤的逻辑
     /*
      Filter
      RemoveDuplicates
      PrefixWhile
      */
-    // 因为, 其实并不知道, Filter 的实际类型是什么. 所以在父类中, 这个值仅仅是作为存储.
-    // 子类可能给该值, 定义不同的类型. 所以, 只能是子类真正的去使用该数据.
-    // 子类, 是 try 节点, 那么这个 Fitler 就是 throws 的闭包, 调用的时候, 就要添加 try.
-    // 用泛型的方式, 才能完成代码的复用. 
-    internal final let filter: Filter
+    internal final let valueJudgement: Filter
     
     // 后方节点对象. 这是节点的惯例存储.
     internal final let downstream: Downstream
@@ -52,7 +49,7 @@ where Downstream.Input == Output {
     
     internal init(downstream: Downstream, filter: Filter) {
         self.downstream = downstream
-        self.filter = filter
+        self.valueJudgement = filter
     }
     
     deinit {
@@ -61,9 +58,12 @@ where Downstream.Input == Output {
     
     // MARK: - Abstract methods
     
-    // 这个方法, 不是用来返回 Demand 的, 而是返回 Demand 的方法里面, 要根据这个方法的返回值, 来决定后续.
-    // 这个方法, 是必须每个子类进行自定义的. Filter, RemoveDuplicates, PrefixWhile 的差异, 其实就是每次 receive 到 Value 之后, 后续逻辑处理.
-    internal func receive(newValue: Input) -> PartialCompletion<Output?, Downstream.Failure> {
+    /*
+     FilterProducer 里面的逻辑, 麻烦的就在于过来一个值之后, 是否应该将这个值向后传递.
+     其他的逻辑都都是可以复用的.
+     所以这块逻辑变成了模板方法, 供子类进行自定义.
+     */
+    internal func receive(newValue: Input) -> ReceiveValueCompletion<Output?, Downstream.Failure> {
         abstractMethod()
     }
     
@@ -79,7 +79,7 @@ where Downstream.Input == Output {
     }
 }
 
-// 成为 Subscriber, 就是能够作为响应链条中, 上游节点的后续节点, 接受上游节点传递过来的 Subscription, Output, Completion, 这都是 Subscriber 的职责.
+// Subscriber 的责任
 extension FilterProducer: Subscriber {
     
     internal func receive(subscription: Subscription) {

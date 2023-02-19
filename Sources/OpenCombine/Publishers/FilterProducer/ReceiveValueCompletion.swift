@@ -3,7 +3,7 @@
 /// of the `ReduceProducer` and `FilterProducer` classes.
 
 // 每次, 在 Receive Value 之后, 根据该值来决定后面的逻辑.
-internal enum PartialCompletion<Value, Failure: Error> {
+internal enum ReceiveValueCompletion<Value, Failure: Error> {
     
     /// Indicate that we should continue accepting the upstream's output.
     case `continue`(Value)
@@ -15,8 +15,8 @@ internal enum PartialCompletion<Value, Failure: Error> {
     case failure(Failure)
 }
 
-extension PartialCompletion where Value == Void {
+extension ReceiveValueCompletion where Value == Void {
     
     /// Indicate that we should continue accepting the upstream's output.
-    internal static var `continue`: PartialCompletion { return .continue(()) }
+    internal static var `continue`: ReceiveValueCompletion { return .continue(()) }
 }

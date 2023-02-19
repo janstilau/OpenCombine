@@ -77,7 +77,7 @@ extension Publishers.Count {
         
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             result! += 1
             return .continue
         }

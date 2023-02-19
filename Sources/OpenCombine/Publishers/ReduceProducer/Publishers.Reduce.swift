@@ -169,7 +169,7 @@ extension Publishers.Reduce {
         // 按照, reduce(result!, newValue) 不断的更新 Result 的值.
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             result = reduce(result!, newValue)
             return .continue
         }
@@ -190,7 +190,7 @@ extension Publishers.TryReduce {
         // 相比较上面的实现, 增加了 Error 的处理.
         override func receive(
             newValue: Upstream.Output
-        ) -> PartialCompletion<Void, Downstream.Failure> {
+        ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             do {
                 result = try reduce(result!, newValue)
                 return .continue

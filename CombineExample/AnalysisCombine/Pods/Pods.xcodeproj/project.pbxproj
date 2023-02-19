@@ -68,7 +68,7 @@
 		73F6DE022E8552F72274CF6ABA449C53 /* Publishers.Map.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7F61F37AEDF0AD3475A0484F36B3AD /* Publishers.Map.swift */; };
 		76DC73267A41295934A4F6C3678E65E8 /* Subscription.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2589B2A3B35F69FAFBBF62850965AB24 /* Subscription.swift */; };
 		77684B62A2CC48D41A4BFBBADA49C291 /* GENERATED-Publishers.Catch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52A53BA67973BEF96FA84C716B38DC47 /* GENERATED-Publishers.Catch.swift */; };
-		7B4B96B95CE0BB16FE49F57E35684EE9 /* PartialCompletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4483B8A8652CBFC1457A41870CF426B4 /* PartialCompletion.swift */; };
+		7B4B96B95CE0BB16FE49F57E35684EE9 /* ReceiveValueCompletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4483B8A8652CBFC1457A41870CF426B4 /* ReceiveValueCompletion.swift */; };
 		7B4F20841DA7F7A396894A4B431FADD0 /* SubscriberTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD188B6B88C9C6B3BEF6DA0076A6E31E /* SubscriberTap.swift */; };
 		80087253AF53163060F8C96ACA5CE34B /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D33D73610D899D73D636BAED794ED853 /* Scheduler.swift */; };
 		80747754E7E68B578CC008C6645C6F09 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 73010CC983E3809BECEE5348DA1BB8C6 /* Foundation.framework */; };
@@ -217,7 +217,7 @@
 		3E7084F5451493142D60C4AB4932D0C5 /* Pods-AnalysisCombine-frameworks.sh */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.script.sh; path = "Pods-AnalysisCombine-frameworks.sh"; sourceTree = "<group>"; };
 		3E97E24893CF7CE53CB2E7593A8AF79B /* Publishers.Timeout.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Publishers.Timeout.swift; sourceTree = "<group>"; };
 		4257B34FD44160959731D4EBE93D7AE7 /* OperationQueue+Scheduler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = "OperationQueue+Scheduler.swift"; path = "Sources/OpenCombineFoundation/OperationQueue+Scheduler.swift"; sourceTree = "<group>"; };
-		4483B8A8652CBFC1457A41870CF426B4 /* PartialCompletion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PartialCompletion.swift; sourceTree = "<group>"; };
+		4483B8A8652CBFC1457A41870CF426B4 /* ReceiveValueCompletion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReceiveValueCompletion.swift; sourceTree = "<group>"; };
 		4493ACBE126C39DD0CA5446AC46B0537 /* OpenCombine.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = OpenCombine.release.xcconfig; sourceTree = "<group>"; };
 		463A9C3EC68D103B8E10C5B520529ABE /* ReduceProducer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReduceProducer.swift; sourceTree = "<group>"; };
 		4EA3C8D32EE03D41AC1DD60DB331813C /* FilterProducer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FilterProducer.swift; sourceTree = "<group>"; };
@@ -429,7 +429,7 @@
 		06BF8A16281BF20100EC104F /* FilterProducer */ = {
 			isa = PBXGroup;
 			children = (
-				4483B8A8652CBFC1457A41870CF426B4 /* PartialCompletion.swift */,
+				4483B8A8652CBFC1457A41870CF426B4 /* ReceiveValueCompletion.swift */,
 				4EA3C8D32EE03D41AC1DD60DB331813C /* FilterProducer.swift */,
 				CA530CD094C2ADAC858FAA9F62C568EA /* Publishers.CompactMap.swift */,
 				A45691F6976DD9D1588B34ADA1EB79AA /* Publishers.Filter.swift */,
@@ -1003,7 +1003,7 @@
 				F0E7C803B8635008D017D2D966F646BD /* ObservableObject.swift in Sources */,
 				8EF797237003EAA6910817AE8C916408 /* OpenCombine-dummy.m in Sources */,
 				EE0DB934295F66DCFC2669D2C7FF1D69 /* Optional.Publisher.swift in Sources */,
-				7B4B96B95CE0BB16FE49F57E35684EE9 /* PartialCompletion.swift in Sources */,
+				7B4B96B95CE0BB16FE49F57E35684EE9 /* ReceiveValueCompletion.swift in Sources */,
 				279FDE425303BC9A6CE5C582567D1E69 /* PassthroughSubject.swift in Sources */,
 				0AA08A5F76D076897E8465DE49691832 /* OpenPublished.swift in Sources */,
 				AABE1FB0FF07F1B5B2CCFB3D371F4B8F /* PublishedSubject.swift in Sources */,
