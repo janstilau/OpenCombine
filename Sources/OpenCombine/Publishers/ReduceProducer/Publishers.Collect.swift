@@ -13,6 +13,7 @@ extension Publisher {
     /// publisher and uses an unbounded amount of memory to store the received values.
     /// The publisher may exert memory pressure on the system for very large sets of
     /// elements.
+    // 这里说明, 在 OpenCombine 的逻辑里面, 是无限制的进行缓存的.
     
     /// The `collect()` operator only sends the collected array to its downstream receiver
     /// after a request whose demand is greater than 0 items. Otherwise, `collect()` waits
@@ -68,22 +69,25 @@ extension Publishers.Collect {
     private final class Inner<Downstream: Subscriber>
     : ReduceProducer<Downstream,
       Upstream.Output,
-      [Upstream.Output],
+      [Upstream.Output], // 在这里, 指明了 Result 的类型是什么.
       Upstream.Failure,
+    // 在这里指明了, Filter 的类型是什么.
       Void>
     where Downstream.Input == [Upstream.Output],
           Downstream.Failure == Upstream.Failure
     {
         fileprivate init(downstream: Downstream) {
+            // Reduce 的类型是 Void, 但是它是一个值啊, 必须要传递一个值过去才行.
             super.init(downstream: downstream, initial: [], reduce: ())
         }
         
         // 主要的实现逻辑, 还是 ReduceProducer 完成.
-        // Result 的更新逻辑, 就是不断的拼接到 Result 中. 
+        // Result 的更新逻辑, 就是不断的拼接到 Result 中.
         override func receive(
             newValue: Upstream.Output
         ) -> ReceiveValueCompletion<Void, Downstream.Failure> {
             // ReduceProducer 的子类, 指定了 Result 的类型是 []了.
+            // 这里没有使用 filter 的逻辑. 
             result!.append(newValue)
             return .continue
         }

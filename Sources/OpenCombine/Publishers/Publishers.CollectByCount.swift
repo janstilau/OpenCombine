@@ -138,6 +138,7 @@ extension Publishers.CollectByCount {
                 if buffer.isEmpty {
                     lock.unlock()
                 } else {
+                    // 如果 buffer 里面还有值, 一次性把剩下的值传输出去.
                     let buffer = self.buffer.take()
                     lock.unlock()
                     _ = downstream.receive(buffer)
@@ -154,6 +155,7 @@ extension Publishers.CollectByCount {
             lock.lock()
             if let subscription = self.subscription {
                 lock.unlock()
+                // 要一个值, 向上游要 * count 个, 不然上游产生不了足够的数据, 永远无法达成向后发送的条件了. 
                 subscription.request(demand * count)
             } else {
                 lock.unlock()

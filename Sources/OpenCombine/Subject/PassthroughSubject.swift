@@ -203,6 +203,7 @@ extension PassthroughSubject {
         override func offer(_ output: Output) {
             // 内部数据的修改, 使用 conduitLock 进行锁住.
             conduitLock.lock()
+            // 每个 Conduit 都分别管理 demand, 如果上游发送数据的时候, 这个 conduit 没有 demand 了, 那么是不会进行数据的投喂的. 
             guard demand > 0,
                   let downstream = self.downstream else {
                 conduitLock.unlock()

@@ -238,6 +238,7 @@ extension ReduceProducer: Subscriber {
 
 extension ReduceProducer: Subscription {
     
+    // 这里不会向上游进行 Request, 因为这个 operator, 已经 unlimited request 了.
     internal func request(_ demand: Subscribers.Demand) {
         demand.assertNonZero()
         innerLock.lock()

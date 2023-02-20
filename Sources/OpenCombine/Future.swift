@@ -159,6 +159,7 @@ extension Future {
                                        result: Result<Output, Failure>) {
             switch result {
             case .success(let output):
+                // 在发送了 value 之后, 立马发送了 completion 事件, 这非常重要, 因为整个响应通路其实是需要结束事件进行资源的释放的. 
                 _ = downstream.receive(output)
                 downstream.receive(completion: .finished)
             case .failure(let error):
