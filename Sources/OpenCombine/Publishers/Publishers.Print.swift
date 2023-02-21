@@ -12,7 +12,7 @@
  ///
  ///     var s = ""
  ///     for n in 1...5 {
-        // 和其他语言的 Sprint 的用法是一样的.
+ // 和其他语言的 Sprint 的用法是一样的.
  ///         print(n, terminator: "", to: &s)
  ///     }
  ///     // s == "12345"
@@ -56,9 +56,9 @@
  能够, 接受字符串进行输出的抽象.
  在别人的示例中, 看到过这样的写法, 原来是系统就已经构建出来的抽象
  public protocol TextOutputStream {
-
-     /// Appends the given string to the stream.
-     mutating func write(_ string: String)
+ 
+ /// Appends the given string to the stream.
+ mutating func write(_ string: String)
  }
  */
 extension Publisher {
@@ -197,7 +197,7 @@ extension Publishers.Print {
         
         // 在各种事件中, 增加了对应的 Log, 然后保持原有的逻辑不变.
         // 在 receive(subscription 中, 进行状态的管理, 形成了循环引用. 然后, 将自己作为下游的 subscription 传递给下游的节点 .
-        // 这是最标准的 Operator 的做法. 
+        // 这是最标准的 Operator 的做法.
         func receive(subscription: Subscription) {
             log("\(prefix)receive subscription: (\(subscription))")
             lock.lock()
@@ -253,7 +253,7 @@ extension Publishers.Print {
             }
             lock.unlock()
             
-            // 透传. 
+            // 透传.
             subscription.request(demand)
         }
         
@@ -264,11 +264,14 @@ extension Publishers.Print {
                 lock.unlock()
                 return
             }
+            // 惯例实现.
             status = .terminal
             lock.unlock()
-            // 更改自身的状态, 然后调用上游节点的 cancel, 这是最标准的 Operation 的做法.
             subscription.cancel()
         }
+        
+        
+        
         
         var description: String { return "Print" }
         

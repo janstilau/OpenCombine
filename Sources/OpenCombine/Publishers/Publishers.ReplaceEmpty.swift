@@ -103,6 +103,18 @@ extension Publishers.ReplaceEmpty {
             lock.deallocate()
         }
         
+        /*
+         receive(subscription: Subscription)
+         receive(_ input: Upstream.Output)
+         receive(completion: Subscribers.Completion<Upstream.Failure>)
+         request(_ demand: Subscribers.Demand)
+         cancel()
+         
+         对于以上的这几个方法, 各个 Operator 的 Subscription 大部分都是统一的实现.
+         然后在各自的业务逻辑基础上, 重写某几个方法. 
+         */
+        
+        // 这是一个惯例实现.
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = status else {
@@ -124,6 +136,7 @@ extension Publishers.ReplaceEmpty {
                 lock.unlock()
                 return .none
             }
+            // receivedUpstream 记录着, 是否上游触发过数据发送.
             receivedUpstream = true
             lock.unlock()
             return downstream.receive(input)
@@ -187,6 +200,10 @@ extension Publishers.ReplaceEmpty {
             lock.unlock()
             subscription.cancel()
         }
+        
+        
+        
+        
         
         var description: String { return "ReplaceEmpty" }
         

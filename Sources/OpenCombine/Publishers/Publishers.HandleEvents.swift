@@ -8,7 +8,6 @@ extension Publisher {
     /// the stages of the publisher’s lifecycle.
     // 这个节点, 不会对于原来的数据, 进行任何的操作. 只是在中间, 使用数据进行附加的操作.
     // 例如, 在各个示例程序里面, 都是使用这个节点, 进行的缓存处理.
-    // 这是一个产生副作用的场所. 因为响应链条是一个非常, 固化的操作, 有了这样的一个 Publisher, 可以将那些副作用相关的代码, HandleEvent 当中.
     
     /// In the example below, a publisher of integers shows the effect of printing
     /// debugging information at each stage of the element-processing lifecycle:
@@ -162,6 +161,7 @@ extension Publishers.HandleEvents {
         private var status = SubscriptionStatus.awaitingSubscription
         private let lock = UnfairLock.allocate()
         
+        // 这些存储下来的闭包, 会在 Chain 的各个时间点, 被触发.
         public var receiveSubscription: ((Subscription) -> Void)?
         public var receiveOutput: ((Upstream.Output) -> Void)?
         public var receiveCompletion:
@@ -192,6 +192,7 @@ extension Publishers.HandleEvents {
         func receive(subscription: Subscription) {
             lock.lock()
             if let receiveSubscription = self.receiveSubscription {
+                // 在作用域里面, unlock 和 lock 达到了平衡.
                 lock.unlock()
                 // HandleEvent 的业务触发点, 调用埋点的闭包对象.
                 receiveSubscription(subscription)

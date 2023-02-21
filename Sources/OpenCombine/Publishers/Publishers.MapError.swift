@@ -1,9 +1,8 @@
-
 extension Publisher {
-    
     /// Converts any failure from the upstream publisher into a new error.
     
     // 当, 错误不匹配的时候, 使用该 Operator 进行转化.
+    // 这体现了 Combine 这个体系, 对于上下游 Output, Error 的严格控制. 
     /// Use the `mapError(_:)` operator when you need to replace one error type with
     /// another, or where a downstream operator needs the error types of its inputs to
     /// match.
@@ -89,6 +88,8 @@ extension Publishers {
 
 extension Publishers.MapError {
     
+    // 对于这种, 大部分事件都是透传, 只是在特定事件才会发挥作用的 Subscription, 使用 Struct.
+    // 他也是响应链路的一部分.
     private struct Inner<Downstream: Subscriber>
     : Subscriber,
       CustomStringConvertible,
@@ -132,6 +133,7 @@ extension Publishers.MapError {
             case .finished:
                 downstream.receive(completion: .finished)
             case .failure(let error):
+                // MapError 真正发挥作用的地方.
                 downstream.receive(completion: .failure(map(error)))
             }
         }

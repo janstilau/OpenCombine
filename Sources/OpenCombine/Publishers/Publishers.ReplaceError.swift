@@ -1,4 +1,3 @@
-
 extension Publisher {
     
     /// Replaces any errors in the stream with the provided element.
@@ -96,6 +95,8 @@ extension Publishers.ReplaceError {
         private let downstream: Downstream
         private var status = SubscriptionStatus.awaitingSubscription
         private var terminated = false
+        // 因为 replace error 是发送了错误之后, 多余发送了一个值到下游.
+        // 所以在本 Subscription 中, 管理了 demand, 当 error 到达之后, 只有下游真的需要, 才进行多余的 replace value 的发送.
         private var pendingDemand = Subscribers.Demand.none
         private var lock = UnfairLock.allocate()
         
@@ -157,10 +158,9 @@ extension Publishers.ReplaceError {
                 // ReplaceError does not forward the value that
                 // replaces the error until it is requested.
                 if pendingDemand == .none {
-                    // ReplaceError, 是将错误替换成为正常的元素, 然后发送 Complete 事件.
-                    // 如果, 下游没有 Demand 了, 那么发生了错误, 也不会发送 ReplacedElement, 直到下面, Demand 来临了.
                     terminated = true
                     lock.unlock()
+                    // 这里看似是丢了数据, 但是记录了 terminated == true, 在 request demand 的时候, 其实还是会把数据发送出去, 然后 finished 整个 chain.
                     return
                 }
                 status = .terminal
