@@ -10,7 +10,7 @@ public struct Empty<Output, Failure: Error>: Publisher, Equatable {
     ///
     /// - Parameter completeImmediately: A Boolean value that indicates whether
     ///   the publisher should immediately finish.
-    // 如果 completeImmediately 为 false, 那么其实就是一个空转的 Publisher了. 
+    // 如果 completeImmediately 为 false, 那么其实就是一个空转的 Publisher了.
     public init(completeImmediately: Bool = true) {
         self.completeImmediately = completeImmediately
     }
@@ -26,6 +26,7 @@ public struct Empty<Output, Failure: Error>: Publisher, Equatable {
     ///     should immediately finish.
     ///   - outputType: The output type exposed by this publisher.
     ///   - failureType: The failure type exposed by this publisher.
+    // 使用这种方式, 可以通过参数来确定泛型类型的值.
     public init(completeImmediately: Bool = true,
                 outputType: Output.Type,
                 failureType: Failure.Type) {
@@ -37,6 +38,7 @@ public struct Empty<Output, Failure: Error>: Publisher, Equatable {
     ///
     /// If `true`, the publisher finishes immediately after sending a subscription
     /// to the subscriber. If `false`, it never completes.
+    // Never 实现, 就是 completeImmediately === false
     public let completeImmediately: Bool
     
     // 因为, Completion 的事件, 其实不受 Demand 控制的. 所以, 在接收到后方节点之后, 直接发送了相关的事件.

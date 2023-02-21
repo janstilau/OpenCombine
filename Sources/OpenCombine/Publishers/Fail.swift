@@ -1,4 +1,9 @@
-// 直接发送错误, 这在组建复杂逻辑的时候, 是很好用的小部件.
+// 直接发送错误.
+/*
+ Just, Fail 其实有着应用场景的.
+ 就是将已经通过其他方式获取到的值, 纳入到响应链路中.
+ 可能是 FlatMap 这种, 也可能是直接作为头结点.
+ */
 /// A publisher that immediately terminates with the specified error.
 public struct Fail<Output, Failure: Error>: Publisher {
     
@@ -30,6 +35,9 @@ public struct Fail<Output, Failure: Error>: Publisher {
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Output == Downstream.Input, Failure == Downstream.Failure
     {
+        // 整个 Combine 的通信, 是遵循一套流程的.
+        // Publisher 创建 Subscription 作为整个相应链路的真正节点, 是必须的.
+        // 所以这里还是创建了 subscription. 理论上, 应该由这个 Subscription 将后续信号发送给 downstream, 这里直接 Publisher 进行了发送. 
         subscriber.receive(subscription: Subscriptions.empty)
         subscriber.receive(completion: .failure(error))
     }

@@ -8,10 +8,11 @@ extension Publisher {
     /// Raises a debugger signal when a provided closure needs to stop the process in
     /// the debugger.
     
+    // 提供了各种时机的 Predict 条件, 当相关事件发生时, 进行 predict 的判断. 如果判断应该停止, 调用内核方法进行停止.
     /// Use `breakpoint(receiveSubscription:receiveOutput:receiveCompletion:)` to examine
     /// one or more stages of the subscribe/publish/completion process and stop in
-    /// the debugger, based on conditions you specify. When any of the provided closures
-    /// returns `true`, this operator raises the `SIGTRAP` signal to stop the process
+    /// the debugger, based on conditions you specify.
+    /// When any of the provided closures returns `true`, this operator raises the `SIGTRAP` signal to stop the process
     /// in the debugger. Otherwise, this publisher passes through values and completions
     /// as-is.
     

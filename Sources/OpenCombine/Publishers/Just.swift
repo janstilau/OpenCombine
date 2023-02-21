@@ -3,7 +3,7 @@
 ///
 /// You can use a `Just` publisher to start a chain of publishers.
 ///  A `Just` publisher is also useful when replacing a value with `Publishers.Catch`.
-// 这里说的很明显了, Just 就可以当做单值进行处理.
+// Just 用来, 创建已经明确了值的 chain 头结点.
 
 /// In contrast with `Result.Publisher`, a `Just` publisher can’t fail with an error.
 /// And unlike `Optional.Publisher`, a `Just` publisher always produces a value.
@@ -11,7 +11,7 @@
 // Optional 是, 当 Optinal 有值的时候, 发射信号. 没有值的时候, 直接 Completion.
 public struct Just<Output>: Publisher {
     
-    public typealias Failure = Never // 不会有错误.
+    public typealias Failure = Never // Just 从语言上
     
     /// The one element that the publisher emits.
     public let output: Output
@@ -29,16 +29,17 @@ public struct Just<Output>: Publisher {
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
     where Downstream.Input == Output, Downstream.Failure == Never
     {
-        // 因为, Just 发送的是 Value. 而 Value 事件, 是受到 Demand 控制的.
-        // 所以, 这里不像 Empty,Fail 一样, 直接可以向后方节点发送事件
-        // 而是生成了一个真正的节点对象, 在这个节点对象里面, 要处理后方节点的 Demand 管理.
+        // 不像 Empty, Fail, Just 其实也要收到 Demand 的管理, 所以需要专门有个 Subscription 对象, 真正在有需求的时候, 发送数据, 发送 Complete.
         subscriber.receive(subscription: Inner(value: output, downstream: subscriber))
     }
 }
 
 extension Just: Equatable where Output: Equatable {}
-// 这些, 都是为了减少建立 Publisher 而做的优化
-// 如果直接使用方法, 那么相当于会是在 Just 后, 新创建一个节点, 来处理各个业务. 但是 Just 是一个很简单的数据, 可以减少这个没有必要的节点的创建. 将响应链进行简化.
+
+// Publisher 的熔化处理, Chain 上的中间节点创建.
+// 这都建立在, 可以直接使用当前值, 计算出 Operator 中数据的基础上的.
+// 对于 Sequence, Just 这种 Publisher 来说, 里面的数据是固定的. 所以可以减少中间节点的创建, 直接替换 Publisher, 替换后的 Publisher 的数据可以直接运算出来.
+// 这样可以带来效率的提升.
 extension Just where Output: Comparable {
     
     public func min() -> Just<Output> {
@@ -52,20 +53,14 @@ extension Just where Output: Comparable {
 
 
 extension Just where Output: Equatable {
-    
     public func contains(_ output: Output) -> Just<Bool> {
         return .init(self.output == output)
     }
-    
     public func removeDuplicates() -> Just<Output> {
         return self
     }
 }
 
-// 这是 Just 的融合操作.
-// 如果按照原有的逻辑, 会是将所有的 Operator 创建一个中间节点, 然后数据从最初的节点, 按照顺序运转到最后的节点.
-// 但是对于 Sequence, Just 这种 Publisher 来说, 里面的数据是固定的. 所以可以减少中间节点的创建, 直接替换 Publisher, 替换后的 Publisher 的数据可以直接运算出来.
-// 这样可以带来效率的提升.
 extension Just {
     public func allSatisfy(_ predicate: (Output) -> Bool) -> Just<Bool> {
         return .init(predicate(output))
@@ -74,6 +69,7 @@ extension Just {
     public func tryAllSatisfy(
         _ predicate: (Output) throws -> Bool
     ) -> Result<Bool, Error>.OCombine.Publisher {
+        // 这是 Result 的构造函数, 在里面会有 try 处理.
         return .init(Result { try predicate(output) })
     }
     
@@ -281,8 +277,8 @@ extension Just {
 }
 
 extension Just {
-    // 因为, just 一定是头结点, 所以不会作为 Subscriber 存在. 不会承担上游的数据
-    // 因为, Just 是其他节点的上游节点, 所以要成为 Subscription, 接受下游节点的 Demand 请求, 和 cancel 操作.
+    // 因为, just 一定是头结点,不会承担上游的数据, 所以不会作为 Subscriber 存在.
+    // 因为, Just 是其他节点的上游节点, 接受下游节点的 Demand 请求, 和 cancel 操作, 所以要成为 Subscription.
     private final class Inner<Downstream: Subscriber>
     : Subscription,
       CustomStringConvertible,
@@ -323,6 +319,7 @@ extension Just {
         func cancel() {
             downstream = nil
         }
+        
         
         var description: String { return "Just" }
         

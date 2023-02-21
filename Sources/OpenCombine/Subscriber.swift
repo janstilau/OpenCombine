@@ -65,6 +65,11 @@ public protocol Subscriber: CustomCombineIdentifierConvertible {
     /// - Parameter input: The published element.
     /// - Returns: A `Subscribers.Demand` instance indicating how many more elements
     ///   the subscriber expects to receive.
+    /*
+     这可能是一个比较长的过程. 不是递归, 而是需要进行从源头到结尾 Subscriber, 因为需要返回值.
+     然后结尾将自己的 demand 回传, 最终到源头.
+     chain 在建立之后, 所有的数据发送, 都是在 chain 上进行完整路由的. 
+     */
     func receive(_ input: Input) -> Subscribers.Demand
     
     /// Tells the subscriber that the publisher has completed publishing, either normally

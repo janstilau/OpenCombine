@@ -1,6 +1,5 @@
 
 extension Optional {
-    
     /// A namespace for disambiguation when both OpenCombine and Combine are imported.
     ///
     /// Combine extends `Optional` with a nested type `Publisher`.
@@ -101,7 +100,6 @@ extension Optional {
 }
 
 extension Optional.OCombine {
-    
     // 和 Just 一样, 因为 Combine 是一个 Pull 模型, 所以任何可以发送 Value Publisher, 都要建立一个 Inner 节点.
     // 在这个节点里面, 要实现 Subscription 协议, 完成 Demand 的管理, 以及 cancel 的触发.
     private final class Inner<Downstream: Subscriber>

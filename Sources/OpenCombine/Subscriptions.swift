@@ -1,4 +1,3 @@
-
 /// A namespace for symbols related to subscriptions.
 
 // 这种专门定义一个命名空间, 进行相关类型的封装是一个非常优秀的设计里面. 

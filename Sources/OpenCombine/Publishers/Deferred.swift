@@ -1,6 +1,8 @@
-// 不太明白, 意义在哪里, 本身 Publisher 就是 subscribe 的时候, 才会触发真正的信号的生成.
-// 延时生成 Publisher.
-// 如果创建出来的是 Future 这个就有意义了.
+/*
+ 对于有些 Publihser 来说, 生成 Publisher 的过程, 就会触发信号产生的逻辑.
+ 例如 Future, 对于这样的 Publisher 来说, Deferred 其实就有意义了.
+ 只有真正的进行 Sink 的时候, 才触发生成 Publisher 的逻辑, 在 sink 之前, 还可以使用 Publisher 进行 opertor 操作.
+ */
 
 /// A publisher that awaits subscription before running the supplied closure
 /// to create a publisher for the new subscriber.
@@ -17,8 +19,6 @@ public struct Deferred<DeferredPublisher: Publisher>: Publisher {
     /// The closure to execute when this deferred publisher receives a subscription.
     /// The publisher returned by this closure immediately
     /// Receives the incoming subscription.
-    // 真正的, 生成 Publisher 的闭包, 这要在创建的时候, 进行存储.
-    // 这是这个类型, 最最重要的属性了.
     public let publisherCreator: () -> DeferredPublisher
     
     /// Creates a deferred publisher.
@@ -32,7 +32,6 @@ public struct Deferred<DeferredPublisher: Publisher>: Publisher {
     /*
      Publisher 的惯例是, 生成该 Publisher 相关的节点对象, 节点对象和 downstream 节点相连, 然后将新生成的节点对象, attach 到上级 Publisher 上.
      但是 Deferred 的作用, 就是生成 Publisher. 所以 Deffer 一定是头节点.
-     所以, 它的 receive<Downstream: Subscriber>(subscriber 就是, 生成头节点的 Publisher, 然后接受 Downstream 节点.
      */
     /// This function is called to attach the specified `Subscriber`
     /// to this `Publisher` by `subscribe(_:)`

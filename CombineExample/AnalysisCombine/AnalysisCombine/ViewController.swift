@@ -56,6 +56,8 @@ struct Person {
     }
 }
 
+extension String: Error{ }
+
 class ViewController: UIViewController {
     
     var theAction: (() -> ())?
@@ -76,6 +78,9 @@ class ViewController: UIViewController {
         weather.temperature = 25
         weather.temperature = 23
         weather.temperature = 21
+        
+        let emptyPub_1 = Empty.init(completeImmediately: true, outputType: Int.self, failureType: String.self)
+        let emptyPub_2 = Empty<Int, String>.init()
     }
     
     func getProtocolFunc(_ sth: SomeProtocol) {
