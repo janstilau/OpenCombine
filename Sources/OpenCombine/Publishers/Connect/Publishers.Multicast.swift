@@ -117,7 +117,6 @@ extension Publishers {
             lock.deallocate()
         }
         
-        
         /*
          核心所在. Subscriber 都附加到了 Subject 上.
          Connect 则是将 subject 作为 subscriber 附加到 Upstream 上.

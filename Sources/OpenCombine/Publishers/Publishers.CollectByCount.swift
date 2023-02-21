@@ -4,6 +4,10 @@ extension Publisher {
     /// Collects up to the specified number of elements, and then emits a single array of
     /// the collection.
     
+    /*
+     按照 Count 发送已经收集好的数据, complete 的时候, 发送剩余了
+     这种最后一次需要处理, 是一个通用逻辑, 好多场景可能遇到够.
+     */
     /// Use `collect(_:)` to emit arrays of at most `count` elements from an upstream
     /// publisher. If the upstream publisher finishes before collecting the specified
     /// number of elements, the publisher sends an array of only the items it received
@@ -35,7 +39,6 @@ extension Publisher {
 }
 
 extension Publishers {
-    // 惯例 Publisher.
     /// A publisher that buffers a maximum number of items.
     public struct CollectByCount<Upstream: Publisher>: Publisher {
         
@@ -80,14 +83,20 @@ extension Publishers.CollectByCount {
         
         private let downstream: Downstream
         
-        private let count: Int
+        private let count: Int // 计数器.
         
-        private var buffer: [Input] = []
+        private var buffer: [Input] = [] // cache上游
         
         private var subscription: Subscription?
         
         private var finished = false
         
+        /*
+         Subscription 必须加锁, 因为无法确定上游的环境.
+         如果上游是 Subject, 那么 Subject 的上游是可能有多个的.
+         就算是只有一个 Chain, 其实也没有办法确定环境的, 如果上游发射的时候, 总是做环境切换呢??
+         所以, 应该加锁就要加锁.
+         */
         private let lock = UnfairLock.allocate()
         
         init(downstream: Downstream, count: Int) {
@@ -125,7 +134,7 @@ extension Publishers.CollectByCount {
             }
             let output = self.buffer.take()
             lock.unlock()
-            // 这里一次性把积攒的 demand 都加回来了. 
+            // 这里一次性把积攒的 demand 都加回来了.
             return downstream.receive(output) * count
         }
         
@@ -138,6 +147,7 @@ extension Publishers.CollectByCount {
                 if buffer.isEmpty {
                     lock.unlock()
                 } else {
+                    // 最后一次把数据都发送出去.
                     let buffer = self.buffer.take()
                     lock.unlock()
                     _ = downstream.receive(buffer)
@@ -154,6 +164,9 @@ extension Publishers.CollectByCount {
             lock.lock()
             if let subscription = self.subscription {
                 lock.unlock()
+                // 对于下游来说, 它只要一份数据.
+                // 但是这份数据在本 Subscription 来说, 是需要上游发送 demand * count 才能够凑齐的.
+                // 中间 Operator 的 Subscription, 是上下游数据都有加工的权力的. 
                 subscription.request(demand * count)
             } else {
                 lock.unlock()
@@ -172,6 +185,9 @@ extension Publishers.CollectByCount {
                 lock.unlock()
             }
         }
+        
+        
+        
         
         var description: String { return "CollectByCount" }
         

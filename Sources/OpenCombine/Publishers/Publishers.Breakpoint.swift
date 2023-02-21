@@ -56,40 +56,6 @@ extension Publisher {
                      receiveCompletion: receiveCompletion)
     }
     
-    /// Raises a debugger signal upon receiving a failure.
-    
-    /// When the upstream publisher fails with an error, this publisher raises
-    /// the `SIGTRAP` signal, which stops the process in the debugger. Otherwise, this
-    /// publisher passes through values and completions as-is.
-    ///
-    /// In this example a `PassthroughSubject` publishes strings, but its downstream
-    /// `Publisher/tryMap(_:)` operator throws an error. This sends the error downstream
-    /// as a `Subscribers.Completion.failure(_:)`. The `breakpointOnError()`
-    /// operator receives this completion and stops the app in the debugger.
-    ///
-    ///      struct CustomError : Error {}
-    ///      let publisher = PassthroughSubject<String?, Error>()
-    ///      cancellable = publisher
-    ///          .tryMap { stringValue in
-    ///              throw CustomError()
-    ///          }
-    ///          .breakpointOnError()
-    ///          .sink(
-    ///              receiveCompletion: { completion in
-    ///                  print("Completion: \(String(describing: completion))")
-    ///              },
-    ///              receiveValue: { aValue in
-    ///                  print("Result: \(String(describing: aValue))")
-    ///              }
-    ///          )
-    ///
-    ///      publisher.send("TEST DATA")
-    ///
-    ///      // Prints: "error: Execution was interrupted, reason: signal SIGTRAP."
-    ///      // Depending on your specific environment, the console messages may
-    ///      // also include stack trace information, which is not shown here.
-    ///
-    /// - Returns: A publisher that raises a debugger signal upon receiving a failure.
     public func breakpointOnError() -> Publishers.Breakpoint<Self> {
         return breakpoint(receiveCompletion: { completion in
             switch completion {
@@ -193,7 +159,9 @@ extension Publishers.Breakpoint {
             self.breakpoint = breakpoint
         }
         
-        // 在 Subscriber 的各种事件里面, 如果触发了 Check 逻辑, 就主动抛出断点.
+        /*
+         就是在 Subscriber 的各个节点里面, 判断存储的闭包返回值, 如果需要断点, 调用内核方法, 进行断点. 
+         */
         func receive(subscription: Subscription) {
             if breakpoint.receiveSubscription?(subscription) == true {
                 __stopInDebugger()
@@ -214,6 +182,9 @@ extension Publishers.Breakpoint {
             }
             downstream.receive(completion: completion)
         }
+        
+        
+        
         
         var description: String { return "Breakpoint" }
         

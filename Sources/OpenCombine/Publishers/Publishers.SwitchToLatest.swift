@@ -219,6 +219,7 @@ extension Publishers.SwitchToLatest {
         // Input 会是一个 Publsher 类型.
         func receive(_ newPublisher: Input) -> Subscribers.Demand {
             lock.lock()
+            // 如果整个链条已经结束了, 新的 Publisher 是不会在理会了.
             if cancelled || finished {
                 lock.unlock()
                 return .none

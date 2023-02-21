@@ -1,8 +1,4 @@
 extension Publisher {
-    
-    /*
-     实现思路, 和 Rx 没有太大的区别.
-     */
     /// Transforms all elements from an upstream publisher into a new publisher up to
     /// a maximum number of publishers you specify.
     // 上游的每一个 Next 事件, 都是生成一个新的 Publisher. 下游节点, 其实是和这个新的 Publisher 的信号相连.
@@ -144,11 +140,11 @@ extension Publishers {
     
     /// A publisher that transforms elements from an upstream publisher into a new
     /// publisher.
-    public struct FlatMap<Child: Publisher,
+    public struct FlatMap<ChildPublisher: Publisher,
                           Upstream: Publisher>: Publisher
-    where Child.Failure == Upstream.Failure
+    where ChildPublisher.Failure == Upstream.Failure
     {
-        public typealias Output = Child.Output
+        public typealias Output = ChildPublisher.Output
         
         public typealias Failure = Upstream.Failure
         
@@ -156,23 +152,21 @@ extension Publishers {
         
         public let maxPublishers: Subscribers.Demand
         
-        public let transform: (Upstream.Output) -> Child
+        public let childPublisherCreator: (Upstream.Output) -> ChildPublisher
         
         public init(upstream: Upstream, maxPublishers: Subscribers.Demand,
-                    transform: @escaping (Upstream.Output) -> Child) {
+                    transform: @escaping (Upstream.Output) -> ChildPublisher) {
             self.upstream = upstream
             self.maxPublishers = maxPublishers
-            self.transform = transform
+            self.childPublisherCreator = transform
         }
         
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-        where Child.Output == Downstream.Input, Upstream.Failure == Downstream.Failure
+        where ChildPublisher.Output == Downstream.Input, Upstream.Failure == Downstream.Failure
         {
-            // 每次, 有新的 Subscribe 的时候, 是创建一个中间节点.
-            // 由这个中间节点, 完成上游数据转变为 Publisher 的操作.
-            let outer = Outer(downstream: subscriber,
-                              maxPublishers: maxPublishers,
-                              map: transform)
+            let outer = OuterSink(downstream: subscriber,
+                                  maxPublishers: maxPublishers,
+                                  map: childPublisherCreator)
             subscriber.receive(subscription: outer)
             upstream.subscribe(outer)
         }
@@ -180,13 +174,13 @@ extension Publishers {
 }
 
 extension Publishers.FlatMap {
-    private final class Outer<Downstream: Subscriber>
+    private final class OuterSink<Downstream: Subscriber>
     : Subscriber,
       Subscription,
       CustomStringConvertible,
       CustomReflectable,
       CustomPlaygroundDisplayConvertible
-    where Downstream.Input == Child.Output, Downstream.Failure == Upstream.Failure
+    where Downstream.Input == ChildPublisher.Output, Downstream.Failure == Upstream.Failure
     {
         typealias Input = Upstream.Output
         typealias Failure = Upstream.Failure
@@ -221,22 +215,22 @@ extension Publishers.FlatMap {
         private var innerRecursive = false
         
         private var nextInnerIndex: SubscriptionIndex = 0
-        private var pendingSubscriptions = 0
+        private var childSubscriptionCount = 0
         // 中间节点的管理器.
-        private var subscriptions = [SubscriptionIndex : Subscription]()
+        private var childSubscription = [SubscriptionIndex : Subscription]()
         // 中间节点产生的数据的管理器.
-        private var buffer = [(SubscriptionIndex, Child.Output)]()
+        private var buffer = [(SubscriptionIndex, ChildPublisher.Output)]()
         private let maxPublishers: Subscribers.Demand
-        private let childPublisherGenerator: (Input) -> Child
+        private let childPublisherCreator: (Input) -> ChildPublisher
         private var cancelledOrCompleted = false
         private var outerFinished = false
         
         init(downstream: Downstream,
              maxPublishers: Subscribers.Demand,
-             map: @escaping (Upstream.Output) -> Child) {
+             map: @escaping (Upstream.Output) -> ChildPublisher) {
             self.downstream = downstream
             self.maxPublishers = maxPublishers
-            self.childPublisherGenerator = map
+            self.childPublisherCreator = map
         }
         
         deinit {
@@ -258,8 +252,8 @@ extension Publishers.FlatMap {
             // 存储原始的 Upstream 生成的 Subscription 节点.
             outerSubscription = subscription
             lock.unlock()
-            // 原始 UpStream 的 Demand, 受 maxPublishers 的控制.
-            // 原始的 Upstream 应该尊重该值. maxPublishers 就是在这里, 起到了控制上游节点发送数据数量的逻辑.
+            // 这个时候, 没有像普通的 Opertor 那样, 将自身传递给了下游.
+            // maxPublishers 的作用在这体现了, 本 Subscription 只会要这么多, 在 receive 之后, 不会要更多的 demand
             subscription.request(maxPublishers)
         }
         
@@ -271,11 +265,11 @@ extension Publishers.FlatMap {
                 return .none
             }
             // 在这里, 产生了 新的 Publisher.
-            let child = childPublisherGenerator(input)
+            let child = childPublisherCreator(input)
             lock.lock()
             let innerIndex = nextInnerIndex
             nextInnerIndex += 1
-            pendingSubscriptions += 1
+            childSubscriptionCount += 1
             lock.unlock()
             // 新的 Publisher是将和 Side 对象进行了 attach.
             child.subscribe(Side(index: innerIndex, inner: self))
@@ -294,12 +288,12 @@ extension Publishers.FlatMap {
                 let wasAlreadyCancelledOrCompleted = cancelledOrCompleted
                 cancelledOrCompleted = true
                 // 如果发生了错误, 那么后续节点, 接收到错误时间. 并且, 把之前所有的中间节点释放.
-                for (_, subscription) in subscriptions {
+                for (_, subscription) in childSubscription {
                     // Cancelling subscriptions with the lock acquired. Not good,
                     // but that's what Combine does. This code path is tested.
                     subscription.cancel()
                 }
-                subscriptions = [:]
+                childSubscription = [:]
                 lock.unlock()
                 if wasAlreadyCancelledOrCompleted {
                     return
@@ -312,13 +306,8 @@ extension Publishers.FlatMap {
         
         // MARK: - Subscription
         
-        // 这个是, Downstream 对于管控节点的 Demand 的控制.
         fileprivate func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
-            // downstreamRecursive = true
-            // 会在 Downstream.receiveInput 的时候触发.
-            // 而 Downstream.receiveInput 中, downstream 会触发该方法.
-            // 所以, 在这里应该做阻断, 不然就递归循环了.
             if downstreamRecursive {
                 // downstreamRecursive being true means that downstreamLock
                 // is already acquired.
@@ -333,8 +322,9 @@ extension Publishers.FlatMap {
             if demand == .unlimited {
                 downstreamDemand = .unlimited
                 let buffer = self.buffer.take()
-                let subscriptions = self.subscriptions
+                let subscriptions = self.childSubscription
                 lock.unlock()
+                
                 downstreamLock.lock()
                 downstreamRecursive = true
                 for (_, childOutput) in buffer {
@@ -342,6 +332,7 @@ extension Publishers.FlatMap {
                 }
                 downstreamRecursive = false
                 downstreamLock.unlock()
+                
                 for (_, subscription) in subscriptions {
                     subscription.request(.unlimited)
                 }
@@ -349,27 +340,23 @@ extension Publishers.FlatMap {
             } else {
                 downstreamDemand += demand
                 while !buffer.isEmpty && downstreamDemand > 0 {
-                    // FIXME: This has quadratic complexity.
-                    // This is what Combine does.
-                    // Can we improve perfomance by using e. g. Deque instead of Array?
-                    // Or array's cache locality makes this solution more efficient?
-                    // Must benchmark before optimizing!
-                    //
-                    // https://www.cocoawithlove.com/blog/2016/09/22/deque.html
                     let (index, value) = buffer.removeFirst()
                     downstreamDemand -= 1
-                    let subscription = subscriptions[index]
+                    let subscription = childSubscription[index]
                     lock.unlock()
+                    
                     downstreamLock.lock()
                     downstreamRecursive = true
                     let additionalDemand = downstream.receive(value)
                     downstreamRecursive = false
                     downstreamLock.unlock()
+                    
                     if additionalDemand != .none {
                         lock.lock()
                         downstreamDemand += additionalDemand
                         lock.unlock()
                     }
+                    
                     if let subscription = subscription {
                         innerRecursive = true
                         subscription.request(.max(1))
@@ -388,7 +375,7 @@ extension Publishers.FlatMap {
                 return
             }
             cancelledOrCompleted = true
-            let subscriptions = self.subscriptions.take()
+            let subscriptions = self.childSubscription.take()
             let outerSubscription = self.outerSubscription.take()
             lock.unlock()
             for (_, subscription) in subscriptions {
@@ -413,8 +400,8 @@ extension Publishers.FlatMap {
         private func receiveInner(subscription: Subscription,
                                   _ index: SubscriptionIndex) {
             lock.lock()
-            pendingSubscriptions -= 1
-            subscriptions[index] = subscription
+            childSubscriptionCount -= 1
+            childSubscription[index] = subscription
             
             let demand = downstreamDemand == .unlimited
             ? Subscribers.Demand.unlimited
@@ -424,18 +411,25 @@ extension Publishers.FlatMap {
             subscription.request(demand)
         }
         
-        private func receiveInner(_ input: Child.Output,
+        // 创建的 ChildPublisher 发送数据过来了.
+        // 注意, 所有的 ChildPublisher 其实是公用了一个 downstream 的.
+        // 所以该加锁必须加锁.
+        private func receiveInner(_ input: ChildPublisher.Output,
                                   _ index: SubscriptionIndex) -> Subscribers.Demand {
             lock.lock()
             if downstreamDemand == .unlimited {
                 lock.unlock()
+                
                 downstreamLock.lock()
                 downstreamRecursive = true
                 _ = downstream.receive(input)
                 downstreamRecursive = false
                 downstreamLock.unlock()
+                
                 return .none
             }
+            // 在 FlatMap 里面, 进行了 buffer 的设置.
+            // 这样多个 ChildPublisher 的信息会存储, 等待 downStream 的 demand 修改.
             if downstreamDemand == .none || innerRecursive {
                 buffer.append((index, input))
                 lock.unlock()
@@ -443,12 +437,14 @@ extension Publishers.FlatMap {
             }
             downstreamDemand -= 1
             lock.unlock()
+            
             downstreamLock.lock()
             downstreamRecursive = true
             // 直到这个时候, 后续节点才真正的拿到了数据.
             let newDemand = downstream.receive(input)
             downstreamRecursive = false
             downstreamLock.unlock()
+            
             if newDemand > 0 {
                 lock.lock()
                 downstreamDemand += newDemand
@@ -457,18 +453,20 @@ extension Publishers.FlatMap {
             return .max(1)
         }
         
-        private func receiveInner(completion: Subscribers.Completion<Child.Failure>,
+        private func receiveInner(completion: Subscribers.Completion<ChildPublisher.Failure>,
                                   _ index: SubscriptionIndex) {
             switch completion {
             case .finished:
                 lock.lock()
-                subscriptions.removeValue(forKey: index)
+                childSubscription.removeValue(forKey: index)
                 let downstreamCompleted = releaseLockThenSendCompletionDownstreamIfNeeded(
                     outerFinished: outerFinished
                 )
+                // 当 ChildPublisher 结束了, 才会想上游要另外的一个 Demand.
                 if !downstreamCompleted {
                     requestOneMorePublisher()
                 }
+                // Child 失败了一次, 就算作整个 chain 都失败了.
             case .failure:
                 lock.lock()
                 if cancelledOrCompleted {
@@ -476,7 +474,7 @@ extension Publishers.FlatMap {
                     return
                 }
                 cancelledOrCompleted = true
-                let subscriptions = self.subscriptions.take()
+                let subscriptions = self.childSubscription.take()
                 lock.unlock()
                 for (i, subscription) in subscriptions where i != index {
                     subscription.cancel()
@@ -504,7 +502,7 @@ extension Publishers.FlatMap {
             outerFinished: Bool
         ) -> Bool {
             if !cancelledOrCompleted && outerFinished && buffer.isEmpty &&
-                subscriptions.count + pendingSubscriptions == 0 {
+                childSubscription.count + childSubscriptionCount == 0 {
                 cancelledOrCompleted = true
                 lock.unlock()
                 downstreamLock.lock()
@@ -519,31 +517,34 @@ extension Publishers.FlatMap {
         
         // MARK: - Side
         
+        // 新生成的 Publisher, 面对的下游是这个 Side.
         private struct Side: Subscriber,
                              CustomStringConvertible,
                              CustomReflectable,
                              CustomPlaygroundDisplayConvertible {
             private let index: SubscriptionIndex
-            private let inner: Outer
+            private let inner: OuterSink
             fileprivate let combineIdentifier = CombineIdentifier()
             
-            fileprivate init(index: SubscriptionIndex, inner: Outer) {
+            fileprivate init(index: SubscriptionIndex, inner: OuterSink) {
                 self.index = index
                 self.inner = inner
             }
             
-            // 所有的, Subscriber 的实现, 都是调用 InnerManager 的相对应的方法.
+            // 所有的, Subscriber 的实现, 都是调用的相对应的方法.
             fileprivate func receive(subscription: Subscription) {
                 inner.receiveInner(subscription: subscription, index)
             }
             
-            fileprivate func receive(_ input: Child.Output) -> Subscribers.Demand {
+            fileprivate func receive(_ input: ChildPublisher.Output) -> Subscribers.Demand {
                 return inner.receiveInner(input, index)
             }
             
-            fileprivate func receive(completion: Subscribers.Completion<Child.Failure>) {
+            fileprivate func receive(completion: Subscribers.Completion<ChildPublisher.Failure>) {
                 inner.receiveInner(completion: completion, index)
             }
+            
+            
             
             fileprivate var description: String { return "FlatMap" }
             

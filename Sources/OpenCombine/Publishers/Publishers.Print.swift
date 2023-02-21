@@ -253,8 +253,7 @@ extension Publishers.Print {
             }
             lock.unlock()
             
-            // Request 没有做任何的管理操作, 直接交给了上游.
-            // 一般来说, 没有中间状态缓存的节点, 都是这样做的.
+            // 透传. 
             subscription.request(demand)
         }
         
