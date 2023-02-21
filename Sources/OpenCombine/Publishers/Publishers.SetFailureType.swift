@@ -106,8 +106,18 @@ extension Publishers.SetFailureType {
         }
         
         func receive(completion: Subscribers.Completion<Never>) {
+            switch  completion {
+            case .finished:
+                break
+            case .failure(let failure): // failure 的类型是 Never.
+//                print(failure)
+                break
+            }
             downstream.receive(completion: .finished)
         }
+        
+        
+        
         
         var description: String { return "SetFailureType" }
         

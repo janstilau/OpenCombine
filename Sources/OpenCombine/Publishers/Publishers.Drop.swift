@@ -1,10 +1,9 @@
-
 extension Publisher {
     /// Omits the specified number of elements before republishing subsequent elements.
     
     /// Use `dropFirst(_:)` when you want to drop the first `n` elements from the upstream
     /// publisher, and republish the remaining elements.
-    ///
+    
     /// The example below drops the first five elements from the stream:
     ///
     ///     let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -46,6 +45,7 @@ extension Publishers {
               Upstream.Output == Downstream.Input
         {
             let inner = Inner(downstream: subscriber, count: count)
+            // ??? 为什么提前调用了呢
             subscriber.receive(subscription: inner)
             upstream.subscribe(inner)
         }
@@ -87,6 +87,8 @@ extension Publishers.Drop {
             lock.deallocate()
         }
         
+        // 其实会出现, 先没有 subscription 的情况.
+        // 因为有着 makeConnectable 的存在.
         func receive(subscription: Subscription) {
             lock.lock()
             guard self.subscription == nil else {
@@ -95,7 +97,8 @@ extension Publishers.Drop {
                 return
             }
             self.subscription = subscription
-            precondition(count >= 0, "count must not be negative")
+            
+            // 在收到新的 subscription 之后, 将之前积累的 demand 也要考虑进去.
             let demandToRequestFromUpstream = pendingDemand + count
             lock.unlock()
             if demandToRequestFromUpstream != .none {
@@ -104,6 +107,7 @@ extension Publishers.Drop {
         }
         
         // 在内部记录已经消耗的熟练, 没有完全消耗完成, 不进行后续的 forward 处理.
+        // 在内部消耗完成之后, 没有向后续发送 Comletion. 还是等待上游的 completion 事件.
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             // Combine doesn't lock here!
             if count > 0 {

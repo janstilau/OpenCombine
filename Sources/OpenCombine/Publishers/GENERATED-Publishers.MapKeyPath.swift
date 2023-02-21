@@ -236,6 +236,8 @@ extension Publishers.MapKeyPath {
         // 当, 收到上游数据之后, 是使用了 KeyPath 进行了提取, 然后给到后续的节点.
         func receive(_ input: Input) -> Subscribers.Demand {
             let output = (
+                // 使用 key 的方式, 对于新进来的值进行取值.
+                // 最终是使用 tuple 的方式, 对值进行了组合. 
                 input[keyPath: keyPath]
             )
             return downstream.receive(output)

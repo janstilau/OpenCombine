@@ -165,6 +165,7 @@ extension Publishers.DropWhile {
             lock.deallocate()
         }
         
+        // 惯例实现.
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = status else {
@@ -177,7 +178,6 @@ extension Publishers.DropWhile {
             downstream.receive(subscription: self)
         }
         
-        // 没太明白, 这个节点实现 Subscription 的原因如何.
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = status, let shouldDrop = predicate else {
@@ -188,8 +188,8 @@ extension Publishers.DropWhile {
             lock.unlock()
             
             if dropping {
-                // 继续忽略.
                 if shouldDrop(input) {
+                    // 继续忽略, 向上游再要一个.
                     return .max(1)
                 } else {
                     lock.lock()
@@ -305,6 +305,7 @@ extension Publishers.TryDropWhile {
             lock.unlock()
             
             if dropping {
+                // 区别就在这里, 在 shouldDrop 调用的时候, 增加了 try catch. 
                 do {
                     if try shouldDrop(input) {
                         return .max(1)

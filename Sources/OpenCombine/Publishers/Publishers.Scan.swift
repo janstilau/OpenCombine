@@ -1,8 +1,7 @@
-
 extension Publisher {
-    
     /// Transforms elements from the upstream publisher by providing the current
     /// element to a closure along with the last value returned by the closure.
+    
     // 类似于 Reduce, 不过 reduce 是将每一个上游值操作之后, 在 finish 的时候统一发送给下游
     // scan, 则是每一个上游值到来后, 操作后, 发送给下游.
     
@@ -17,7 +16,9 @@ extension Publisher {
     ///         .scan(0) { return $0 + $1 }
     ///         .sink { print ("\($0)", terminator: " ") }
     ///      // Prints: "0 1 3 6 10 15 ".
-    ///
+    
+    // 可以看到, initialResult, nextPartialResult 都没有增加 closure, callback 这样的名称后缀.
+    // 真正的把 closure 当做值来进行处理.
     /// - Parameters:
     ///   - initialResult: The previous result returned by the `nextPartialResult`
     ///     closure.
@@ -83,6 +84,7 @@ extension Publishers {
         
         public let initialResult: Output
         
+        // 可能会抛出异常的闭包, 使用 throws 进行修饰.
         public let nextPartialResult: (Output, Upstream.Output) throws -> Output
         
         public init(
@@ -114,6 +116,7 @@ extension Publishers.Scan {
       CustomPlaygroundDisplayConvertible
     where Upstream.Failure == Downstream.Failure
     {
+        // 为什么这个不需要 Lock. 想不明白. 
         typealias Input = Upstream.Output
         
         typealias Failure = Upstream.Failure
@@ -122,6 +125,7 @@ extension Publishers.Scan {
         
         private let nextPartialResult: (Downstream.Input, Input) -> Downstream.Input
         
+        // 必然需要一个地方, 存储上次计算完成的结果.
         private var result: Downstream.Input
         
         fileprivate init(
@@ -130,9 +134,8 @@ extension Publishers.Scan {
             nextPartialResult: @escaping (Downstream.Input, Input) -> Downstream.Input
         )
         {
-            self.downstream = downstream
-            // 最终, 数据是存储在 Result 这里.
             self.result = initialResult
+            self.downstream = downstream
             self.nextPartialResult = nextPartialResult
         }
         

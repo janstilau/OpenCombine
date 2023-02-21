@@ -28,6 +28,8 @@ extension Publisher {
     ///
     /// The output type of this publisher is `Never`.
     
+    // 用这个 Operator, 可以让代码更加清晰. value 接收的触发 value 相关的业务逻辑, completion 相关的, 触发 completion 相关的业务逻辑.
+    // 当然, 上游要 multicast 下. 
     /// - Returns: A publisher that ignores all upstream elements.
     public func ignoreOutput() -> Publishers.IgnoreOutput<Self> {
         return .init(upstream: self)
@@ -78,9 +80,11 @@ extension Publishers.IgnoreOutput {
             self.downstream = downstream
         }
         
-        // 直接, 把 subscription 传递给后面.
-        // 这个 Inner 不是一个 Subscription
-        // 它并不是一个头结点, 也没有在 Receive 的各种事件中, 对上层节点进行操作.
+        /*
+         这个 Subscription 的价值, 就是上游的 Completion 事件.
+         因为它并不将 input 发送给下游, 所以下游其实是无法进行 demand 管理的.
+         使用 unlimited 迫使上游不断的生成数据, 只将 completion 事件下发.
+         */
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
             subscription.request(.unlimited)
@@ -94,6 +98,9 @@ extension Publishers.IgnoreOutput {
         func receive(completion: Subscribers.Completion<Failure>) {
             downstream.receive(completion: completion)
         }
+        
+        
+        
         
         var description: String { return "IgnoreOutput" }
         

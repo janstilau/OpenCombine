@@ -1,11 +1,9 @@
 
 extension Publisher {
     /// Republishes elements until another publisher emits an element.
-    //
     
     /// After the second publisher publishes an element, the publisher returned by this
     /// method finishes.
-    //
     
     /// - Parameter publisher: A second publisher.
     /// - Returns: A publisher that republishes elements until the second publisher
@@ -53,7 +51,6 @@ extension Publishers.PrefixUntilOutput {
         
         typealias Failure = Upstream.Failure
         
-        // 并且, 这是注册到了 Inner 的内部.
         private struct Termination: Subscriber {
             
             let inner: Inner
@@ -63,6 +60,8 @@ extension Publishers.PrefixUntilOutput {
             }
             
             // 非常好的命名方式
+            // 没有做任何的处理, 都是交给了 PrefixUntilOutput 处理.
+            // 因为所有的数据和逻辑, 其实都在 PrefixUntilOutput 的内部.
             func receive(subscription: Subscription) {
                 inner.terminationReceive(subscription: subscription)
             }
@@ -77,7 +76,7 @@ extension Publishers.PrefixUntilOutput {
         }
         
         private var termination: Termination?
-        private var prefixState = SubscriptionStatus.awaitingSubscription
+        private var chainState = SubscriptionStatus.awaitingSubscription
         private var terminationState = SubscriptionStatus.awaitingSubscription
         private var triggered = false
         private let lock = UnfairLock.allocate()
@@ -85,6 +84,7 @@ extension Publishers.PrefixUntilOutput {
         
         init(downstream: Downstream, trigger: Other) {
             self.downstream = downstream
+            
             // 在一开始, 就进行了 Termination 相关的 attach
             // 所以, 有可能 Termination 的信号先触发的.
             let termination = Termination(inner: self)
@@ -98,13 +98,13 @@ extension Publishers.PrefixUntilOutput {
         
         func receive(subscription: Subscription) {
             lock.lock()
-            guard case .awaitingSubscription = prefixState else {
+            guard case .awaitingSubscription = chainState else {
                 lock.unlock()
                 subscription.cancel()
                 return
             }
             // 有可能, Ternimate 先触发了. 所以这里要判断 triggered 的状态的.
-            prefixState = triggered ? .terminal : .subscribed(subscription)
+            chainState = triggered ? .terminal : .subscribed(subscription)
             lock.unlock()
             downstream.receive(subscription: self)
         }
@@ -113,7 +113,7 @@ extension Publishers.PrefixUntilOutput {
         // 当 terminate 了, 会直接取消上游的.
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
-            guard case .subscribed = prefixState else {
+            guard case .subscribed = chainState else {
                 lock.unlock()
                 return .none
             }
@@ -123,21 +123,23 @@ extension Publishers.PrefixUntilOutput {
         
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
-            let prefixState = self.prefixState
+            let prefixState = self.chainState
             let terminationSubscription = terminationState.subscription
-            self.prefixState = .terminal
+            self.chainState = .terminal
             terminationState = .terminal
             termination = nil
             lock.unlock()
+            
             terminationSubscription?.cancel()
             if case .subscribed = prefixState {
                 downstream.receive(completion: completion)
             }
         }
         
+        // 惯例实现.
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
-            guard case let .subscribed(subscription) = prefixState else {
+            guard case let .subscribed(subscription) = chainState else {
                 lock.unlock()
                 return
             }
@@ -145,16 +147,20 @@ extension Publishers.PrefixUntilOutput {
             subscription.request(demand)
         }
         
+        // 两个响应链, 都进行 cancel.
         func cancel() {
             lock.lock()
-            let prefixSubscription = prefixState.subscription
+            let prefixSubscription = chainState.subscription
             let terminationSubscription = terminationState.subscription
-            prefixState = .terminal
+            chainState = .terminal
             terminationState = .terminal
             lock.unlock()
             prefixSubscription?.cancel()
             terminationSubscription?.cancel()
         }
+        
+        
+        
         
         // MARK: - Private
         
@@ -167,6 +173,7 @@ extension Publishers.PrefixUntilOutput {
             }
             terminationState = .subscribed(subscription)
             lock.unlock()
+            // 只要一个.
             subscription.request(.max(1))
         }
         
@@ -176,17 +183,19 @@ extension Publishers.PrefixUntilOutput {
                 lock.unlock()
                 return .none
             }
-            let prefixSubscription = prefixState.subscription
-            prefixState = .terminal
+            let prefixSubscription = chainState.subscription
+            chainState = .terminal
             terminationState = .terminal
             termination = nil
             triggered = true
             lock.unlock()
+            // 当另外一个发送数据后, 完成原本的 chain 的销毁.
             prefixSubscription?.cancel()
             downstream.receive(completion: .finished)
             return .none
         }
         
+        // 永远不会销毁了. 
         private func terminationReceive(
             completion: Subscribers.Completion<Other.Failure>
         ) {

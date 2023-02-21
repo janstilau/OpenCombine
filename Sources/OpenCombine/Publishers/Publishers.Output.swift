@@ -161,6 +161,7 @@ extension Publishers.Output {
             downstream.receive(subscription: self)
         }
         
+        // 说白了就是不断的数数.
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             if remainingUntilStart > 0 {
                 remainingUntilStart -= 1

@@ -172,6 +172,31 @@ extension Publishers.DropUntilOutput {
             downstreamLock.unlock()
         }
         
+        func request(_ demand: Subscribers.Demand) {
+            lock.lock()
+            pendingDemand += demand
+            if let subscription = upstreamSubscription {
+                lock.unlock()
+                subscription.request(demand)
+            } else {
+                lock.unlock()
+            }
+        }
+        
+        func cancel() {
+            lock.lock()
+            let upstreamSubscription = self.upstreamSubscription.take()
+            let otherSubscription = self.otherSubscription.take()
+            cancelled = true
+            lock.unlock()
+            
+            upstreamSubscription?.cancel()
+            otherSubscription?.cancel()
+        }
+        
+        
+        // Other Receive
+        
         private func receiveOther(subscription: Subscription) {
             // Combine doesn't lock here
             guard otherSubscription == nil else {
@@ -186,9 +211,8 @@ extension Publishers.DropUntilOutput {
         
         private func receiveOther(_ input: Other.Output) -> Subscribers.Demand {
             lock.lock()
-            // 在, 接受到外界值之后, 立马修改 triggered 的状态.
             triggered = true
-            // 释放引用.
+            // 为什么不能进行 cancel 呢.
             otherSubscription = nil
             lock.unlock()
             return .none
@@ -216,27 +240,6 @@ extension Publishers.DropUntilOutput {
             downstreamLock.unlock()
         }
         
-        func request(_ demand: Subscribers.Demand) {
-            lock.lock()
-            pendingDemand += demand
-            if let subscription = upstreamSubscription {
-                lock.unlock()
-                subscription.request(demand)
-            } else {
-                lock.unlock()
-            }
-        }
-        
-        func cancel() {
-            lock.lock()
-            let upstreamSubscription = self.upstreamSubscription.take()
-            let otherSubscription = self.otherSubscription.take()
-            cancelled = true
-            lock.unlock()
-            
-            upstreamSubscription?.cancel()
-            otherSubscription?.cancel()
-        }
         
         var description: String { return "DropUntilOutput" }
         
@@ -272,6 +275,9 @@ extension Publishers.DropUntilOutput.Inner {
         func receive(completion: Subscribers.Completion<Other.Failure>) {
             inner.receiveOther(completion: completion)
         }
+        
+        
+        
         
         var description: String { return "DropUntilOutput" }
         

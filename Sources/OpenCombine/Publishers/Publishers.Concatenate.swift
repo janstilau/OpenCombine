@@ -1,4 +1,6 @@
-// Publishers.Concatenate 接受两个 Publisher, 一个 Prefix, 一个 Suffix
+/*
+ 各种操作都是为了构造出 Concatenate 对象出来.
+ */
 extension Publisher {
     
     /// Prefixes a publisher’s output with the specified values.
@@ -50,6 +52,7 @@ extension Publisher {
     ) -> Publishers.Concatenate<Publishers.Sequence<Elements, Failure>, Self>
     where Output == Elements.Element
     {
+        // .init 构建出来的是 Sequence 对象.
         return prepend(.init(sequence: elements))
     }
     
@@ -167,6 +170,10 @@ extension Publisher {
     }
 }
 
+
+
+
+
 extension Publishers {
     
     /// A publisher that emits all of one publisher’s elements before those from another
@@ -235,7 +242,7 @@ extension Publishers.Concatenate {
         
         private var suffix: Suffix?
         
-        private var pending = Subscribers.Demand.none
+        private var pendingDemand = Subscribers.Demand.none
         
         private let lock = UnfairLock.allocate()
         
@@ -250,7 +257,7 @@ extension Publishers.Concatenate {
         
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
-            pending += demand
+            pendingDemand += demand
             guard let subscription =
                     prefixState.subscription ?? suffixState.subscription
             else {
@@ -306,11 +313,11 @@ extension Publishers.Concatenate {
         private func prefixReceive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = prefixState,
-                  pending != .none else {
+                  pendingDemand != .none else {
                 lock.unlock()
                 return .none
             }
-            pending -= 1
+            pendingDemand -= 1
             lock.unlock()
             // 给后续节点下发数据.
             let newDemand = downstream.receive(input)
@@ -318,7 +325,7 @@ extension Publishers.Concatenate {
                 return .none
             }
             lock.lock()
-            pending += newDemand
+            pendingDemand += newDemand
             lock.unlock()
             return newDemand
         }
@@ -349,9 +356,10 @@ extension Publishers.Concatenate {
                 return
             }
             suffixState = .subscribed(subscription)
-            let pending = self.pending
+            let pending = self.pendingDemand
             lock.unlock()
             if pending != .none {
+                // 记录了下游的 demand, 然后在下游链接后, 直接进行 request demand.
                 subscription.request(pending)
             }
         }
@@ -383,6 +391,7 @@ extension Publishers.Concatenate {
 
 // MARK: - PrefixSuffix_Subscriber conformances
 
+// 值的学习, 虽然所有的处理, 还在 Concatenate 内, 但是类型的区分和分发, 让逻辑更加分开.
 // 这是个真正 attach 到 PrefixPublisher 的节点.
 extension Publishers.Concatenate.Inner.PrefixSubscriber: Subscriber {
     

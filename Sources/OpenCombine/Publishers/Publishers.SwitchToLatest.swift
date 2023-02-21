@@ -311,9 +311,13 @@ extension Publishers.SwitchToLatest {
         
         var playgroundDescription: Any { return description }
         
+        
+        
         private func receiveInner(subscription: Subscription,
                                   _ index: UInt64) {
             lock.lock()
+            // index 的意义就在这里.
+            // 必须当前的 index 值, 和 index 相等才行.
             guard currentInnerIndex == index &&
                     !cancelled &&
                     currentInnerSubscription == nil else {
