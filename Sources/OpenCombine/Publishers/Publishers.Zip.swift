@@ -8,7 +8,7 @@ import COpenCombineHelpers
  Much like a zipper or zip fastener on a piece of clothing pulls together rows of teeth to link the two sides, Publishers.Zip combines streams from two different publishers by linking pairs of elements from each side.
  If either upstream publisher finishes successfully or fails with an error, so too does the zipped publisher.
  */
-// Zip Publihser, 主要用来进行数据的收集工作 .
+// Zip Publihser, 主要用来进行数据的收集工作
 extension Publishers {
     
     /// A publisher created by applying the zip function to two upstream publishers.
@@ -585,8 +585,6 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
     // 给后方节点传值, 并且, 接收到后方节点发挥来的 demand 数据.
     @discardableResult
     private func processValue() -> Subscribers.Demand? {
-        assert(valueIsBeingProcessed)
-        
         lock.lock()
         defer {
             valueIsBeingProcessed = false
@@ -680,7 +678,6 @@ private protocol ChildSubscription: AnyObject, Subscription {
     var hasValue: Bool { get }
 }
 
-// 真正的, 每个 Zip 里面的 Subscriber 是 ChildSubscriber.
 fileprivate final class ChildSubscriber<Upstream: Publisher, Downstream: Subscriber>
 where Upstream.Failure == Downstream.Failure
 {
@@ -689,7 +686,7 @@ where Upstream.Failure == Downstream.Failure
     
     fileprivate final var state: ChildState = .waitingForSubscription
     fileprivate final var upstreamSubscription: Subscription?
-    private var values = [Upstream.Output]()
+    private var values = [Upstream.Output]() // 每个上游发送过来的数据, 自己进行存储.
     fileprivate let childIndex: Int
     
     private unowned let parent: InnerBase<Downstream>
@@ -724,7 +721,6 @@ extension ChildSubscriber: Cancellable {
     }
 }
 
-// 对于, 这种联系非常非常紧密的两个类来说, 互相知晓是没有问题的.
 extension ChildSubscriber: Subscriber {
     fileprivate final func receive(subscription: Subscription) {
         if upstreamSubscription == nil {
@@ -736,7 +732,6 @@ extension ChildSubscriber: Subscriber {
     }
     
     fileprivate final func receive(_ input: Input) -> Subscribers.Demand {
-        // 这里还有一步, 存值的操作.
         return parent.receivedChildValue(child: self) { values.append(input) }
     }
     

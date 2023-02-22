@@ -198,7 +198,7 @@ extension Publishers.FlatMap {
         /// read and modified with this lock acquired.
         /// The only exception is the `downstreamRecursive` field, which is guarded
         /// by the `downstreamLock`.
-        private let lock = UnfairLock.allocate()
+        private let internalLock = UnfairLock.allocate()
         
         /// All the calls to the downstream subscriber should be made with this lock
         /// acquired.
@@ -235,7 +235,7 @@ extension Publishers.FlatMap {
         
         deinit {
             outerLock.deallocate()
-            lock.deallocate()
+            internalLock.deallocate()
             downstreamLock.deallocate()
         }
         
@@ -243,41 +243,43 @@ extension Publishers.FlatMap {
         
         // 接收到了, 原始 UpStream 生成的节点数据.
         fileprivate func receive(subscription: Subscription) {
-            lock.lock()
+            internalLock.lock()
             guard outerSubscription == nil, !cancelledOrCompleted else {
-                lock.unlock()
+                internalLock.unlock()
                 subscription.cancel()
                 return
             }
             // 存储原始的 Upstream 生成的 Subscription 节点.
             outerSubscription = subscription
-            lock.unlock()
+            internalLock.unlock()
+            
             // 这个时候, 没有像普通的 Opertor 那样, 将自身传递给了下游.
             // maxPublishers 的作用在这体现了, 本 Subscription 只会要这么多, 在 receive 之后, 不会要更多的 demand
             subscription.request(maxPublishers)
         }
         
         fileprivate func receive(_ input: Input) -> Subscribers.Demand {
-            lock.lock()
+            internalLock.lock()
             let cancelledOrCompleted = self.cancelledOrCompleted
-            lock.unlock()
+            internalLock.unlock()
             if cancelledOrCompleted {
                 return .none
             }
             // 在这里, 产生了 新的 Publisher.
             let child = childPublisherCreator(input)
-            lock.lock()
+            
+            internalLock.lock()
             let innerIndex = nextInnerIndex
             nextInnerIndex += 1
             childSubscriptionCount += 1
-            lock.unlock()
+            internalLock.unlock()
             // 新的 Publisher是将和 Side 对象进行了 attach.
             child.subscribe(Side(index: innerIndex, inner: self))
             return .none
         }
         
         fileprivate func receive(completion: Subscribers.Completion<Failure>) {
-            lock.lock()
+            internalLock.lock()
             outerSubscription = nil
             outerFinished = true
             switch completion {
@@ -294,7 +296,7 @@ extension Publishers.FlatMap {
                     subscription.cancel()
                 }
                 childSubscription = [:]
-                lock.unlock()
+                internalLock.unlock()
                 if wasAlreadyCancelledOrCompleted {
                     return
                 }
@@ -314,16 +316,16 @@ extension Publishers.FlatMap {
                 downstreamDemand += demand
                 return
             }
-            lock.lock()
+            internalLock.lock()
             if cancelledOrCompleted {
-                lock.unlock()
+                internalLock.unlock()
                 return
             }
             if demand == .unlimited {
                 downstreamDemand = .unlimited
                 let buffer = self.buffer.take()
                 let subscriptions = self.childSubscription
-                lock.unlock()
+                internalLock.unlock()
                 
                 downstreamLock.lock()
                 downstreamRecursive = true
@@ -333,17 +335,19 @@ extension Publishers.FlatMap {
                 downstreamRecursive = false
                 downstreamLock.unlock()
                 
+                // 下游的 demand, 不是给 Upstream 的, 而是由 FlatMap 生成的 Publisher.
                 for (_, subscription) in subscriptions {
                     subscription.request(.unlimited)
                 }
-                lock.lock()
+                internalLock.lock()
             } else {
                 downstreamDemand += demand
+                // 当下游有 Demand 需求的时候, 是找已经注册的 FlatMap Publisher 生成的 Subscription, 找他们要值.
                 while !buffer.isEmpty && downstreamDemand > 0 {
                     let (index, value) = buffer.removeFirst()
                     downstreamDemand -= 1
                     let subscription = childSubscription[index]
-                    lock.unlock()
+                    internalLock.unlock()
                     
                     downstreamLock.lock()
                     downstreamRecursive = true
@@ -352,9 +356,9 @@ extension Publishers.FlatMap {
                     downstreamLock.unlock()
                     
                     if additionalDemand != .none {
-                        lock.lock()
+                        internalLock.lock()
                         downstreamDemand += additionalDemand
-                        lock.unlock()
+                        internalLock.unlock()
                     }
                     
                     if let subscription = subscription {
@@ -362,22 +366,22 @@ extension Publishers.FlatMap {
                         subscription.request(.max(1))
                         innerRecursive = false
                     }
-                    lock.lock()
+                    internalLock.lock()
                 }
             }
             releaseLockThenSendCompletionDownstreamIfNeeded(outerFinished: outerFinished)
         }
         
         fileprivate func cancel() {
-            lock.lock()
+            internalLock.lock()
             if cancelledOrCompleted {
-                lock.unlock()
+                internalLock.unlock()
                 return
             }
             cancelledOrCompleted = true
             let subscriptions = self.childSubscription.take()
             let outerSubscription = self.outerSubscription.take()
-            lock.unlock()
+            internalLock.unlock()
             for (_, subscription) in subscriptions {
                 subscription.cancel()
             }
@@ -395,11 +399,11 @@ extension Publishers.FlatMap {
         
         fileprivate var playgroundDescription: Any { return description }
         
-        // MARK: - Private
         
+        // MARK: - Private
         private func receiveInner(subscription: Subscription,
                                   _ index: SubscriptionIndex) {
-            lock.lock()
+            internalLock.lock()
             childSubscriptionCount -= 1
             childSubscription[index] = subscription
             
@@ -407,7 +411,7 @@ extension Publishers.FlatMap {
             ? Subscribers.Demand.unlimited
             : .max(1)
             
-            lock.unlock()
+            internalLock.unlock()
             subscription.request(demand)
         }
         
@@ -416,9 +420,9 @@ extension Publishers.FlatMap {
         // 所以该加锁必须加锁.
         private func receiveInner(_ input: ChildPublisher.Output,
                                   _ index: SubscriptionIndex) -> Subscribers.Demand {
-            lock.lock()
+            internalLock.lock()
             if downstreamDemand == .unlimited {
-                lock.unlock()
+                internalLock.unlock()
                 
                 downstreamLock.lock()
                 downstreamRecursive = true
@@ -428,15 +432,14 @@ extension Publishers.FlatMap {
                 
                 return .none
             }
-            // 在 FlatMap 里面, 进行了 buffer 的设置.
-            // 这样多个 ChildPublisher 的信息会存储, 等待 downStream 的 demand 修改.
+            // 如果当前下游没有 Demand 需求, 需要进行缓存.
             if downstreamDemand == .none || innerRecursive {
                 buffer.append((index, input))
-                lock.unlock()
+                internalLock.unlock()
                 return .none
             }
             downstreamDemand -= 1
-            lock.unlock()
+            internalLock.unlock()
             
             downstreamLock.lock()
             downstreamRecursive = true
@@ -446,9 +449,9 @@ extension Publishers.FlatMap {
             downstreamLock.unlock()
             
             if newDemand > 0 {
-                lock.lock()
+                internalLock.lock()
                 downstreamDemand += newDemand
-                lock.unlock()
+                internalLock.unlock()
             }
             return .max(1)
         }
@@ -457,7 +460,7 @@ extension Publishers.FlatMap {
                                   _ index: SubscriptionIndex) {
             switch completion {
             case .finished:
-                lock.lock()
+                internalLock.lock()
                 childSubscription.removeValue(forKey: index)
                 let downstreamCompleted = releaseLockThenSendCompletionDownstreamIfNeeded(
                     outerFinished: outerFinished
@@ -468,14 +471,14 @@ extension Publishers.FlatMap {
                 }
                 // Child 失败了一次, 就算作整个 chain 都失败了.
             case .failure:
-                lock.lock()
+                internalLock.lock()
                 if cancelledOrCompleted {
-                    lock.unlock()
+                    internalLock.unlock()
                     return
                 }
                 cancelledOrCompleted = true
                 let subscriptions = self.childSubscription.take()
-                lock.unlock()
+                internalLock.unlock()
                 for (i, subscription) in subscriptions where i != index {
                     subscription.cancel()
                 }
@@ -501,17 +504,18 @@ extension Publishers.FlatMap {
         private func releaseLockThenSendCompletionDownstreamIfNeeded(
             outerFinished: Bool
         ) -> Bool {
+            // 必须等到 FlatMap 生成的 Publsiher 也完毕了.
             if !cancelledOrCompleted && outerFinished && buffer.isEmpty &&
                 childSubscription.count + childSubscriptionCount == 0 {
                 cancelledOrCompleted = true
-                lock.unlock()
+                internalLock.unlock()
                 downstreamLock.lock()
                 downstream.receive(completion: .finished)
                 downstreamLock.unlock()
                 return true
             }
             
-            lock.unlock()
+            internalLock.unlock()
             return false
         }
         
@@ -543,6 +547,7 @@ extension Publishers.FlatMap {
             fileprivate func receive(completion: Subscribers.Completion<ChildPublisher.Failure>) {
                 inner.receiveInner(completion: completion, index)
             }
+            
             
             
             

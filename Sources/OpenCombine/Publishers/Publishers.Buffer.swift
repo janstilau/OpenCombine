@@ -1,8 +1,6 @@
-
 extension Publisher {
-    
     /// Buffers elements received from an upstream publisher.
-    ///
+    
     /// Use `buffer(size:prefetch:whenFull:)` to collect a specific number of elements
     /// from an upstream publisher before republishing them to the downstream subscriber
     /// according to the `Publishers.BufferingStrategy` and `Publishers.PrefetchStrategy`
@@ -37,15 +35,15 @@ extension Publishers {
         /// thereafter.
         ///
         /// This strategy starts by making a demand equal to the buffer’s size from
-        /// the upstream when the subscriber first connects. Afterwards, it continues
-        /// to demand elements from the upstream to try to keep the buffer full.
+        /// the upstream when the subscriber first connects.
+        /// Afterwards, it continues to demand elements from the upstream to try to keep the buffer full.
         case keepFull // 提前获取
         
         /// A strategy that avoids prefetching and instead performs requests on demand.
         ///
         /// This strategy just forwards the downstream’s requests to the upstream
         /// publisher.
-        case byRequest // 当下游节点 request 的才获取.
+        case byRequest // 用这种方式, 和不适用 Buffer 一样.
     }
     
     /// A strategy that handles exhaustion of a buffer’s capacity.
@@ -136,7 +134,7 @@ extension Publishers.Buffer {
         
         private var downstreamDemand = Subscribers.Demand.none
         
-        private var values = [Input]()
+        private var values = [Input]() // 真正缓存的位置. 在节点内部开辟一块区域
         
         private let prefetchSize: Int
         
@@ -147,6 +145,8 @@ extension Publishers.Buffer {
         private var upstreamFailed = false
         
         private var terminal: Subscribers.Completion<Failure>?
+        
+        
         
         init(downstream: Downstream,
              size: Int,
@@ -164,11 +164,14 @@ extension Publishers.Buffer {
         
         func receive(subscription: Subscription) {
             lock.lock()
+            // 惯例实现, 没有重复订阅这回事.
             guard case .awaitingSubscription = state else {
                 lock.unlock()
                 subscription.cancel()
                 return
             }
+            
+            
             // 状态管理, 强引用上级节点.
             state = .subscribed(subscription)
             lock.unlock()
@@ -192,7 +195,9 @@ extension Publishers.Buffer {
                 lock.unlock()
                 return .none
             }
+            
             switch terminal {
+                // 平时自己不会这样写, 还是会使用 optional 的解包方式.
             case nil, .finished?:
                 // 如果, 还没有结束, 或者已经结束了.
                 if values.count >= prefetchSize {
@@ -335,6 +340,12 @@ extension Publishers.Buffer {
             values.removeFirst(poppedValues.count)
             return poppedValues
         }
+        
+        
+        
+        
+        
+        
         
         var description: String { return "Buffer" }
         
