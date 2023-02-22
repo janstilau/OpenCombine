@@ -1,6 +1,4 @@
-
 extension Publisher {
-    
     /// Ingores all upstream elements, but passes along a completion state (finished or
     /// failed).
     
@@ -80,13 +78,12 @@ extension Publishers.IgnoreOutput {
             self.downstream = downstream
         }
         
-        /*
-         这个 Subscription 的价值, 就是上游的 Completion 事件.
-         因为它并不将 input 发送给下游, 所以下游其实是无法进行 demand 管理的.
-         使用 unlimited 迫使上游不断的生成数据, 只将 completion 事件下发.
-         */
         func receive(subscription: Subscription) {
+            // 直接将上游节点, 发送给下游, 可以避免本类完成 request demand, cancel 相关的实现.
+            // 作为只进行上游节点数据修改的 Operator 可以这样的设计.
+            // 不过, 只要完成 subscriber 协议, 其他没有复写逻辑的, 还是要把相关逻辑写一遍 .
             downstream.receive(subscription: subscription)
+            // 使用 unlimited 迫使上游不断的生成数据, 只将 completion 事件下发.
             subscription.request(.unlimited)
         }
         

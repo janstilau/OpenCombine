@@ -113,9 +113,7 @@ extension Publishers.DropUntilOutput {
         
         private var pendingDemand = Subscribers.Demand.none
         
-        private var otherSubscription: Subscription?
-        
-        private var otherFinished = false
+        private var triggerSubscription: Subscription?
         
         private var cancelled = false
         
@@ -186,7 +184,7 @@ extension Publishers.DropUntilOutput {
         func cancel() {
             lock.lock()
             let upstreamSubscription = self.upstreamSubscription.take()
-            let otherSubscription = self.otherSubscription.take()
+            let otherSubscription = self.triggerSubscription.take()
             cancelled = true
             lock.unlock()
             
@@ -199,11 +197,11 @@ extension Publishers.DropUntilOutput {
         
         private func receiveOther(subscription: Subscription) {
             // Combine doesn't lock here
-            guard otherSubscription == nil else {
+            guard triggerSubscription == nil else {
                 subscription.cancel()
                 return
             }
-            otherSubscription = subscription
+            triggerSubscription = subscription
             // 就要做一个值
             // Ohter 应该尊重 Demand, 仅仅就发送一个数据过来.
             subscription.request(.max(1))
@@ -213,7 +211,7 @@ extension Publishers.DropUntilOutput {
             lock.lock()
             triggered = true
             // 为什么不能进行 cancel 呢.
-            otherSubscription = nil
+            triggerSubscription = nil
             lock.unlock()
             return .none
         }
@@ -221,12 +219,11 @@ extension Publishers.DropUntilOutput {
         private func receiveOther(completion: Subscribers.Completion<Other.Failure>) {
             lock.lock()
             if triggered {
-                otherSubscription = nil
+                triggerSubscription = nil
                 lock.unlock()
                 return
             }
             
-            otherFinished = true
             if let upstreamSubscription = self.upstreamSubscription.take() {
                 lock.unlock()
                 // 如果, Ohter 没有发送过数据过来, 又 Completion 了.

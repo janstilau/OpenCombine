@@ -132,6 +132,7 @@ extension Publishers.ReplaceEmpty {
         // 如果上游有值, 直接上游的数据.
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             lock.lock()
+            // 可以这样判断, 其实不用管 associate 的值.
             guard case .subscribed = status else {
                 lock.unlock()
                 return .none

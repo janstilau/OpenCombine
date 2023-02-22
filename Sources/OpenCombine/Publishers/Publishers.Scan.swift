@@ -139,6 +139,10 @@ extension Publishers.Scan {
             self.nextPartialResult = nextPartialResult
         }
         
+        /*
+         这个 Operator 不需要管理下游向上游的 Pull 行为, 所以直接将上游节点传递给下游. 
+         */
+        
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
         }
@@ -271,6 +275,9 @@ extension Publishers.TryScan {
             lock.unlock()
             subscription.cancel()
         }
+        
+        
+        
         
         var description: String { return "TryScan" }
         

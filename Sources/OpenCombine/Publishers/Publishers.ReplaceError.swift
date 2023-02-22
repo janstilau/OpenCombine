@@ -122,7 +122,6 @@ extension Publishers.ReplaceError {
             downstream.receive(subscription: self)
         }
         
-        // 惯例实现.
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             guard case .subscribed = status else {
@@ -138,9 +137,13 @@ extension Publishers.ReplaceError {
             lock.lock()
             pendingDemand += demand
             lock.unlock()
+            // 还是给上游传递下游发送过来的 demand.
+            // 本类重写该方法, 只是为了进行 pendingDemand 的管理.
             return demand
         }
         
+        // 作为下游节点, 其实是需要进行状态的 Check 的. 因为上游可能连续发送两个 completion 事件过来.
+        // 它保留着下游的引用, 就可以一直发. 这是上游节点的设计问题. 在自己的类内部, 一定要保证自身的逻辑完备性.
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard case .subscribed = status, !terminated else {
@@ -157,10 +160,14 @@ extension Publishers.ReplaceError {
                 // If there was no demand from downstream,
                 // ReplaceError does not forward the value that
                 // replaces the error until it is requested.
+                /*
+                 pendingDemand 在这里使用了.
+                 这个值存在的意义就是自己记录下游的 demand, 当失败的时候, 其实需要多发送一个 Value 给下游, 但是如果下游不需要呢.
+                 如果下游不需要, 那么就是在下游 request demand 的时候, 在进行这个发送的操作.
+                 */
                 if pendingDemand == .none {
                     terminated = true
                     lock.unlock()
-                    // 这里看似是丢了数据, 但是记录了 terminated == true, 在 request demand 的时候, 其实还是会把数据发送出去, 然后 finished 整个 chain.
                     return
                 }
                 status = .terminal
@@ -183,9 +190,9 @@ extension Publishers.ReplaceError {
                 downstream.receive(completion: .finished)
                 return
             }
-            // 惯例实现, 进行 demand 的管理.
             // 所以, 这里之所以有 Demand 的管理, 是因为处理, 当发生错误的时候, 是否应该发送 ReplacedElement 到后方节点.
             pendingDemand += demand
+            // 下面这是惯例的实现
             guard case let .subscribed(subscription) = status else {
                 lock.unlock()
                 return
@@ -194,6 +201,7 @@ extension Publishers.ReplaceError {
             subscription.request(demand)
         }
         
+        // 这里是惯例实现. 
         func cancel() {
             lock.lock()
             guard case let .subscribed(subscription) = status else {

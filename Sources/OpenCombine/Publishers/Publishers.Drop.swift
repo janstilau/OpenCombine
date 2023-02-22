@@ -1,4 +1,5 @@
 extension Publisher {
+    // republishing 这个词语很重要, 这个单词体现了 Opertor 是接收上方数据, 在完成自己的业务逻辑之后, 发送给下方数据这个逻辑.
     /// Omits the specified number of elements before republishing subsequent elements.
     
     /// Use `dropFirst(_:)` when you want to drop the first `n` elements from the upstream
@@ -87,8 +88,6 @@ extension Publishers.Drop {
             lock.deallocate()
         }
         
-        // 其实会出现, 先没有 subscription 的情况.
-        // 因为有着 makeConnectable 的存在.
         func receive(subscription: Subscription) {
             lock.lock()
             guard self.subscription == nil else {
@@ -110,6 +109,7 @@ extension Publishers.Drop {
         // 在内部消耗完成之后, 没有向后续发送 Comletion. 还是等待上游的 completion 事件.
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             // Combine doesn't lock here!
+            // 为什么不上锁???
             if count > 0 {
                 count -= 1
                 return .none
