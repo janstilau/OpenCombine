@@ -115,7 +115,7 @@ extension Publishers.DropUntilOutput {
         
         private var triggerSubscription: Subscription?
         
-        private var cancelled = false
+        private var upstreamFinsished = false
         
         init(downstream: Downstream) {
             self.downstream = downstream
@@ -128,7 +128,7 @@ extension Publishers.DropUntilOutput {
         
         func receive(subscription: Subscription) {
             lock.lock()
-            guard upstreamSubscription == nil && !cancelled else {
+            guard upstreamSubscription == nil && !upstreamFinsished else {
                 lock.unlock()
                 subscription.cancel()
                 return
@@ -145,7 +145,7 @@ extension Publishers.DropUntilOutput {
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             // 还没有触发, 还是会消耗 demand 的值.
-            if !triggered || cancelled {
+            if !triggered || upstreamFinsished {
                 pendingDemand -= 1
                 lock.unlock()
                 return .none
@@ -159,11 +159,11 @@ extension Publishers.DropUntilOutput {
         
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
-            if cancelled {
+            if upstreamFinsished {
                 lock.unlock()
                 return
             }
-            cancelled = true
+            upstreamFinsished = true
             lock.unlock()
             downstreamLock.lock()
             downstream.receive(completion: completion)
@@ -185,7 +185,7 @@ extension Publishers.DropUntilOutput {
             lock.lock()
             let upstreamSubscription = self.upstreamSubscription.take()
             let otherSubscription = self.triggerSubscription.take()
-            cancelled = true
+            upstreamFinsished = true
             lock.unlock()
             
             upstreamSubscription?.cancel()

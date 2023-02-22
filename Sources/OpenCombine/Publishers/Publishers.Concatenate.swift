@@ -203,7 +203,6 @@ extension Publishers {
         where Suffix.Failure == Downstream.Failure,
               Suffix.Output == Downstream.Input
         {
-            // 在构建响应联调的一开始, 就进行了 prefix 和 Inner 之间数据的链接. 所以在 Inner 里面, 是没有存储 Prefix 的 Publisher.
             let inner = Inner(downstream: subscriber, suffix: suffix)
             prefix.subscribe(Inner<Downstream>.PrefixSubscriber(inner: inner))
         }
@@ -213,7 +212,10 @@ extension Publishers {
 extension Publishers.Concatenate: Equatable where Prefix: Equatable, Suffix: Equatable {}
 
 extension Publishers.Concatenate {
-    // 这个不是 Subscriber.
+    /*
+     Inner 作为状态协调器, 它的主要工作就是, 维护 PrefixPublisher, SuffixPublisher 的注册状态管理.
+     只有一个 Downstream, 它需要完成在 PrefixPublisher 完成之后, 替换 SuffixPublisher 成为 Downstream 的下游.
+     */
     fileprivate final class Inner<Downstream: Subscriber>
     : Subscription,
       CustomStringConvertible,
@@ -255,6 +257,7 @@ extension Publishers.Concatenate {
             lock.deallocate()
         }
         
+        // 下游进行 demand 控制的时候, 找到对应的上游进行 request.
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             pendingDemand += demand
@@ -295,6 +298,9 @@ extension Publishers.Concatenate {
         }
         
         var playgroundDescription: Any { return description }
+        
+        
+        
         
         // MARK: - Private
         
@@ -340,8 +346,7 @@ extension Publishers.Concatenate {
             lock.unlock()
             switch completion {
             case .finished:
-                // Prefix 结束之后, 才会注册 suffix 的.
-                // 所以, 如果 Suffix 提前发送了信号, 后续是接不到的 .
+                // 在这里, 完成了上游数据源的替换. 
                 suffix?.subscribe(SuffixSubscriber(inner: self))
             case .failure:
                 downstream.receive(completion: completion)
@@ -415,6 +420,8 @@ extension Publishers.Concatenate.Inner.PrefixSubscriber: Subscriber {
         inner.prefixReceive(completion: completion)
     }
 }
+
+
 
 extension Publishers.Concatenate.Inner.SuffixSubscriber: Subscriber {
     

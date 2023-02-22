@@ -1,3 +1,4 @@
+// 这里明确的表示了 Publisher == Output
 extension Publisher where Output: Publisher, Output.Failure == Failure {
     /// Republishes elements sent by the most recently received publisher.
     
@@ -121,7 +122,7 @@ extension Publisher where Output: Publisher, Output.Failure == Never {
 }
 
 extension Publishers {
-    
+    // flattens
     /// A publisher that flattens nested publishers.
     ///
     /// Given a publisher that publishes `Publisher` instances,
@@ -183,11 +184,12 @@ extension Publishers.SwitchToLatest {
         typealias Failure = Upstream.Failure
         
         private let downstream: Downstream
-        private var outerSubscription: Subscription?
+        private var upstreamPublisherSubscription: Subscription?
         private var currentInnerSubscription: Subscription?
         private var currentInnerIndex: UInt64 = 0
         private var nextInnerIndex: UInt64 = 1
         private let lock = UnfairLock.allocate()
+        
         private let downstreamLock = UnfairRecursiveLock.allocate()
         private var cancelled = false
         private var finished = false
@@ -206,12 +208,12 @@ extension Publishers.SwitchToLatest {
         
         func receive(subscription: Subscription) {
             lock.lock()
-            guard outerSubscription == nil && !cancelled else {
+            guard upstreamPublisherSubscription == nil && !cancelled else {
                 lock.unlock()
                 subscription.cancel()
                 return
             }
-            outerSubscription = subscription
+            upstreamPublisherSubscription = subscription
             lock.unlock()
             subscription.request(.unlimited)
         }
@@ -225,7 +227,7 @@ extension Publishers.SwitchToLatest {
                 return .none
             }
             
-            // 当, 收到一个新的 Publisher 之后, 就立取消之前的.
+            // 取消之前的注册.
             if let currentInnerSubscription = self.currentInnerSubscription.take()  {
                 lock.unlock()
                 // 取消原来的注册.
@@ -239,14 +241,15 @@ extension Publishers.SwitchToLatest {
             awaitingInnerSubscription = true
             lock.unlock()
             // 新的数据传递过来, 会触发新的链条的构成.
-            // 因为新的数据, 是一个 Publisher 类型. 
+            // 因为新的数据, 是一个 Publisher 类型.
             newPublisher.subscribe(Side(inner: self, index: index))
             return .none
         }
         
+        // 上游结束了, 还要等到当前的 InnerSubscription 结束, 才能算作下游的结束.
         func receive(completion: Subscribers.Completion<Failure>) {
             lock.lock()
-            outerSubscription = nil
+            upstreamPublisherSubscription = nil
             finished = true
             
             if cancelled {
@@ -270,6 +273,7 @@ extension Publishers.SwitchToLatest {
                     lock.unlock()
                 }
             case .failure:
+                // 失败了, 就是全都失败了.
                 let currentInnerSubscription = self.currentInnerSubscription.take()
                 sentCompletion = true
                 lock.unlock()
@@ -296,7 +300,7 @@ extension Publishers.SwitchToLatest {
             lock.lock()
             cancelled = true
             let currentInnerSubscription = self.currentInnerSubscription.take()
-            let outerSubscription = self.outerSubscription.take()
+            let outerSubscription = self.upstreamPublisherSubscription.take()
             lock.unlock()
             
             currentInnerSubscription?.cancel()
@@ -388,7 +392,7 @@ extension Publishers.SwitchToLatest {
                     return
                 }
                 cancelled = true
-                let outerSubscription = self.outerSubscription.take()
+                let outerSubscription = self.upstreamPublisherSubscription.take()
                 sentCompletion = true
                 lock.unlock()
                 outerSubscription?.cancel()
@@ -425,6 +429,7 @@ extension Publishers.SwitchToLatest.Outer {
             self.outer = inner
         }
         
+        // 一个代理类, 所有的逻辑, 还是集中到了 SwitchToLatest.Outer 的内部.
         func receive(subscription: Subscription) {
             outer.receiveInner(subscription: subscription, index)
         }
@@ -436,9 +441,6 @@ extension Publishers.SwitchToLatest.Outer {
         func receive(completion: Subscribers.Completion<Failure>) {
             outer.receiveInner(completion: completion, index)
         }
-        
-        
-        
         
         
         var description: String { return "SwitchToLatest" }

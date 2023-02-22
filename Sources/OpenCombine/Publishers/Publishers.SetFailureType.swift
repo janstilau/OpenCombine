@@ -96,7 +96,14 @@ extension Publishers.SetFailureType {
             self.downstream = downstream
         }
         
-        // Forward 操作.
+        /*
+         只做上游数据到下游数据的逻辑重写, 不做 demand 的管理, 可以直接将上游转交给下游.
+         从下游向上进行回溯, 是没有本类对象的.
+         
+         但是从上游进行数据的传递, 还是需要本类对象的.
+         两条回路上的节点数量不同.
+         一般来说, 从上到下的回溯是最全的. 
+         */
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
         }

@@ -165,7 +165,6 @@ extension Publishers.DropWhile {
             lock.deallocate()
         }
         
-        // 惯例实现.
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = status else {

@@ -1,6 +1,4 @@
-
 extension Publisher {
-    
     /// Republishes elements up to the specified maximum count.
     
     /// Use `prefix(_:)` to limit the number of elements republished to the downstream
@@ -90,6 +88,7 @@ extension Publishers {
         public let upstream: Upstream
         
         /// The range of elements to publish.
+        // 单个, 半区域range, 都可以使用 CountableRange 进行统一的管理.
         public let range: CountableRange<Int>
         
         /// Creates a publisher that publishes elements specified by a range.
@@ -161,7 +160,7 @@ extension Publishers.Output {
             downstream.receive(subscription: self)
         }
         
-        // 说白了就是不断的数数.
+        // 在 Receive 上游数据的时候, 不断的进行两端 count 的计算.
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             if remainingUntilStart > 0 {
                 remainingUntilStart -= 1
@@ -190,6 +189,7 @@ extension Publishers.Output {
             downstream.receive(completion: completion)
         }
         
+        // 感觉这个类, 是不需要进行 Subscription 的管理的. 
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = status else {
