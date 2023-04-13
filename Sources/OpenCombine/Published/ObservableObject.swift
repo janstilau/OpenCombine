@@ -3,7 +3,7 @@
  ObservableObject -> Model 这里面会有 @Published 类型的数据.
  @Published
  
- ObservableObject 会有一个 ObjectWillChangePublisher 的属性. 
+ ObservableObject 会有一个 ObjectWillChangePublisher 的属性.
  ObjectWillChangePublisher <- ObservableObjectPublisher
  
  这是三个不同的概念.

@@ -30,6 +30,7 @@ public protocol Subject: AnyObject, Publisher {
     /// - Parameter subscription: The subscription instance through which the subscriber
     ///   can request elements.
     // 目前仅仅是在 Subject 当做 Subscriber 的时候, 会调用到该方法.
+    // 也就是说, 
     func send(subscription: Subscription)
 }
 

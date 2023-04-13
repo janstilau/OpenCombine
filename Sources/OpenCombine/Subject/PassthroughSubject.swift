@@ -14,13 +14,12 @@
  1. 多路分发. 各种 Share 的语义, 最终都是使用 Subject 实现的.
  2. 原有代码迁移到 Combine 中.
  */
+// Subject 是会有 Error 的, 作为 Imperative 到 Combine 的工具, 如果不能发送 Error, 那么 Combine 就缺少一环了.
 public final class PassthroughSubject<Output, Failure: Error>: Subject {
     private let internalLock = UnfairLock.allocate()
     
-    // 这个 active 其实和 completionEvent 重叠了, 目前来说, completionEvent 有值的时候, active 一定改为 false.
     private var active = true
-    
-    // 数据值, 结束事件.
+    // 数据值, 结束事件. 存这个值, 就是有新的 Subscriber 到来的之后, 直接发送该值. 
     private var completionEvent: Subscribers.Completion<Failure>?
     
     // 存储, 所有的下游节点. 这是 Subject 可以作为分发器的原因.
@@ -32,11 +31,11 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
     internal var hasAnyDownstreamDemand = false
     
     public init() {}
+    
     /*
      当, Subject 消亡的时候, 是将自己所有的作为终点的通路进行了消亡.
-     这是没有问题的.
-     1. 如果这个响应通路没有分发, 只有最后一个 Subject 作为 Subscriber. 那么这条通路就应该消失.
-     2. 如果上游节点有着分发的节点, 那么 cancel 到达这里, 也仅仅是进行分发节点的删除而已.
+     Subject 其实是作为数据通路的终点存在的, 终点不存在了, 那么这个数据通路就应该不存在了.
+     Subject 作为数据通路的起点, 不应该取消, 因为这个通路可能会 Combine 其他的通路, 如果一条通路取消, 会影响到汇合起来的通路的.
      */
     deinit {
         for subscription in upstreamSubscriptions {
@@ -46,8 +45,6 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
     }
     
     /*
-     Subject 这里的 Demand 管理出现了一个问题.
-     一般来说, 我们使用 Subject 是将它用作 Origin Publisher 来使用, 但是它确实可以包装成为 SubjectSubscriber, 成为下游节点.
      Subject 作为一个 Funnel, 承担了所有的上游的数据, 然后将所有数据发送给所有的下游.
      当它作为 Funnel 的时候, 是在自己内部管理了下游节点的 Demand, 自己还是当做这些下游节点的 Origin 来使用, 但是对于上游来说, 则是 Unlimit 的索取.
      */
@@ -82,6 +79,7 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
             // 这里有点 promise 的感觉, 如果已经有了 completionEvent 就直接将向下游发送, 这个时候, 其实不用存储下游到自己的成员变量里面.
             let completion = self.completionEvent!
             internalLock.unlock()
+            // 一定是先 subscription, 后 event. 
             subscriber.receive(subscription: Subscriptions.empty)
             subscriber.receive(completion: completion)
         }

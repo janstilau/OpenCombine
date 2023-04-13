@@ -30,11 +30,6 @@ internal final class SubjectSubscriber<SubjectDownSubject: Subject>
         lock.deallocate()
     }
     
-    /*
-     对于 Subject 来说, 它是在外部创建的, 所以没有办法去限制, Subject 被当做 Subscriber 的次数的.
-     一个 Subject, 可以作为多方的终点, 同时, 又是多方的起点.
-     所以, 在 Subject 的内部, 是存储的多方的来源和多方去处的. 正是因为有着这样的一套机制, 才使得 Subject 是 multicast 内部的真正实现.
-     */
     internal func receive(subscription: Subscription) {
         lock.lock()
         guard upstreamSubscription == nil,
@@ -49,7 +44,8 @@ internal final class SubjectSubscriber<SubjectDownSubject: Subject>
         
         // 这是在库里面, 唯一的一个 Subject 调用 send(subscription 的场景.
         // 在各个 Subject 的实现里面, 就是把上游的 subscription 存储起来了.
-        // 由此可见, 对于 Subject 来说, 他要是有上游, 就是在这里, 把 subject 当做 subscriber 来使用的时候发生的. 
+        // 由此可见, 对于 Subject 来说, 他要是有上游, 就是来自这里.
+        // 将 Subject 当做 Receiver 使用的时候添加的上游. 否则, Subject 就是开发人员手动触发的 Next.
         download.send(subscription: self)
     }
     

@@ -453,6 +453,7 @@ extension Publishers.FlatMap {
                 downstreamDemand += newDemand
                 internalLock.unlock()
             }
+            // 这个值, 是给新创建出来的 Publisher 用的. 
             return .max(1)
         }
         

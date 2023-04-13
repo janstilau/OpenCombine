@@ -162,6 +162,19 @@ extension Publishers {
         where Downstream.Input == Output, Downstream.Failure == Failure
         {
             let outer = Outer(downstream: subscriber)
+            /*
+             上游面对的是下游是 Outer
+             下游面对的上游也是 Outer
+             
+             上游形成一个新的 Publisher, Outer 生成一个 Inner 节点, 作为 Publisher 的下游.
+             Publisher 传递数据给 Inner, Inner 传给 Outer, Outer 传给下游.
+             如果上游又来一个 Publisher, Outer cancel 之前的 Publisher 生成的 Subscription.
+             然后生成新的 Inner, 接受这个新来的 Publisher
+             
+             Outer 从中周旋, 上下游都不知道替换这回事.
+             
+             FlatmapLast 也应该是这样的一份逻辑.
+             */
             subscriber.receive(subscription: outer)
             upstream.subscribe(outer)
         }
