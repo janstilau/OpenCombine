@@ -9,6 +9,7 @@
 import UIKit
 import Combine
 
+// 应该还是要有一个 ViewModel 的. 这里讲所有的事情都集合到一起了. 
 class TimerViewController: UIViewController {
     
     @IBOutlet weak var timerLabel: UILabel!

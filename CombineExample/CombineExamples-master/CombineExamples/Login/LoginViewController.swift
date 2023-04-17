@@ -19,9 +19,11 @@ class LoginViewController: UIViewController {
     // 实际上, 都使用 Subject 也是可以的. @Published 相当于是将这个过程, 隐藏到了自己的赋值语句中了.
     @Published private var username: String = ""
     @Published private var password: String = ""
+    
     private let loginTaps = PassthroughSubject<Void, Never>()
     
     private let executing = CurrentValueSubject<Bool, Never>(false)
+    
     private var cancellableBag = Set<AnyCancellable>()
     
     override func viewDidLoad() {
@@ -78,15 +80,16 @@ class LoginViewController: UIViewController {
         
         credentials
             .map { uname, pass in
+                // 将两个 String 值, 变化成为一个 Bool 变量 .
                 return uname.count >= 4 && pass.count >= 4
             }
-            .prepend(false) // initial state
+            .prepend(false) // initial state, 这是 Prepend, 可以让 UI 进行初始化.
             .assign(to: \.isEnabled, on: loginButton)
             .store(in: &cancellableBag)
         
+        // 因为 credentials 在这里又被用到了, 所以 share 就有了意义.
         loginTaps
             .withLatestFrom(credentials)
-        // HandleEvent 应该就是 do 吧.
             .handleEvents(receiveOutput: { [weak self] _ in
                 guard let strongSelf = self else { return }
                 //
@@ -111,7 +114,7 @@ class LoginViewController: UIViewController {
                 strongSelf.executing.send(false)
             })
             .receive(on: DispatchQueue.main)
-            .eraseToAnyPublisher()
+            .eraseToAnyPublisher() // 这里 erase 有什么作用呢, 没有暴露给外界, 直接原来的类型就可以吧. 
             .sink(receiveValue: { [weak self] result in
                 guard let strongSelf = self else { return }
                 let alert = UIAlertController(title: result ? "Success!" : "Failure!", message: nil, preferredStyle: .alert)

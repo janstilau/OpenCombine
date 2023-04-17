@@ -56,7 +56,6 @@ struct Row {
     let name: String
 }
 
-
 var loginViewController: LoginViewController {
     guard let loginViewController = UIStoryboard(name: "Login", bundle: nil).instantiateInitialViewController() as? LoginViewController else { fatalError()}
     return loginViewController

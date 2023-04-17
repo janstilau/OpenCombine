@@ -10,6 +10,7 @@ import Foundation
 import Combine
 
 extension URLSession {
+    // 原本的是 Response + Data 的形式, 通过这种变化, 变为了 Data 的形式. 
     func get(url: URL, params: [String: String]) -> AnyPublisher<Data, URLError> {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
