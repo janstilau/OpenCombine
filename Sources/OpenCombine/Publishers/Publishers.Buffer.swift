@@ -43,7 +43,7 @@ extension Publishers {
         ///
         /// This strategy just forwards the downstream’s requests to the upstream
         /// publisher.
-        case byRequest // 用这种方式, 和不适用 Buffer 一样.
+        case byRequest // 用这种方式, 和不使用 Buffer 一样.
     }
     
     /// A strategy that handles exhaustion of a buffer’s capacity.
@@ -123,6 +123,7 @@ extension Publishers.Buffer {
         typealias Input = Upstream.Output
         
         typealias Failure = Upstream.Failure
+        
         
         private let lock = UnfairLock.allocate()
         

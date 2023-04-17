@@ -16,7 +16,7 @@ extension Publisher {
     ///     }
     ///
     ///     cancellable = Just(DiceRoll(die: Int.random(in: 1...6)))
-    ///         .map(\.die)
+    ///         .map(\.die) // 类似于 Map 取值, 不过使用 KeyPath 这种方式, 这是一种通用的做法.  KVO 那里多使用, 比原来的好用多了. 
     ///         .sink {
     ///             print ("Rolled: \($0)")
     ///         }

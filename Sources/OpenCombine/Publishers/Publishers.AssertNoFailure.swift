@@ -132,7 +132,7 @@ extension Publishers.AssertNoFailure {
                 downstream.receive(completion: .finished)
             case .failure(let error):
                 // 如果, 接收到的是 Error, 直接就崩了.
-                // 通过这种机制, 使得下游节点可以确定, 上游节点是没有 Error 的.
+                // 这个 operator 是建设上游不会出现错误. 在真正的使用的时候, 前面的节点, 一般会挂钩错误替换的 Operator.
                 let prefix = self.prefix.isEmpty ? "" : self.prefix + ": "
                 fatalError("\(prefix)\(error)", file: file, line: line)
             }

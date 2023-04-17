@@ -200,6 +200,7 @@ extension Publishers.Encode {
         
         func receive(subscription: Subscription) {
             lock.lock()
+            // 这是一个惯例逻辑.
             if finished || self.subscription != nil {
                 lock.unlock()
                 subscription.cancel()
@@ -223,6 +224,7 @@ extension Publishers.Encode {
             
             // Codeable 本身是带有错误的处理截止, 所以, 在真正收到上游节点之后, 要进行相关的 encode 捕捉操作.
             do {
+                // encode(input) 这里, 进行真正的序列化.
                 return try downstream.receive(encode(input))
             } catch {
                 lock.lock()

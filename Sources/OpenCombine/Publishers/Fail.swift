@@ -3,8 +3,11 @@
  Just, Fail 其实有着应用场景的.
  就是将已经通过其他方式获取到的值, 纳入到响应链路中.
  可能是 FlatMap 这种, 也可能是直接作为头结点.
+ 
+ 这种场景其实挺多的. 当需要控制通路数据的时候, 也就是人工想要参与逻辑判断的时候, 这些根据确定值来发射信号的操作符就在这里使用.
  */
 /// A publisher that immediately terminates with the specified error.
+// 这里有 Output, 所以使用的时候, 该填写的信息还要写.
 public struct Fail<Output, Failure: Error>: Publisher {
     
     /// Creates a publisher that immediately terminates with the specified failure.
@@ -23,7 +26,7 @@ public struct Fail<Output, Failure: Error>: Publisher {
     ///   - outputType: The output type exposed by this publisher.
     ///   - failure: The failure to send when terminating the publisher.
     // 在泛型的系统里面, 使用类型参数进行编译绑定, 是非常常见的功能.
-    // 仅仅是进行类型绑定, 在类里面, 其实是完全没有用到该类型的功能的.
+    // 使用这种方式, 就不需要专门写类型参数了. 而实际上, 参数是无用的, 仅仅是为了进行类型绑定. 
     public init(outputType: Output.Type, failure: Failure) {
         self.error = failure
     }

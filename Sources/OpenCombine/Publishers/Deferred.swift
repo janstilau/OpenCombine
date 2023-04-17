@@ -1,7 +1,6 @@
 /*
- 对于有些 Publihser 来说, 生成 Publisher 的过程, 就会触发信号产生的逻辑.
- 例如 Future, 对于这样的 Publisher 来说, Deferred 其实就有意义了.
- 只有真正的进行 Sink 的时候, 才触发生成 Publisher 的逻辑, 在 sink 之前, 还可以使用 Publisher 进行 opertor 操作.
+ 这个操作符的作用是, 延缓头节点的生成动作. 一般来说, 用 Future 举例, 它是创建就进行了信号的生成, 如果没有后续操作, 那么这个信号生成就无意义了.
+ 使用 Defer, 生成动作存储, 直到真正的应该需要触发业务的时候, 才调用.
  */
 
 /// A publisher that awaits subscription before running the supplied closure

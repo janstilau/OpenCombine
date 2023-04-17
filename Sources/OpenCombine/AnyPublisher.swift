@@ -1,9 +1,8 @@
 /*
  大部分的 Publisher, 都是 struct 值语义的.
  Publisher 的作用, 其实是收集信息. 也就是将各种 Publisher 进行复制.
- 这些信息, 一般都会在真正生成响应链路的时候, 赋值到 引用类型的 InnerSink 节点中.
- 所以, 各种 Operator 的使用, 其实就是一顿值的复制工作.
- 到了最后的一个 Operator, 它的 upstream 对象, 其实是一个非常庞大的结构体了. 
+ 到了最后的一个 Operator, 它的 upstream 对象, 其实是一个非常庞大的结构体了.
+ public struct Map<Upstream, Output> : Publisher where Upstream : Publisher
  */
 extension Publisher {
     
@@ -18,14 +17,17 @@ extension Publisher {
     /// When you expose your publishers as the `AnyPublisher` type, you can change
     /// the underlying implementation over time without affecting existing clients.
     // 使用, AnyPublisher, 使得暴露的各种类型, 得到了统一.
+    // 对于泛型来说, 它除了进行算法抽象之外, 还有一个很重要的用途就是类型绑定. 使用这些绑定, 可以使得使用者减少很大的类型转化的工作.
+    // 之前习惯于用接口进行抽象, 但是接口中其实也可以进行类型绑定.
     
     /// The following example shows two types that each have a `publisher` property.
     /// `TypeWithSubject` exposes this property as its actual type, `PassthroughSubject`,
     /// while `TypeWithErasedSubject` uses `eraseToAnyPublisher()` to expose it as
-    /// an `AnyPublisher`. As seen in the output, a caller from another module can access
+    /// an `AnyPublisher`.
+    
+    /// As seen in the output, a caller from another module can access
     /// `TypeWithSubject.publisher` as its native type. This means you can’t change your
     /// publisher to a different type without breaking the caller.
-    // 这里的问题是, 只要返回值的类型暴露出去了, 使用者就可能使用该类型去做一些事情. 为什么要面向抽象编程, 其实也是这一层含义. 使用者, 本来应该仅仅使用抽象调用相关的方法, 但是因为暴露出了太多的东西, 使得后续修改, 无法替换.
     
     /// By comparison, `TypeWithErasedSubject.publisher` appears to callers as an `AnyPublisher`, so you
     /// can change the underlying publisher type at will.

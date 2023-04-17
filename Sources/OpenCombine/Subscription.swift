@@ -9,7 +9,8 @@
 /// Canceling a subscription frees up any resources previously allocated by attaching
 /// the `Subscriber`.
 
-// 这个可以认为是响应链条的节点了. 
+// 这个可以认为是响应链条的节点了.
+// Subscription 必须是 Cancellable 的, 是因为他要完成, cancel 这个动作从下游到上游的传递. 
 public protocol Subscription: Cancellable, CustomCombineIdentifierConvertible {
     
     /// Tells a publisher that it may send more values to the subscriber.

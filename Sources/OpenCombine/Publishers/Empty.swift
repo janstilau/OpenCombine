@@ -3,7 +3,9 @@
 /// You can create a ”Never” publisher — one which never sends values and never
 /// finishes or fails — with the initializer `Empty(completeImmediately: false)`.
 
-// Rx 里面的 Never, 通过 Empty 进行了合二为一.
+/*
+ 这个节点和 Just 一样, 可以用来纳入一些固定值, 或者事件到响应式的环境中来. 
+ */
 public struct Empty<Output, Failure: Error>: Publisher, Equatable {
     
     /// Creates an empty publisher.

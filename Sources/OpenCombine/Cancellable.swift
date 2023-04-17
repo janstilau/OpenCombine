@@ -8,11 +8,8 @@ public protocol Cancellable {
     /// Cancel the activity.
     func cancel()
 }
-// Cancellable 可以放到 Collection 里面, 是因为它主动使用 AnyCancellable 包装了自己 .
+
 extension Cancellable {
-    // 为什么, Cancellable 实现对象, 可以使用 RAII 的技术呢.
-    // 因为, 真正的装入到容器之前, 使用 AnyCancellable 将他们进行了内存语义的转换.
-    // 这种设计, 比 DisposeBag 要优秀. 
     /// Stores this cancellable instance in the specified collection.
     ///
     /// - Parameter collection: The collection in which to store this `Cancellable`.

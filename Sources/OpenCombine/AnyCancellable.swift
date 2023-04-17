@@ -32,13 +32,20 @@ public final class AnyCancellable: Cancellable, Hashable {
     
     // 各种 Any, 都有着这样的一个实现方式.
     // 但是实际上, 传递过来的都会是一个引用类型实现的 Cancellable 对象.
+    
+    // 这是一个很优秀的设计. 
     public init<OtherCancellable: Cancellable>(_ canceller: OtherCancellable) {
         /*
          这个时候, OtherCancellable 还是有着完整的类型信息的.
-         但是不重要, AnyCancellable 对外不暴露这些信息, 他需要的就是一个闭包而已. 
+         但是不重要, AnyCancellable 对外不暴露这些信息, 他需要的就是一个闭包而已.
          */
         _cancel = canceller.cancel
     }
+    
+    // 使用这种方式, 也完成了对于编译. 那么上面的要进行类型信息的获取有什么用呢. 
+//    public init(_ canceller: Cancellable) {
+//        _cancel = canceller.cancel
+//    }
     
     public func cancel() {
         _cancel?()
@@ -55,7 +62,7 @@ public final class AnyCancellable: Cancellable, Hashable {
         hasher.combine(ObjectIdentifier(self))
     }
     
-    // 这是实现 Bag 的基础所在. 在 Deinit 的时候, 自动触发 cancel 函数. 
+    // 这是实现 Bag 的基础所在. 在 Deinit 的时候, 自动触发 cancel 函数.
     deinit {
         // 这里就没有必要调用 _cancel = nil. 内存管理会做这件事.
         _cancel?()
@@ -73,7 +80,7 @@ extension AnyCancellable {
         collection.append(self)
     }
     
-    // 这是一个 Bag 的实现. 
+    // 这是一个 Bag 的实现.
     /// Stores this type-erasing cancellable instance in the specified collection.
     ///
     /// - Parameter collection: The collection in which to store this `AnyCancellable`.

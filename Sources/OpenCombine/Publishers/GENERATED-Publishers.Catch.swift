@@ -1,6 +1,5 @@
 // 中间, 会有一个替换的过程.
 // 如果, 原本的上游链条发生了错误, 立马使用 Catch 中生成的新的 Publihser, 和当前的进行 attach .
-// 也不需要对原有的链条进行 cancel. 因为原本的发生的错误, 上游节点应该负起责任来, 将上游各个节点进行 cancel 掉. 自己作为下游节点, 进行 replace 操作就好了.
 
 extension Publisher {
     
@@ -10,18 +9,19 @@ extension Publisher {
     /// In the example below, the `catch()` operator handles the `SimpleError` thrown by
     /// the upstream publisher by replacing the error with a `Just` publisher. This
     /// continues the stream by publishing a single value and completing normally.
-    
+    // Just 的用途在这里使用上了.
     
     ///
     ///     struct SimpleError: Error {}
     ///     let numbers = [5, 4, 3, 2, 1, 0, 9, 8, 7, 6]
     ///     cancellable = numbers.publisher
-    ///     各种, Try 相关的操作符, 都是里面会 Throw Error 的操作符号.
+    ///     各种, Try 相关的操作符, 都是里面会 Throw Error 的操作符号. 而经过 Try 的操作, 上游的 Error 类型就会丢失. 因为真正抛出的 Error 是随着传入的闭包变化的.
     ///         .tryLast(where: {
     ///             guard $0 != 0 else { throw SimpleError() }
     ///             return true
     ///         })
     ///         .catch { error in
+    // 可见, 对于整个通路来说, 里面的节点不是每次都起作用的. 但是数据的流转一定是从上到下的, 只不过有一些不会起效果.
     ///             Just(-1)
     ///         }
     ///         .sink { print("\($0)") }
@@ -40,9 +40,10 @@ extension Publisher {
     ///   the failed publisher with another publisher.
     // 限制就是, NewPublisher 的 Output, 必须是和原有的 Publihser 的 Output 是相同的.
     public func `catch`<NewPublisher: Publisher>(
+        // Hnadler 接收一个 Error, 然后制造一个新的 Publisher 出来.
         _ handler: @escaping (Failure) -> NewPublisher
     ) -> Publishers.Catch<Self, NewPublisher>
-    where NewPublisher.Output == Output
+    where NewPublisher.Output == Output // 新的 Publisher 必须和老的 Publisher 的类型相同.
     {
         return .init(upstream: self, handler: handler)
     }
@@ -100,9 +101,7 @@ extension Publisher {
 }
 
 extension Publishers {
-    
     // A publisher that handles errors from an upstream publisher by replacing the failed publisher with another publisher.
-    
     public struct Catch<Upstream: Publisher,
                         NewPublisher: Publisher>: Publisher
     // 两个 Publisher 的 Output 的得相同, 但是, 上游的 Error 相当于被 NewPublisher 处理掉了, 下游节点, 只有接收到 NewPublisher 的错误类型.
@@ -192,8 +191,9 @@ extension Publishers.Catch {
       CustomReflectable,
       CustomPlaygroundDisplayConvertible
     where Downstream.Input == Upstream.Output,
-          Downstream.Failure == NewPublisher.Failure
-    {
+          Downstream.Failure == NewPublisher.Failure {
+        
+        
         struct UncaughtS: Subscriber,
                           CustomStringConvertible,
                           CustomReflectable,
@@ -208,7 +208,7 @@ extension Publishers.Catch {
             var combineIdentifier: CombineIdentifier { return inner.combineIdentifier }
             
             // 所有的 Subscriber 都是调用了 Inner 的相关方法.
-            // 非常好的命名, 将逻辑梳理的很清楚.
+            // 所以, 还是 Inner 来完成状态的管理. 使用 Pre 这些方法, 来完成了很好的逻辑控制.
             func receive(subscription: Subscription) {
                 inner.receivePre(subscription: subscription)
             }
@@ -241,6 +241,7 @@ extension Publishers.Catch {
             
             var combineIdentifier: CombineIdentifier { return inner.combineIdentifier }
             
+            // 使用 Post, 来完成很好的语义控制.
             func receive(subscription: Subscription) {
                 inner.receivePost(subscription: subscription)
             }
@@ -261,6 +262,7 @@ extension Publishers.Catch {
         }
         
         private enum State {
+            // 根据自己的含义, 在类中定义了相关的节点.
             case pendingPre
             case pre(Subscription)
             case pendingPost
@@ -281,6 +283,8 @@ extension Publishers.Catch {
         // 从 Producer 复制收集到的信息.
         init(downstream: Downstream,
              handler: @escaping (Upstream.Failure) -> NewPublisher) {
+            // 每一个 Sink 节点, 都要存储下游节点. 这样才能完成对应的传递工作.
+            // 每一个 Sink 节点, 都要存储自己业务相关的逻辑, 来完成自己这个节点的含义.
             self.downstream = downstream
             self.handler = handler
         }
@@ -293,6 +297,9 @@ extension Publishers.Catch {
         // 这个节点, 是原始内容的发射者.
         func receivePre(subscription: Subscription) {
             lock.lock()
+            // 这样写会报错, 我觉得是因为有关联对象的原因.
+//            guard state == .pendingPre else { return }
+            
             guard case .pendingPre = state else {
                 lock.unlock()
                 subscription.cancel()
@@ -310,6 +317,8 @@ extension Publishers.Catch {
             lock.lock()
             demand -= 1
             lock.unlock()
+            
+            // 在没有发生错误的时候, 这里就是透传. 直接将数据传递给下游.
             let newDemand = downstream.receive(input)
             lock.lock()
             demand += newDemand
@@ -329,6 +338,8 @@ extension Publishers.Catch {
                     // 正常的结束.
                     downstream.receive(completion: .finished)
                 case .pendingPre, .pendingPost, .post, .cancelled:
+                    // 没有进行 cancel. 仅仅是这个节点不在接收到上游的事件了.
+                    // 这是正确的, 这条路的责任已经完成了, 但是上游节点可能会有其他的通路. 不能调用 canel 影响其他的逻辑.
                     lock.unlock()
                 }
             case .failure(let error):
@@ -337,15 +348,13 @@ extension Publishers.Catch {
                 case .pre:
                     state = .pendingPost
                     lock.unlock()
-                    // 使用, 新的 Publiser, 来注册.
-                    // 创建了一个新的节点对象作为中介.
+                    // 这种中间节点替换的逻辑, 在整个框架里面用到的很广.
+                    // 就是以为将相关的数据, 都在自身进行了存储.
                     handler(error).subscribe(CaughtS(inner: self))
-                    // 因为, 错误是上级节点发射过来的, 所以, 上级节点应该做完了资源的管理才对
-                    // 所以, 这里仅仅是对于资源进行释放, 不会在调用上级的 cancel .
                 case .cancelled:
                     lock.unlock()
                 case .pendingPre, .post, .pendingPost:
-                    completionBeforeSubscription()
+                    completionBeforeSubscription() // FatalError.
                 }
             }
         }
@@ -361,6 +370,7 @@ extension Publishers.Catch {
             // 状态改变 + 循环引用.
             state = .post(subscription)
             // 原本的 Demand 的值, 还会继续传递给被替换的 Publisher.
+            // 这就是之前进行 Demand 管理的作用所在.
             let demand = self.demand
             lock.unlock()
             if demand > 0 {
@@ -579,6 +589,7 @@ extension Publishers.TryCatch {
                     state = .pendingPost
                     lock.unlock()
                     // 和上面的唯一区别就在这里. 可能会在生成 PostPublihser 的时候, 发生问题.
+                    // 当生成新的 Publisher 的时候, 又发生了错误, 直接就讲错误讲给下游.
                     do {
                         try handler(error).subscribe(CaughtS(inner: self))
                     } catch let anotherError {
