@@ -299,6 +299,7 @@ extension Publishers.Timeout {
             subscription.cancel()
             downstreamLock.lock()
             // 主动触发下层节点的 Completion 事件.
+            // 如果有 customError 的传入, 就使用 Error 事件, 否则就是正常的 Finish 事件. 
             downstream
                 .receive(completion: customError.map { .failure($0()) } ?? .finished)
             downstreamLock.unlock()

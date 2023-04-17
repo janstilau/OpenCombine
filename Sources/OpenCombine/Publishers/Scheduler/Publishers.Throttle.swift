@@ -2,7 +2,7 @@
 extension Publisher {
     /// Publishes either the most-recent or first element published by the upstream
     /// publisher in the specified time interval.
-    
+    // 节流阀, 气管. 从这个单词的命名可以看到, 这就是为了节流的.
     /// Use `throttle(for:scheduler:latest:`` to selectively republish elements from
     /// an upstream publisher during an interval you specify. Other elements received from
     /// the upstream in the throttling interval aren’t republished.
@@ -178,11 +178,13 @@ extension Publishers.Throttle {
                 subscription.cancel()
                 return
             }
+            // 从 scheduler 里面取得当前的时间
             self.lastTime = scheduler.now
             
             state = .subscribed(subscription, downstream)
             lock.unlock()
             
+            // 在接受到上游的 Subscription 的时候, 触发自己业务对于上游的 demand.
             subscription.request(.unlimited)
             
             downstreamLock.lock()
@@ -262,6 +264,7 @@ extension Publishers.Throttle {
                 pendingCompletion = completion
                 lock.unlock()
                 
+                // 真正发送数据给下游, 这个动作需要 scheduler 的调度. 
                 scheduler.schedule { [weak self] in
                     self?.scheduledEmission()
                 }
