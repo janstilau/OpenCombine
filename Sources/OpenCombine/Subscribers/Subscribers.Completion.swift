@@ -7,7 +7,6 @@ extension Subscribers {
     /// normal completion or an error.
     
     // 和 Rx 不同的是, Event 没有抽象出来, 而是使用了 Completion 来封装结束数据.
-    // 这里的 Failure, 不仅仅是 Error, 它是一个泛型类型是锁了类型的. 在使用的时候, 要写出具体的数据类型出来.
     // 这也就是 Swift 中, 泛型的类型绑定的作用.
     public enum Completion<Failure: Error> {
         

@@ -100,6 +100,10 @@ public struct AnyPublisher<Output, Failure: Error>
         if let erased = publisher as? AnyPublisher<Output, Failure> {
             box = erased.box
         } else {
+            // 这个时候, publisher 是有着完整的类型信息的.
+            // 所以 PublisherBox 的内部, 存储的也是有着完整的类型信息的.
+            // 但是 AnyPublisher 来说, 他需要完成的类型信息的时候, 只是在 INIT 方法里面.
+            // 他对外暴露的, 就是 Output 这个类型而已. 
             box = PublisherBox(base: publisher)
         }
     }

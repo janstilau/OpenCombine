@@ -6,44 +6,42 @@
  A publisher delivers elements to one or more Subscriber instances.
  
  在泛型的世界里面, Output -> Input, Output Error -> Input Error 是被编译器强制进行绑定的.
- The subscriber’s Input and Failure associated types must match the Output and Failure types declared by the publisher. The publisher implements the receive(subscriber:)method to accept a subscriber.
+ The subscriber’s Input and Failure associated types must match the Output and Failure types declared by the publisher.
+ 对于 Combine 的 Publisher 来说, 他唯一的要求, 就是可以接受下游节点.
+ 真正的数据流转, 是 Operator 的责任.
+ The publisher implements the receive(subscriber:)method to accept a subscriber.
  
  After this, the publisher can call the following methods on the subscriber:
- Subscription 是真正的响应链条的节点.
+ 
+ 这些其实都是 Sink 节点调用的. Publisher 和 Sink 节点其实不是一回事.
+ 数据真正的流转, 就是记录了下游, 然后调用下游的相关 receive 方法.
+ 下游节点, 需要记录 Subscription. 这是进行循环引用保证响应链条生命周期的基础.
+ 同时, 也可以使用 Subscription 来向上游要数据, 来通知上游, 这个响应链条取消了.
  receive(subscription:): Acknowledges the subscribe request and returns a Subscription instance. The subscriber uses the subscription to demand elements from the publisher and can use it to cancel publishing.
+ 上游节点, 主动调用该方法, 来进行数据的传递.
  receive(_:): Delivers one element from the publisher to the subscriber.
+ 上游节点, 主动调用该方法, 来进行完毕事件的传递. 调用完该事件之后, 上游节点链应该销毁.
  receive(completion:): Informs the subscriber that publishing has ended, either normally or with an error.
  
  这是一个固定的模式, 新的 Publisher 的设计者, 要遵循这个模式, 才能保证 Combine 系统的正确性.
  Every Publisher must adhere to this contract for downstream subscribers to function correctly.
+ 
  Combine 的大量的 Operator, 是这个框架难以学习的原因所在.
  Extensions on Publisher define a wide variety of operators that you compose to create sophisticated event-processing chains. Each operator returns a type that implements the Publisher protocol Most of these types exist as extensions on the Publishers enumeration. For example, the map(_:) operator returns an instance of Publishers.Map.
  
  Creating Your Own Publishers
  Rather than implementing the Publisher protocol yourself, you can create your own publisher by using one of several types provided by the Combine framework:
+ 
+ 官方, 其实是推荐使用 Subject 这种方式.
  Use a concrete subclass of Subject, such as PassthroughSubject, to publish values on-demand by calling its send(_:) method.
  Use a CurrentValueSubject to publish whenever you update the subject’s underlying value.
  Add the @Published annotation to a property of one of your own types. In doing so, the property gains a publisher that emits an event whenever the property’s value changes. See the Published type for an example of this approach.
  */
 
 
-/// Declares that a type can transmit a sequence of values over time.
-/// A publisher delivers elements to one or more `Subscriber` instances.
-
-/// 泛型类型约束. 做类型绑定用.
-/// The subscriber’s `Input` and `Failure` associated types must match the `Output` and
-/// `Failure` types declared by the publisher.
-/// The publisher implements the `receive(subscriber:)`method to accept a subscriber. Attach.
-
-/// After this, the publisher can call the following methods on the subscriber:
-// Publisher 首先按照自己的业务特点生成一个 Subscription 对象, 然后一定要主动调用这个方法, 只有这样, 才可以让 Subscriber 循环引用到 subscription
-/// - `receive(subscription:)`: Acknowledges the subscribe request and returns
-///   a `Subscription` instance. The subscriber uses the subscription to demand elements
-///   from the publisher and can use it to cancel publishing.
-
-// 同样的, Subscriber 在实现 receive(subscription 要做一些固定的事情.
+// Subscriber 在实现 receive(subscription 要做一些固定的事情.
 // 1. 强引用, 来作为循环引用, 保证响应者链条存在.
-// 2. 调用 request demand 方法, 来让上方节点, 进行被压管理. 和 Rx 的 Push 模型不同, Combine 里面, 是 Pull 模型, 由下方节点, 来进行数据的 Demand 管理. 其实, Combine 还是 Push 的机制, 只不过在 Comibine 里面, 进行了 Pull 的尊重. 触发的实际, 还是上游节点决定的. 但是, 如果下游节点不需要, 上游节点不应该把相应的数据传递过来.
+// 2. 调用 request demand 方法, 来让上方节点, 进行被压管理. 和 Rx 的 Push 模型不同, Combine 里面, 是 Pull 模型, 由下方节点, 来进行数据的 Demand 管理. 数据的产生还是在上游节点, 但是如果下游节点没有 demand, 那么上游节点就不应该讲数据发送过来. 这在设计 Publisher 的时候, 一定要尊重 Demand.
 
 
 // Publisher 生成的 Subscription 里面, 主动调用 Subscriber 的 Receive 方法, 将自己生成出来的数据, 主动交给下游节点.
@@ -58,7 +56,7 @@
 /// Every `Publisher` must adhere to this contract for downstream subscribers to function
 /// correctly.
 // Publihser 是泛型绑定的, 同样的, 他生成的 Subscription 也是泛型绑定的. 而这个 Subscription, 其实是和下游的 Subscriber 类型要相符的.
-// 所以, Publisher 和 它的下游 Publisher 的类型相符, 真正起到作用的地方, 是两个 Publisher 所生成的节点, 类型要匹配上. 不过这都是实现细节.
+// 所以, Publisher 和 它的下游 Publisher 的类型相符, 真正起到作用的地方, 是两个 Publisher 所生成的节点, 类型要匹配上.
 
 /// Extensions on `Publisher` define a wide variety of operators that you compose to
 /// create sophisticated event-processing chains.
@@ -69,20 +67,6 @@
 /// Each operator returns a type that implements the `Publisher` protocol
 /// Most of these types exist as extensions on the `Publishers` enumeration.
 /// For example, the `map(_:)` operator returns an instance of `Publishers.Map`.
-
-
-/// # Creating Your Own Publishers
-/// Rather than implementing the `Publisher` protocol yourself, you can create your own
-/// publisher by using one of several types provided by the OpenCombine framework:
-///
-/// - Use a concrete subclass of `Subject`, such as `PassthroughSubject`, to publish
-///   values on-demand by calling its `send(_:)` method.
-/// - Use a `CurrentValueSubject` to publish whenever you update the subject’s underlying
-///   value.
-/// Rx 里面, 基本就是 Subject 作为成员变量. 在 Combine 里面, 利用了 PropertyWrapper 技术.
-/// - Add the `@Published` annotation to a property of one of your own types. In doing so,
-///   the property gains a publisher that emits an event whenever the property’s value
-///   changes. See the `Published` type for an example of this approach.
 public protocol Publisher {
     
     /// The kind of values published by this publisher.
@@ -90,6 +74,7 @@ public protocol Publisher {
     
     /// The kind of errors this publisher might publish.
     /// Use `Never` if this `Publisher` does not publish errors.
+    // Never 其实更多的是一个标识.
     associatedtype Failure: Error
     
     // Attach, 官方也经常使用这个词.
@@ -115,7 +100,7 @@ public protocol Publisher {
 /*
  对于 protocol Publisher 来说, 它的 extension 其实更多的是进行各种 map, satisfy 方法的创建.
  在里面, 是对于各种 Operator 创建.
- 真正的 Inner 节点的创建, 是在 Operator 的内部完成的, 搭建出完整的响应链条. 
+ 真正的 Inner 节点的创建, 是在 Operator 的内部完成的, 搭建出完整的响应链条.
  */
 
 extension Publisher {
@@ -134,6 +119,7 @@ extension Publisher {
     public func subscribe<Subscriber: OpenCombine.Subscriber>(_ subscriber: Subscriber)
     where Failure == Subscriber.Failure, Output == Subscriber.Input
     {
+        // 上面的 Hook 操作, 先不用看.
         if let hook = DebugHook.getGlobalHook() {
             if var marker = subscriber as? SubscriberTapMarker {
                 let anySubscriber = marker.inner
@@ -164,6 +150,7 @@ extension Publisher {
     public func subscribe<Subject: OpenCombine.Subject>(
         _ subject: Subject
     ) -> AnyCancellable
+    // 返回 AnyCancellable 的方法其实不多. 只能够是在最终节点的时候才返回可以 cancel 的值. 
     where Failure == Subject.Failure, Output == Subject.Output
     {
         let subscriber = SubjectSubscriber(subject)

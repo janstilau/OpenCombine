@@ -58,6 +58,7 @@ public final class Future<Output, Failure: Error>: Publisher {
         switch result {
         case .success(let output):
             // 其实就是 fullfil 了. offer 里面调用的就是 fullfil
+            // 这也就意味着, 获取到 Value 之后, 立马就会 finish.
             downstreams.forEach { $0.offer(output) }
         case .failure(let error):
             downstreams.forEach { $0.finish(completion: .failure(error)) }

@@ -1,5 +1,6 @@
 extension Result {
     // 根据闭包返回值的类型, 来决定函数返回值的类型, 这是一种十分常见的编码技巧.
+    // 这种 Try 的会丢失 Error 的类型信息. 
     internal func tryMap<NewSuccess>(
         _ transform: (Success) throws -> NewSuccess
     ) -> Result<NewSuccess, Error> {

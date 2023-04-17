@@ -34,10 +34,8 @@ public final class AnyCancellable: Cancellable, Hashable {
     // 但是实际上, 传递过来的都会是一个引用类型实现的 Cancellable 对象.
     public init<OtherCancellable: Cancellable>(_ canceller: OtherCancellable) {
         /*
-         Cancellable 可不是一个 class protocol.
-         如果, 是一个引用对象传递过来了, 那么 canceller.cancel, 这个闭包会引用到 canceller 的值. 所以, 会有该对象的强引用.
-         如果, 是一个值对象传递过来了, 那么 canceller.cancel, 这个闭包会把这个值对象里面的值都复制一遍到闭包中.
-         如果, 该值对象里面有一个引用值, 会有对于那个引用值的循环引用.
+         这个时候, OtherCancellable 还是有着完整的类型信息的.
+         但是不重要, AnyCancellable 对外不暴露这些信息, 他需要的就是一个闭包而已. 
          */
         _cancel = canceller.cancel
     }
