@@ -3,6 +3,7 @@ import COpenCombineHelpers
 #endif
 
 #if WASI
+// 这是一个非常常见的 Id 生成策略.
 private var __identifier: UInt64 = 0
 
 internal func __nextCombineIdentifier() -> UInt64 {

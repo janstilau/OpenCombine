@@ -23,6 +23,10 @@ class TimerViewController: UIViewController {
     private var laps = [String]()
     private var cancellableBag = Set<AnyCancellable>()
     
+    deinit {
+        print("TimerViewController Deinited")
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -30,7 +34,7 @@ class TimerViewController: UIViewController {
             .autoconnect() // 使用 connectable 产生一个代理类, 在 receive subscriber 的时候, 可以自动 connect
             .scan(0, { (acc, _ ) in return acc + 1 })
             .map { $0.timeInterval }
-            .replaceError(with: "") // 这里为什么要 replace . 越界???
+            .replaceError(with: "") // 这里为什么要 replace. 为的是后面使用 assign 这种方式.
             .eraseToAnyPublisher()
             .assign(to: \.currentTime, on: self)
             .store(in: &cancellableBag)
@@ -43,7 +47,7 @@ class TimerViewController: UIViewController {
         
         splitButtonTaps
         // 每次, 都发送新的 Publisher
-        // 通过 map 生成 Publisher + switchToLatest 实现了之前请求 cancel 的效果. 
+        // 通过 map 生成 Publisher + switchToLatest 实现了之前请求 cancel 的效果.
             .map { [weak self] _ -> AnyPublisher<String, Never> in
                 guard let strongSelf = self else {
                     return Empty().eraseToAnyPublisher()

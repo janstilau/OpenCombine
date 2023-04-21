@@ -1,4 +1,5 @@
-// MultiCast 其实是将上游的信号源, 变为 Dispatch 信号源的一个机制.
+// MultiCast 其实是将上游的信号源, 变为 Dispatch 信号源的一个机制.\
+// 一般不会直接使用 multicast, share, 和 makeConnectable 里面会用到. 
 extension Publisher {
     /// Applies a closure to create a subject that delivers elements to subscribers.
     // 真正的能够成为多路复用的响应链, 是因为将后面的链条, 都挂钩到了一个 Subject 对象上了.

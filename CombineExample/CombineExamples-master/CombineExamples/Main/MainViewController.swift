@@ -9,6 +9,7 @@
 import UIKit
 
 class MainViewController: UIViewController {
+    
     private let rows = ["Login example", "Search example", "Timer example", "Username example"]
     
     // 通过 nib 文件, 生成的 VC, 也会走到 didSet 方法中.
