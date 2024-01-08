@@ -1,0 +1,6 @@
+framework module Pods_OpenCombineExample {
+  umbrella header "Pods-OpenCombineExample-umbrella.h"
+
+  export *
+  module * { export * }
+}

@@ -1,0 +1,16 @@
+PODS:
+  - OpenCombine (0.13.0)
+
+DEPENDENCIES:
+  - OpenCombine (from `../`)
+
+EXTERNAL SOURCES:
+  OpenCombine:
+    :path: "../"
+
+SPEC CHECKSUMS:
+  OpenCombine: 8d4ec617562967299e60007f32a73ce908eca14f
+
+PODFILE CHECKSUM: b35e6649c70a77f5420cb31d8dae9236f0c88d66
+
+COCOAPODS: 1.12.1
