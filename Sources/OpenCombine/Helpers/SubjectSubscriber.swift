@@ -5,7 +5,7 @@
  Subscriber 是承担上游的事件. Ouput, Complete 是事件流中的数据.
  Subscription 是建立事件流过程中的真正链路的节点.
  
- Subscription 则是承担下游的事件, cancel 是需要下游发起的. request demand 也是下游发起的. 
+ Subscription 则是承担下游的事件, cancel 是需要下游发起的. request demand 也是下游发起的.
  */
 internal final class SubjectSubscriber<Downstream: Subject>
     : Subscriber,
@@ -54,6 +54,8 @@ internal final class SubjectSubscriber<Downstream: Subject>
         }
         lock.unlock()
         // 交给下游, 就是使用 Subject 的 send, 将数据交给 Subject, 由 Subject 进行分发.
+        // 实际上, Subject 没有实现  receive(_ input: Downstream.Output) 方法.
+        // 在 SubjectSubscriber 这个包装器里面, 也是使用了 send 来进行上游数据传递到了 Subject 里面. 
         subject.send(input)
         return .none
     }

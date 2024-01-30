@@ -17,7 +17,7 @@
 
 /*
  Subject 是一个多对多的关系.
- 他可以有无数的上游, 也可以有无数的下游.
+ 他可以有无数的上游, 也可以有无数的下游. 所以, Subject 天然是一个中心的 Pivot 节点. 
  */
 public final class PassthroughSubject<Output, Failure: Error>: Subject {
 
@@ -57,6 +57,7 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
     {
         lock.lock()
         if active {
+            // 每当, Subject 接收到一个下游 subscriber 其实是使用了一个 Conduit 当做了 Subscription.
             let conduit = Conduit(parent: self, downstream: subscriber)
             downstreams.insert(conduit)
             lock.unlock()
@@ -124,6 +125,9 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
 
 extension PassthroughSubject {
 
+    // 管道，导管；渠道，通道；（保护线路的）导线管，电缆沟
+    // Conduit 是一个 Subscription, 所以它的主要的功能, 是承担下游的 Request Deamnd, 和 Cancel 事件.
+    // 而上游的事件, 则是 Subject 主动 send, 或者 Subject 承担上游的事件.
     private final class Conduit<Downstream: Subscriber>
         : ConduitBase<Output, Failure>,
           CustomStringConvertible,
@@ -134,9 +138,9 @@ extension PassthroughSubject {
 
         fileprivate var parent: PassthroughSubject?
 
-        fileprivate var downstream: Downstream?
+        fileprivate var downstream: Downstream? //
 
-        fileprivate var demand = Subscribers.Demand.none
+        fileprivate var demand = Subscribers.Demand.none // Conduit 自己管理自己这条链路的 Demand . 
 
         private var lock = UnfairLock.allocate()
 
@@ -208,6 +212,9 @@ extension PassthroughSubject {
             parent?.disassociate(self)
         }
 
+        
+        
+        
         var description: String { return "PassthroughSubject" }
 
         var customMirror: Mirror {
