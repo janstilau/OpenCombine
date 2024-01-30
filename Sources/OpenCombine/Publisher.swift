@@ -1,10 +1,3 @@
-//
-//  Publisher.swift
-//  OpenCombine
-//
-//  Created by Sergej Jaskiewicz on 10.06.2019.
-//
-
 /// Declares that a type can transmit a sequence of values over time.
 ///
 /// A publisher delivers elements to one or more `Subscriber` instances.
@@ -41,6 +34,39 @@
 /// - Add the `@Published` annotation to a property of one of your own types. In doing so,
 ///   the property gains a publisher that emits an event whenever the property’s value
 ///   changes. See the `Published` type for an example of this approach.
+
+/// 声明一个类型可以随时间传输一系列值。
+///
+/// 一个发布者将元素传递给一个或多个Subscriber实例。
+/// 订阅者的Input和Failure相关联的类型必须与发布者声明的Output和Failure类型相匹配。
+/// 发布者实现receive(subscriber:)方法来接受订阅者。
+///
+/// 在此之后，发布者可以在订阅者上调用以下方法：
+/// - receive(subscription:)：确认订阅请求并返回一个Subscription实例。订阅者使用订阅来要求元素
+/// 从发布者获取，并可用于取消发布。
+/// - receive(_:)：将一个元素从发布者传递给订阅者。
+/// - receive(completion:)：通知订阅者发布已经结束，
+/// 无论是正常结束还是出现错误。
+///
+/// 每个Publisher必须遵循此合同，以使下游订阅者正常运行。
+///
+/// 在Publisher上的扩展定义了各种各样的 操作符，您可以组合这些操作符来
+/// 创建复杂的事件处理链。
+/// 每个操作符都返回一个实现Publisher协议的类型
+/// 这些类型大多数存在于Publishers枚举的扩展中。
+/// 例如，map(_:)操作符返回Publishers.Map的实例。
+///
+/// # 创建您自己的发布者
+///
+/// 与其自己实现Publisher协议，不如使用OpenCombine框架提供的几种类型创建您自己
+/// 发布者：
+///
+/// - 使用Subject的具体子类，例如PassthroughSubject，按需发布
+/// 通过调用其send(_:)方法的值。
+/// - 使用CurrentValueSubject在更新主题的基础值时发布。
+/// - 向您自己类型的属性添加@Published注释。这样一来，
+/// 属性获得了一个发布者，每当属性的值发生变化时就会发出事件。参见Published类型的示例。
+
 public protocol Publisher {
 
     /// The kind of values published by this publisher.

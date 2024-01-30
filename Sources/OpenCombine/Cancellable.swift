@@ -1,9 +1,3 @@
-//
-//  Cancellable.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 10.06.2019.
-//
 
 /// A protocol indicating that an activity or action supports cancellation.
 ///

@@ -109,6 +109,7 @@ extension Publishers.Drop {
             }
         }
 
+        // 在 receive(_ input: Upstream.Output) 的时候, 使用个 Count 的值, 完成过滤的需求. 
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             // Combine doesn't lock here!
             if count > 0 {

@@ -1,10 +1,3 @@
-//
-//  Just.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 16.06.2019.
-//
-
 /// A publisher that emits an output to each subscriber just once, and then finishes.
 ///
 /// You can use a `Just` publisher to start a chain of publishers. A `Just` publisher is

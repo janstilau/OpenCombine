@@ -1,10 +1,3 @@
-//
-//  Publishers.Map.swift
-//
-//
-//  Created by Anton Nazarov on 25.06.2019.
-//
-
 extension Publisher {
 
     /// Transforms all elements from the upstream publisher with a provided closure.
@@ -37,6 +30,30 @@ extension Publisher {
     ///   returns a new element.
     /// - Returns: A publisher that uses the provided closure to map elements from
     ///   the upstream publisher to new elements that it then publishes.
+    
+    /// 使用提供的闭包转换上游发布者的所有元素。
+    ///
+    /// OpenCombine的 map(_:) 操作符执行的功能类似于Swift标准库中的 map(_:)：
+    /// 它使用闭包来转换从上游发布者接收到的每个元素。您可以使用 map(_:) 将一种类型
+    /// 的元素转换为另一种类型。
+    ///
+    /// 以下示例使用数字数组作为基于集合的发布者的源。map(_:) 操作符从发布者消耗每个整数，
+    /// 并使用字典将其从阿拉伯数字转换为罗马数字的等效形式，作为 String。
+    /// 如果 map(_:) 的闭包无法查找到罗马数字，它将返回字符串 (unknown)。
+    ///
+    /// let numbers = [5, 4, 3, 2, 1, 0]
+    /// let romanNumeralDict: [Int : String] =
+    /// [1:"I", 2:"II", 3:"III", 4:"IV", 5:"V"]
+    /// cancellable = numbers.publisher
+    /// .map { romanNumeralDict[$0] ?? "(unknown)" }
+    /// .sink { print("($0)", terminator: " ") }
+    ///
+    /// // 输出: "V IV III II I (unknown)"
+    ///
+    /// 如果您的闭包可能引发错误，请改用OpenCombine的 tryMap(_:) 操作符。
+    ///
+    /// - Parameter transform: 接受一个元素作为其参数并返回一个新元素的闭包。
+    /// - Returns: 一个使用提供的闭包将上游发布者的元素映射到新元素的发布者
     public func map<Result>(
         _ transform: @escaping (Output) -> Result
     ) -> Publishers.Map<Self, Result> {
@@ -86,6 +103,42 @@ extension Publisher {
     ///   the thrown error.
     /// - Returns: A publisher that uses the provided closure to map elements from
     ///   the upstream publisher to new elements that it then publishes.
+    
+    /// 使用提供的可能引发错误的闭包转换上游发布者的所有元素。
+    ///
+    /// OpenCombine的 tryMap(_:) 操作符执行的功能类似于Swift标准库中的 map(_:)：
+    /// 它使用闭包来转换从上游发布者接收到的每个元素。您可以使用 tryMap(_:) 将一种类型
+    /// 的元素转换为另一种类型，并在映射的闭包引发错误时终止发布。
+    ///
+    /// 以下示例使用数字数组作为基于集合的发布者的源。tryMap(_:) 操作符从发布者消耗每个整数，
+    /// 并使用字典将其从阿拉伯数字转换为罗马数字的等效形式，作为 String。
+    /// 如果 tryMap(_:) 的闭包无法查找到罗马数字，它将引发错误。tryMap(_:) 操作符捕获此错误并终止发布，
+    /// 发送包装错误的 Subscribers.Completion.failure(_:)。
+    ///
+    /// struct ParseError: Error {}
+    /// func romanNumeral(from:Int) throws -> String {
+    /// let romanNumeralDict: [Int : String] =
+    /// [1:"I", 2:"II", 3:"III", 4:"IV", 5:"V"]
+    /// guard let numeral = romanNumeralDict[from] else {
+    /// throw ParseError()
+    /// }
+    /// return numeral
+    /// }
+    /// let numbers = [5, 4, 3, 2, 1, 0]
+    /// cancellable = numbers.publisher
+    /// .tryMap { try romanNumeral(from: $0) }
+    /// .sink(
+    /// receiveCompletion: { print ("completion: ($0)") },
+    /// receiveValue: { print ("($0)", terminator: " ") }
+    /// )
+    ///
+    /// // 输出: "V IV III II I completion: failure(ParseError())"
+    ///
+    /// 如果您的闭包不会引发错误，请改用 map(_:)。
+    ///
+    /// - Parameter transform: 接受一个元素作为其参数并返回一个新元素的闭包。
+    /// 如果闭包引发错误，发布者将以引发的错误失败。
+    /// - Returns: 一个使用提供的闭包将上游发布者的元素映射到新元素的发布者。
     public func tryMap<Result>(
         _ transform: @escaping (Output) throws -> Result
     ) -> Publishers.TryMap<Self, Result> {
@@ -224,6 +277,7 @@ extension Publishers.Map {
             self.map = map
         }
 
+        // 这几个方法, 是 Subscriber 的功能.
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
         }

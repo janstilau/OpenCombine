@@ -10,6 +10,10 @@
 /// A subject is a publisher that you can use to ”inject” values into a stream, by calling
 /// its `send()` method. This can be useful for adapting existing imperative code to the
 /// Combine model.
+
+/// 一个发布者，公开了一个供外部调用者发布元素的方法。
+///
+/// 主题是一个您可以使用其 send() 方法来“注入”值到流中的发布者。这对于将现有的命令式代码适应为Combine模型非常有用。
 public protocol Subject: AnyObject, Publisher {
 
     /// Sends a value to the subscriber.

@@ -22,6 +22,8 @@ extension Result {
         }
     }
 
+    // 将原本的 Result, 切换成为了 Success 的值.
+    // 这在有默认值处理的场景非常实用.
     internal func unwrapOr(_ handleError: (Failure) -> Success) -> Success {
         switch self {
         case .success(let success):
@@ -31,6 +33,7 @@ extension Result {
         }
     }
 
+    // 这种 @autoclosure 都是没有入参的. 
     internal func unwrapOr(_ handleError: @autoclosure () -> Success) -> Success {
         return unwrapOr { _ in handleError() }
     }
