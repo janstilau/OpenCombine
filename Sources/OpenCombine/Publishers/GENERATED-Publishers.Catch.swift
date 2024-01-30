@@ -1,16 +1,3 @@
-// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-// ┃                                                                                     ┃
-// ┃                   Auto-generated from GYB template. DO NOT EDIT!                    ┃
-// ┃                                                                                     ┃
-// ┃                                                                                     ┃
-// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-//
-//  Publishers.Catch.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 25.12.2019.
-//
-
 extension Publisher {
 
     /// Handles errors from an upstream publisher by replacing it with another publisher.
@@ -43,9 +30,37 @@ extension Publisher {
     ///   returns a publisher to replace the upstream publisher.
     /// - Returns: A publisher that handles errors from an upstream publisher by replacing
     ///   the failed publisher with another publisher.
+    
+    /// 通过使用另一个发布者替换上游发布者来处理上游发布者的错误。
+    ///
+    /// 使用 `catch()` 来用新的发布者替换上游发布者的错误。
+    ///
+    /// 在下面的示例中，`catch()` 操作符处理上游发布者抛出的 `SimpleError`，并通过将错误替换为 `Just` 发布者来继续流。
+    /// 这将发布一个单一的值并正常完成流。
+    ///
+    ///     struct SimpleError: Error {}
+    ///     let numbers = [5, 4, 3, 2, 1, 0, 9, 8, 7, 6]
+    ///     cancellable = numbers.publisher
+    ///         .tryLast(where: {
+    ///             guard $0 != 0 else { throw SimpleError() }
+    ///             return true
+    ///         })
+    ///         .catch { error in
+    ///             Just(-1)
+    ///         }
+    ///         .sink { print("\($0)") }
+    ///         // 打印: -1
+    ///
+    /// 背压说明: 此发布者通过将 `request` 和 `cancel` 传递到上游。在接收到错误后，发布者将任何未满足的需求发送给新的 `Publisher`。
+    ///
+    /// - SeeAlso: `replaceError`
+    /// - Parameter handler: 接受上游失败作为输入的闭包，并返回一个发布者，以替换上游发布者。
+    /// - Returns: 一个处理上游发布者错误的发布者，通过用另一个发布者替换失败的发布者。
+
     public func `catch`<NewPublisher: Publisher>(
         _ handler: @escaping (Failure) -> NewPublisher
     ) -> Publishers.Catch<Self, NewPublisher>
+    // NewPublisher.Output == Output, 保证了下游节点, 还是获取到同样类型的数据.
         where NewPublisher.Output == Output
     {
         return .init(upstream: self, handler: handler)
@@ -94,6 +109,43 @@ extension Publisher {
     ///   or throw a new error to the downstream subscriber.
     /// - Returns: A publisher that handles errors from an upstream publisher by replacing
     ///   the failed publisher with another publisher, or an error.
+    /// 通过替换或抛出新错误处理上游发布者的错误。
+    ///
+    /// 使用 `tryCatch(_:)` 来决定如何处理上游发布者的错误，可以选择替换发布者为一个新的发布者，或者抛出一个新的错误。
+    ///
+    /// 在下面的示例中，一个数组发布者发出值，`tryMap(_:)` 操作符评估这些值以确保它们大于零。
+    /// 如果值不大于零，操作符会向下游订阅者抛出一个错误以通知它存在问题。
+    /// 订阅者 `tryCatch(_:)` 通过使用 ``Just`` 替换错误，以在流正常结束之前发布最终值。
+    ///
+    ///     enum SimpleError: Error { case error }
+    ///     var numbers = [5, 4, 3, 2, 1, -1, 7, 8, 9, 10]
+    ///
+    ///     cancellable = numbers.publisher
+    ///         .tryMap { v in
+    ///             if v > 0 {
+    ///                 return v
+    ///             } else {
+    ///                 throw SimpleError.error
+    ///             }
+    ///         }
+    ///         .tryCatch { error in
+    ///             Just(0) // 在正常完成之前发送最终值。
+    ///                     // 或者，抛出一个新错误来终止流。
+    ///         }
+    ///         .sink(receiveCompletion: { print ("Completion: \($0).") },
+    ///               receiveValue: { print ("Received \($0).") })
+    ///     //    Received 5.
+    ///     //    Received 4.
+    ///     //    Received 3.
+    ///     //    Received 2.
+    ///     //    Received 1.
+    ///     //    Received 0.
+    ///     //    Completion: finished.
+    ///
+    /// - Parameter handler: 一个可抛出的闭包，接受上游失败作为输入。
+    ///   此闭包可以选择替换上游发布者为一个新的发布者，或者向下游订阅者抛出新错误。
+    /// - Returns: 一个发布者，通过替换失败的发布者为另一个发布者或者一个错误来处理上游发布者的错误。
+
     public func tryCatch<NewPublisher: Publisher>(
         _ handler: @escaping (Failure) throws -> NewPublisher
     ) -> Publishers.TryCatch<Self, NewPublisher>
@@ -112,6 +164,7 @@ extension Publishers {
     {
         public typealias Output = Upstream.Output
 
+        // 下游的错误类型变化了.
         public typealias Failure = NewPublisher.Failure
 
         /// The publisher that this publisher receives elements from.
@@ -154,6 +207,7 @@ extension Publishers {
     {
         public typealias Output = Upstream.Output
 
+        // 错误类型变了.
         public typealias Failure = Error
 
         /// The publisher that this publisher receives elements from.
@@ -188,6 +242,7 @@ extension Publishers {
 }
 
 extension Publishers.Catch {
+    // Inner 会被两个 struct 引用. 所以, 状态要保存在 Inner 里面.
     private final class Inner<Downstream: Subscriber>
         : Subscription,
           CustomStringConvertible,
@@ -196,6 +251,7 @@ extension Publishers.Catch {
         where Downstream.Input == Upstream.Output,
               Downstream.Failure == NewPublisher.Failure
     {
+        // 没有发生错误之前, 是这个 UncaughtS 充当 Subscription.
         struct UncaughtS: Subscriber,
                           CustomStringConvertible,
                           CustomReflectable,
@@ -329,6 +385,7 @@ extension Publishers.Catch {
                 case .pre:
                     state = .pendingPost
                     lock.unlock()
+                    // 这里发生了切换.
                     handler(error).subscribe(CaughtS(inner: self))
                 case .cancelled:
                     lock.unlock()
@@ -345,6 +402,8 @@ extension Publishers.Catch {
                 subscription.cancel()
                 return
             }
+            // 上游发送过来 subscription, 才会发生改变.
+            // 然后还会继续使用, 之前存储的 demand.
             state = .post(subscription)
             let demand = self.demand
             lock.unlock()
@@ -562,6 +621,8 @@ extension Publishers.TryCatch {
                     state = .pendingPost
                     lock.unlock()
                     do {
+                        // 如果, handler(error) 也发生了错误, 那么下游直接就收到这个错误.
+                        // 正是因为这里, 下游要变为 Error 的, 因为 handler(error) 这里的错误没有办法固定类型. 
                         try handler(error).subscribe(CaughtS(inner: self))
                     } catch let anotherError {
                         lock.lock()

@@ -1,10 +1,3 @@
-//
-//  Subscribers.Completion.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 11.06.2019.
-//
-
 #if canImport(_Concurrency) && compiler(>=5.5)
 import _Concurrency
 #endif
@@ -70,6 +63,7 @@ extension Subscribers.Completion {
     /// Erases the `Failure` type to `Swift.Error`. This function exists
     /// because in Swift user-defined generic types are always
     /// [invariant](https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)).
+    // 将具体的 Error , 变为 any error.
     internal func eraseError() -> Subscribers.Completion<Error> {
         switch self {
         case .finished:

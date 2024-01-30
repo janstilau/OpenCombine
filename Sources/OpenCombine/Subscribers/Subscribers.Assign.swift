@@ -1,6 +1,6 @@
 //
 //  Subscribers.Assign.swift
-//  
+//
 //
 //  Created by Sergej Jaskiewicz on 15.06.2019.
 //
@@ -15,6 +15,7 @@ extension Subscribers {
                                             CustomReflectable,
                                             CustomPlaygroundDisplayConvertible
     {
+        // 不能出错.
         public typealias Failure = Never
         
         private let lock = UnfairLock.allocate()
@@ -24,6 +25,7 @@ extension Subscribers {
         /// The subscriber holds a strong reference to this object until the upstream
         /// publisher calls `Subscriber.receive(completion:)`, at which point
         /// the subscriber sets this property to `nil`.
+        // 这里有一个强引用.
         public private(set) var object: Root?
         
         /// The key path that indicates the property to assign.
@@ -67,6 +69,7 @@ extension Subscribers {
         
         public func receive(subscription: Subscription) {
             lock.lock()
+            // 惯例, 需要保持上游节点的强引用.
             guard case .awaitingSubscription = status else {
                 lock.unlock()
                 subscription.cancel()
@@ -74,6 +77,7 @@ extension Subscribers {
             }
             status = .subscribed(subscription)
             lock.unlock()
+            // Assign, 对于上游是无限的索取.
             subscription.request(.unlimited)
         }
         
@@ -84,6 +88,7 @@ extension Subscribers {
                 return .none
             }
             lock.unlock()
+            // 接收到上游的数据, 就是使用 keypath, 进行赋值.
             object[keyPath: keyPath] = value
             return .none
         }
@@ -119,6 +124,7 @@ extension Subscribers {
             // When the object deallocates, its deinit is called, and holding
             // the lock at that moment can lead to deadlocks.
             
+            // 在这, 真正的进行了引用的清楚. 
             withExtendedLifetime(object) {
                 object = nil
                 lock.unlock()
@@ -166,6 +172,39 @@ extension Publisher where Failure == Never {
     /// - Returns: An `AnyCancellable` instance. Call `cancel()` on this instance when you
     ///   no longer want the publisher to automatically assign the property.
     ///   Deinitializing this instance will also cancel automatic assignment.
+    
+    /// 将发布者的每个元素分配给对象上的属性。
+    ///
+    /// 当您希望在每次发布者产生值时设置给定属性时，请使用 `assign(to:on:)` 订阅者。
+    ///
+    /// 在此示例中，`assign(to:on:)` 将值设置为 `MyClass` 实例上的 `anInt` 属性：
+    ///
+    ///     class MyClass {
+    ///         var anInt: Int = 0 {
+    ///             didSet {
+    ///                 print("anInt was set to: \(anInt)", terminator: "; ")
+    ///             }
+    ///         }
+    ///     }
+    ///
+    ///     var myObject = MyClass()
+    ///     let myRange = (0...2)
+    ///     cancellable = myRange.publisher
+    ///         .assign(to: \.anInt, on: myObject)
+    ///
+    ///     // 打印: "anInt was set to: 0; anInt was set to: 1; anInt was set to: 2"
+    
+    // 这里有强引用. 只有上游完毕了之后, 才会把它关闭了.
+    ///  > 重要提示: 此操作符创建的 `Subscribers.Assign` 实例对 `object` 保持强引用，并在上游发布者完成（正常或错误完成）时将其设置为 `nil`。
+    ///
+    /// - Parameters:
+    ///   - keyPath: 指示要分配的属性的关键路径。请参阅
+    ///     [Key-Path 表达式](https://docs.swift.org/swift-book/ReferenceManual/Expressions.html#ID563)
+    ///     在 _The Swift Programming Language_ 中了解如何使用关键路径指定对象的属性。
+    ///   - object: 包含属性的对象。订阅者每次接收到新值时都会分配对象的属性。
+    /// - Returns: 一个 `AnyCancellable` 实例。当您不再希望发布者自动分配属性时，请在此实例上调用 `cancel()`。
+    ///   销毁此实例也将取消自动分配。
+
     public func assign<Root>(to keyPath: ReferenceWritableKeyPath<Root, Output>,
                              on object: Root) -> AnyCancellable {
         let subscriber = Subscribers.Assign(object: object, keyPath: keyPath)

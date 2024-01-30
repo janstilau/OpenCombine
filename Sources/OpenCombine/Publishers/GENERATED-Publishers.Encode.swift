@@ -1,16 +1,3 @@
-// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-// ┃                                                                                     ┃
-// ┃                   Auto-generated from GYB template. DO NOT EDIT!                    ┃
-// ┃                                                                                     ┃
-// ┃                                                                                     ┃
-// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-//
-//  Publishers.Encode.swift.gyb
-//
-//
-//  Created by Joseph Spadafora on 6/22/19.
-//
-
 extension Publisher {
 
     /// Encodes the output from upstream using a specified encoder.
@@ -58,6 +45,46 @@ extension Publisher {
     /// - Parameter encoder: An encoder that implements the `TopLevelEncoder` protocol.
     /// - Returns: A publisher that encodes received elements using a specified encoder,
     ///   and publishes the resulting data.
+    /// 使用指定的编码器对上游输出进行编码。
+    ///
+    /// 使用 `encode(encoder:)` 与 `JSONDecoder`（或 `PropertyListDecoder` 用于属性列表）一起，
+    /// 将 `Encodable` 结构编码为 `Data`，该数据可以用于生成 JSON 字符串（或在属性列表的情况下以二进制 plist 写入磁盘）。
+    ///
+    /// 在此示例中，`PassthroughSubject` 发布了一个 `Article`。
+    /// `encode(encoder:)` 操作符根据 `Article` 通过 `Codable` 协议采用的属性将 `Article` 结构的属性编码为新的 JSON 字符串。
+    /// 该操作符将生成的 JSON 字符串发布到下游订阅者。
+    /// 如果编码操作失败，这可能在属性无法直接转换为 JSON 的复杂属性的情况下发生，流将终止并将错误传递给下游订阅者。
+    ///
+    ///     struct Article: Codable {
+    ///         let title: String
+    ///         let author: String
+    ///         let pubDate: Date
+    ///     }
+    ///
+    ///     let dataProvider = PassthroughSubject<Article, Never>()
+    ///     let cancellable = dataProvider
+    ///         .encode(encoder: JSONEncoder())
+    ///         .sink(receiveCompletion: { print ("Completion: \($0)") },
+    ///               receiveValue: {  data in
+    ///                 guard let stringRepresentation =
+    ///                     String(data: data, encoding: .utf8) else { return }
+    ///                 print("""
+    ///                       Data received \(data) string representation: \
+    ///                       \(stringRepresentation)
+    ///                       """)
+    ///         })
+    ///
+    ///     dataProvider.send(Article(title: "My First Article",
+    ///                               author: "Gita Kumar",
+    ///                               pubDate: Date()))
+    ///
+    ///     // 打印: "Data received 86 bytes string representation:
+    ///     // {"title":"My First Article","author":"Gita Kumar"
+    ///     // "pubDate":606211803.279603}"
+    ///
+    /// - Parameter encoder: 一个实现 `TopLevelEncoder` 协议的编码器。
+    /// - Returns: 一个发布者，使用指定的编码器对接收到的元素进行编码，并发布生成的数据。
+
     public func encode<Coder: TopLevelEncoder>(
         encoder: Coder
     ) -> Publishers.Encode<Self, Coder> {
@@ -170,6 +197,7 @@ extension Publishers.Encode {
           CustomStringConvertible,
           CustomReflectable,
           CustomPlaygroundDisplayConvertible
+    // 下游的 Downstream.Failure 坍塌成为了 Error.
         where Downstream.Input == Output, Downstream.Failure == Error
     {
         typealias Input = Upstream.Output
@@ -178,6 +206,7 @@ extension Publishers.Encode {
 
         private let downstream: Downstream
 
+        // 第一次看见, 会 throws 的闭包.
         private let encode: (Upstream.Output) throws -> Output
 
         private let lock = UnfairLock.allocate()

@@ -197,6 +197,7 @@ extension Publishers.Breakpoint {
             self.breakpoint = breakpoint
         }
 
+        // 安插了一个中间节点, 透传, 然后会根据 block 的返回值, 来触发是否断点了. 
         func receive(subscription: Subscription) {
             if breakpoint.receiveSubscription?(subscription) == true {
                 __stopInDebugger()

@@ -66,7 +66,7 @@ public protocol Scheduler {
     var minimumTolerance: SchedulerTimeType.Stride { get }
 
     /// Performs the action at the next possible opportunity.
-    /// 调度, 但是没有时间的配置. 
+    /// 调度, 但是没有时间的配置.
     func schedule(options: SchedulerOptions?, _ action: @escaping () -> Void)
 
     /// Performs the action at some time after the specified date.

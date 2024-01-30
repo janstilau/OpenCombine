@@ -1,16 +1,3 @@
-// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-// ┃                                                                                     ┃
-// ┃                   Auto-generated from GYB template. DO NOT EDIT!                    ┃
-// ┃                                                                                     ┃
-// ┃                                                                                     ┃
-// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-//
-//  Publishers.MapKeyPath.swift.gyb
-//  
-//
-//  Created by Sergej Jaskiewicz on 03/10/2019.
-//
-
 extension Publisher {
     /// Publishes the value of the key path.
     ///

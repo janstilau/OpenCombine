@@ -166,6 +166,7 @@ extension Publisher {
     ) -> Publishers.Map<Self, ElementOfResult>
         where Output == ElementOfResult?
     {
+        // 直接使用 Map.
         return Publishers.Map(upstream: self) { $0 ?? output }
     }
 }
@@ -192,6 +193,7 @@ extension Publishers {
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
             where Output == Downstream.Input, Downstream.Failure == Upstream.Failure
         {
+            // 只有的 receive(subscriber 的时候, 才真正的使用 Inner 生成 Subscription 对象.
             upstream.subscribe(Inner(downstream: subscriber, map: transform))
         }
     }
@@ -200,6 +202,7 @@ extension Publishers {
     /// with a provided error-throwing closure.
     public struct TryMap<Upstream: Publisher, Output>: Publisher {
 
+        // 经历过 TryMap, 其实是 Error 的类型丢失为最原始的 Error 了.
         public typealias Failure = Error
 
         /// The publisher from which this publisher receives elements.
@@ -249,6 +252,7 @@ extension Publishers.TryMap {
     public func tryMap<Result>(
         _ transform: @escaping (Output) throws -> Result
     ) -> Publishers.TryMap<Upstream, Result> {
+        // 这里为什么不是两个 try.
         return .init(upstream: upstream) { try transform(self.transform($0)) }
     }
 }
@@ -277,11 +281,11 @@ extension Publishers.Map {
             self.map = map
         }
 
-        // 这几个方法, 是 Subscriber 的功能.
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
         }
 
+        // Map 只会在 receive(_ input: Input) 使用 闭包进行数据的转化, 其他的都是透传.
         func receive(_ input: Input) -> Subscribers.Demand {
             return downstream.receive(map(input))
         }
@@ -356,6 +360,7 @@ extension Publishers.TryMap {
                 let subscription = status.subscription
                 status = .terminal
                 lock.unlock()
+                // 中间节点发生了错误,  通知上游, 通知下游.
                 subscription?.cancel()
                 downstream.receive(completion: .failure(error))
                 return .none
@@ -373,6 +378,7 @@ extension Publishers.TryMap {
             downstream.receive(completion: completion.eraseError())
         }
 
+        // 还是透传. 
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = status else {
