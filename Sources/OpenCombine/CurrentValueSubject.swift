@@ -27,6 +27,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     
     private var upstreamSubscriptions: [Subscription] = []
     
+    // 和 PassThrough 没有太多的区别, 只不过, 比如要有一个 Value 的值.
     /// The value wrapped by this subject, published as a new element whenever it changes.
     public var value: Output {
         get {
@@ -37,6 +38,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         set {
             lock.lock()
             currentValue = newValue
+            // 之所以, 需要把 currentValue 包装成为 value, 就是为了这里.
             sendValueAndConsumeLock(newValue)
         }
     }
@@ -59,6 +61,8 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         lock.lock()
         upstreamSubscriptions.append(subscription)
         lock.unlock()
+        
+        // 不需要下游主动 request.
         subscription.request(.unlimited)
     }
     
@@ -84,6 +88,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         sendValueAndConsumeLock(input)
     }
     
+    // ConsumeLock, 明确的表明了, 里面要进行 unlock 的操作.
     private func sendValueAndConsumeLock(_ newValue: Output) {
 #if DEBUG
         lock.assertOwner()
@@ -146,6 +151,8 @@ extension CurrentValueSubject {
         
         private var downstreamLock = UnfairRecursiveLock.allocate()
         
+        // 这个值用来控制, 当前上游的数值, 是否已经被下游消耗了
+        // 上游给了, 下游要了, 两个因素共同控制这个. 
         private var deliveredCurrentValue = false
         
         fileprivate init(parent: CurrentValueSubject,
@@ -173,6 +180,7 @@ extension CurrentValueSubject {
             let newDemand = downstream.receive(output)
             downstreamLock.unlock()
             guard newDemand > 0 else { return }
+            
             lock.lock()
             demand += newDemand
             lock.unlock()

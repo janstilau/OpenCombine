@@ -157,6 +157,7 @@ internal class AnySubscriberBase<Input, Failure: Error>: Subscriber {
     }
 }
 
+// 还是和 AnyPublisher 同样的逻辑. 一个 Box 类, 封装了真实的类型.
 @usableFromInline
 internal final class AnySubscriberBox<Base: Subscriber>
     : AnySubscriberBase<Base.Input, Base.Failure>

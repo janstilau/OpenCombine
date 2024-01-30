@@ -6,6 +6,7 @@
 //
 
 /// A protocol that provides a scheduler with an expression for relative time.
+// 无论怎么定义这个时间节点, 都需要能够使用现有的一套来快速的生成.
 public protocol SchedulerTimeIntervalConvertible {
 
     /// Converts the specified number of seconds into an instance of this scheduler time
@@ -38,6 +39,14 @@ public protocol SchedulerTimeIntervalConvertible {
 /// with the convenience functions like `.milliseconds(500)`. Schedulers can accept
 /// options to control how they execute the actions passed to them. These options may
 /// control factors like which threads or dispatch queues execute the actions.
+///
+/// 一个定义了何时以及如何执行闭包的协议。
+///
+/// 您可以使用调度器尽快执行代码，或在将来的某个日期之后执行代码。
+/// 各个调度器实现使用适合它们的时间跟踪系统来表示这一点，表达为它们的 `SchedulerTimeType`。
+/// 由于这个类型符合 `SchedulerTimeIntervalConvertible`，您可以始终使用诸如 `.milliseconds(500)` 之类的便捷函数来表示这些时间。
+/// 调度器可以接受选项来控制它们执行传递给它们的操作的方式。
+/// 这些选项可能控制诸如哪个线程或调度队列执行操作之类的因素。
 public protocol Scheduler {
 
     /// Describes an instant in time for this scheduler.
@@ -57,9 +66,11 @@ public protocol Scheduler {
     var minimumTolerance: SchedulerTimeType.Stride { get }
 
     /// Performs the action at the next possible opportunity.
+    /// 调度, 但是没有时间的配置. 
     func schedule(options: SchedulerOptions?, _ action: @escaping () -> Void)
 
     /// Performs the action at some time after the specified date.
+    ///  单次调用
     func schedule(after date: SchedulerTimeType,
                   tolerance: SchedulerTimeType.Stride,
                   options: SchedulerOptions?,
@@ -67,6 +78,7 @@ public protocol Scheduler {
 
     /// Performs the action at some time after the specified date, at the specified
     /// frequency, optionally taking into account tolerance if possible.
+    /// 多次重复调用
     func schedule(after date: SchedulerTimeType,
                   interval: SchedulerTimeType.Stride,
                   tolerance: SchedulerTimeType.Stride,

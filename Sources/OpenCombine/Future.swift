@@ -1,48 +1,47 @@
-//
-//  Future.swift
-//  
-//
-//  Created by Max Desiatov on 24/11/2019.
-//
 
 /// A publisher that eventually produces a single value and then finishes or fails.
+// 这是经常使用的一个 Publisher, 用来进行封装常见的闭包逻辑.
+// Future 也是一个多节点的源头.
 public final class Future<Output, Failure: Error>: Publisher {
-
+    
     /// A type that represents a closure to invoke in the future, when an element or error
     /// is available.
     ///
     /// The promise closure receives one parameter: a `Result` that contains either
     /// a single element published by a `Future`, or an error.
     public typealias Promise = (Result<Output, Failure>) -> Void
-
+    
     private let lock = UnfairLock.allocate()
-
+    
     private var downstreams = ConduitList<Output, Failure>.empty
-
+    
     private var result: Result<Output, Failure>?
-
+    
     /// Creates a publisher that invokes a promise closure when the publisher emits
     /// an element.
     ///
     /// - Parameter attemptToFulfill: A `Promise` that the publisher invokes when
     ///   the publisher emits an element or terminates with an error.
+    // attemptToFulfill 里面, 是异步方法, 然后最后调用 self.promise 来触发信号的发送.
     public init(
         _ attemptToFulfill: @escaping (@escaping Promise) -> Void
     ) {
         attemptToFulfill(self.promise)
     }
-
+    
     deinit {
         lock.deallocate()
     }
-
+    
     private func promise(_ result: Result<Output, Failure>) {
         lock.lock()
         guard self.result == nil else {
             lock.unlock()
             return
         }
+        
         self.result = result
+        // 这个 take 的逻辑, 可以多多使用. 
         let downstreams = self.downstreams.take()
         lock.unlock()
         switch result {
@@ -52,9 +51,9 @@ public final class Future<Output, Failure: Error>: Publisher {
             downstreams.forEach { $0.finish(completion: .failure(error)) }
         }
     }
-
+    
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
-        where Output == Downstream.Input, Failure == Downstream.Failure
+    where Output == Downstream.Input, Failure == Downstream.Failure
     {
         let conduit = Conduit(parent: self, downstream: subscriber)
         lock.lock()
@@ -69,7 +68,7 @@ public final class Future<Output, Failure: Error>: Publisher {
             subscriber.receive(subscription: conduit)
         }
     }
-
+    
     private func disassociate(_ conduit: ConduitBase<Output, Failure>) {
         lock.lock()
         downstreams.remove(conduit)
@@ -78,18 +77,18 @@ public final class Future<Output, Failure: Error>: Publisher {
 }
 
 extension Future {
-
+    
     private final class Conduit<Downstream: Subscriber>
-        : ConduitBase<Output, Failure>,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Output, Downstream.Failure == Failure
+    : ConduitBase<Output, Failure>,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Output, Downstream.Failure == Failure
     {
         private enum State {
             case active(Downstream, hasAnyDemand: Bool)
             case terminal
-
+            
             var downstream: Downstream? {
                 switch self {
                 case .active(let downstream, hasAnyDemand: _):
@@ -98,7 +97,7 @@ extension Future {
                     return nil
                 }
             }
-
+            
             var hasAnyDemand: Bool {
                 switch self {
                 case .active(_, let hasAnyDemand):
@@ -108,38 +107,43 @@ extension Future {
                 }
             }
         }
-
+        
         private var parent: Future?
-
+        
         private var state: State
-
+        
         private var lock = UnfairLock.allocate()
-
+        
         private var downstreamLock = UnfairRecursiveLock.allocate()
-
+        
         fileprivate init(parent: Future, downstream: Downstream) {
             self.parent = parent
             self.state = .active(downstream, hasAnyDemand: false)
         }
-
+        
         deinit {
             lock.deallocate()
             downstreamLock.deallocate()
         }
-
+        
         fileprivate func lockedFulfill(downstream: Downstream,
                                        result: Result<Output, Failure>) {
             switch result {
             case .success(let output):
+                // 必然是, 一个数据, 一个 finish 的事件.
                 _ = downstream.receive(output)
                 downstream.receive(completion: .finished)
             case .failure(let error):
                 downstream.receive(completion: .failure(error))
             }
         }
-
+        
+        // Future 会在有 result 还接到下游的时候, 触发这里
+        // 也会在 promise 函数里面, 触发这里.
+        // 但是下游接受数据, 是和 demand 相关的. 所以, conduit 里面, 会有这 demand 的管理. 
         fileprivate func fulfill(_ result: Result<Output, Failure>) {
             lock.lock()
+            // case 判断 + 取值的逻辑.
             guard case let .active(downstream, hasAnyDemand) = state else {
                 lock.unlock()
                 return
@@ -148,7 +152,7 @@ extension Future {
                 lock.unlock()
                 return
             }
-
+            
             state = .terminal
             lock.unlock()
             downstreamLock.lock()
@@ -157,11 +161,11 @@ extension Future {
             downstreamLock.unlock()
             parent?.disassociate(self)
         }
-
+        
         override func offer(_ output: Output) {
             fulfill(.success(output))
         }
-
+        
         override func finish(completion: Subscribers.Completion<Failure>) {
             switch completion {
             case .finished:
@@ -170,7 +174,7 @@ extension Future {
                 fulfill(.failure(error))
             }
         }
-
+        
         override func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -179,7 +183,7 @@ extension Future {
                 return
             }
             state = .active(downstream, hasAnyDemand: true)
-
+            
             if let parent = parent, let result = parent.result {
                 // If the promise is already resolved, send the result downstream
                 // immediately
@@ -193,7 +197,7 @@ extension Future {
                 lock.unlock()
             }
         }
-
+        
         override func cancel() {
             lock.lock()
             switch state {
@@ -206,9 +210,12 @@ extension Future {
                 lock.unlock()
             }
         }
-
+        
+        
+        
+        
         var description: String { return "Future" }
-
+        
         var customMirror: Mirror {
             lock.lock()
             defer { lock.unlock() }
@@ -220,7 +227,7 @@ extension Future {
             ]
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }

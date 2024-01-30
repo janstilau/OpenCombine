@@ -16,6 +16,7 @@ internal final class SubjectSubscriber<Downstream: Subject>
 {
     private let lock = UnfairLock.allocate()
     
+    // 这里是弱引用. Subject 的生命周期, 不收到这里的控制. 
     private weak var downstreamSubject: Downstream?
     private var upstreamSubscription: Subscription?
 

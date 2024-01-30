@@ -36,12 +36,18 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
     public init() {}
 
     deinit {
+        // Subject 作为 Subscriber, 其实也是弱引用.
+        // 所以, 它的生命周期, 完全是自己控制的.
+        // 它销毁的时候, 将上游的 Subscriptions 进行 cancel.
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
         lock.deallocate()
     }
 
+    // Subject 一般, 不作为 Subscriber. 如果作为 Subscriber 会被包装起来.
+    // 这个时候 ,Subject 就会有 upstreamSubscriptions
+    // 从 upstreamSubscriptions 的实现来看, 他的上游, 也是多路的.
     public func send(subscription: Subscription) {
         lock.lock()
         upstreamSubscriptions.append(subscription)
@@ -61,8 +67,10 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
             let conduit = Conduit(parent: self, downstream: subscriber)
             downstreams.insert(conduit)
             lock.unlock()
+            // 下游传递过去的 subscription, 是 Subject Pivot 里面的一个节点.
             subscriber.receive(subscription: conduit)
         } else {
+            // 如果, 自己已经结束了, 直接给下游传递 compete 的事件.
             let completion = self.completion!
             lock.unlock()
             subscriber.receive(subscription: Subscriptions.empty)
@@ -107,6 +115,7 @@ public final class PassthroughSubject<Output, Failure: Error>: Subject {
         hasAnyDownstreamDemand = true
         let upstreamSubscriptions = self.upstreamSubscriptions
         lock.unlock()
+        // Subject 对于上游的 request, 是 unlimited
         for subscription in upstreamSubscriptions {
             subscription.request(.unlimited)
         }
@@ -138,9 +147,9 @@ extension PassthroughSubject {
 
         fileprivate var parent: PassthroughSubject?
 
-        fileprivate var downstream: Downstream? //
+        fileprivate var downstream: Downstream? // 真正的 Subject 的节点.
 
-        fileprivate var demand = Subscribers.Demand.none // Conduit 自己管理自己这条链路的 Demand . 
+        fileprivate var demand = Subscribers.Demand.none // Conduit 自己管理自己这条链路的 Demand .
 
         private var lock = UnfairLock.allocate()
 
@@ -157,6 +166,7 @@ extension PassthroughSubject {
             downstreamLock.deallocate()
         }
 
+        // Subject 传递数据, 给下游的节点.
         override func offer(_ output: Output) {
             lock.lock()
             guard demand > 0, let downstream = self.downstream else {
@@ -165,10 +175,12 @@ extension PassthroughSubject {
             }
             demand -= 1
             lock.unlock()
+            
             downstreamLock.lock()
             let newDemand = downstream.receive(output)
             downstreamLock.unlock()
             guard newDemand > 0 else { return }
+            
             lock.lock()
             demand += newDemand
             lock.unlock()
@@ -176,6 +188,7 @@ extension PassthroughSubject {
 
         override func finish(completion: Subscribers.Completion<Failure>) {
             lock.lock()
+            // 在这里, 清除了对于下级节点的引用.
             guard let downstream = self.downstream.take() else {
                 lock.unlock()
                 return
