@@ -1,9 +1,3 @@
-//
-//  CurrentValueSubject.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 11.06.2019.
-//
 
 /// A subject that wraps a single value and publishes a new element whenever the value
 /// changes.
@@ -13,20 +7,26 @@
 ///
 /// Calling `send(_:)` on a `CurrentValueSubject` also updates the current value, making
 /// it equivalent to updating the `value` directly.
+
+/// 一个主题（Subject），包装单个值，并在该值更改时发布新元素。
+///
+/// 与 `PassthroughSubject` 不同，`CurrentValueSubject` 保持最近发布的元素的缓冲区。
+///
+/// 在 `CurrentValueSubject` 上调用 `send(_:)` 也会更新当前值，相当于直接更新 `value`。
 public final class CurrentValueSubject<Output, Failure: Error>: Subject {
-
+    
     private let lock = UnfairLock.allocate()
-
+    
     private var active = true
-
+    
     private var completion: Subscribers.Completion<Failure>?
-
+    
     private var downstreams = ConduitList<Output, Failure>.empty
-
+    
     private var currentValue: Output
-
+    
     private var upstreamSubscriptions: [Subscription] = []
-
+    
     /// The value wrapped by this subject, published as a new element whenever it changes.
     public var value: Output {
         get {
@@ -40,30 +40,30 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
             sendValueAndConsumeLock(newValue)
         }
     }
-
+    
     /// Creates a current value subject with the given initial value.
     ///
     /// - Parameter value: The initial value to publish.
     public init(_ value: Output) {
         self.currentValue = value
     }
-
+    
     deinit {
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
         lock.deallocate()
     }
-
+    
     public func send(subscription: Subscription) {
         lock.lock()
         upstreamSubscriptions.append(subscription)
         lock.unlock()
         subscription.request(.unlimited)
     }
-
+    
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
-        where Output == Downstream.Input, Failure == Downstream.Failure
+    where Output == Downstream.Input, Failure == Downstream.Failure
     {
         lock.lock()
         if active {
@@ -78,12 +78,12 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
             subscriber.receive(completion: completion)
         }
     }
-
+    
     public func send(_ input: Output) {
         lock.lock()
         sendValueAndConsumeLock(input)
     }
-
+    
     private func sendValueAndConsumeLock(_ newValue: Output) {
 #if DEBUG
         lock.assertOwner()
@@ -99,7 +99,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
             conduit.offer(newValue)
         }
     }
-
+    
     public func send(completion: Subscribers.Completion<Failure>) {
         lock.lock()
         guard active else {
@@ -114,7 +114,7 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
             conduit.finish(completion: completion)
         }
     }
-
+    
     private func disassociate(_ conduit: ConduitBase<Output, Failure>) {
         lock.lock()
         guard active else {
@@ -127,38 +127,38 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
 }
 
 extension CurrentValueSubject {
-
+    
     private final class Conduit<Downstream: Subscriber>
-        : ConduitBase<Output, Failure>,
-          CustomStringConvertible,
-          CustomReflectable,
-          CustomPlaygroundDisplayConvertible
-        where Downstream.Input == Output, Downstream.Failure == Failure
+    : ConduitBase<Output, Failure>,
+      CustomStringConvertible,
+      CustomReflectable,
+      CustomPlaygroundDisplayConvertible
+    where Downstream.Input == Output, Downstream.Failure == Failure
     {
-
+        
         fileprivate var parent: CurrentValueSubject?
-
+        
         fileprivate var downstream: Downstream?
-
+        
         fileprivate var demand = Subscribers.Demand.none
-
+        
         private var lock = UnfairLock.allocate()
-
+        
         private var downstreamLock = UnfairRecursiveLock.allocate()
-
+        
         private var deliveredCurrentValue = false
-
+        
         fileprivate init(parent: CurrentValueSubject,
                          downstream: Downstream) {
             self.parent = parent
             self.downstream = downstream
         }
-
+        
         deinit {
             lock.deallocate()
             downstreamLock.deallocate()
         }
-
+        
         override func offer(_ output: Output) {
             lock.lock()
             guard demand > 0, let downstream = self.downstream else {
@@ -177,7 +177,7 @@ extension CurrentValueSubject {
             demand += newDemand
             lock.unlock()
         }
-
+        
         override func finish(completion: Subscribers.Completion<Failure>) {
             lock.lock()
             guard let downstream = self.downstream.take() else {
@@ -191,7 +191,7 @@ extension CurrentValueSubject {
             downstream.receive(completion: completion)
             downstreamLock.unlock()
         }
-
+        
         override func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             lock.lock()
@@ -204,9 +204,9 @@ extension CurrentValueSubject {
                 lock.unlock()
                 return
             }
-
+            
             // Hasn't yet delivered the current value
-
+            
             self.demand += demand
             deliveredCurrentValue = true
             if let currentValue = self.parent?.value {
@@ -221,7 +221,7 @@ extension CurrentValueSubject {
             }
             lock.unlock()
         }
-
+        
         override func cancel() {
             lock.lock()
             if downstream.take() == nil {
@@ -232,9 +232,9 @@ extension CurrentValueSubject {
             lock.unlock()
             parent?.disassociate(self)
         }
-
+        
         var description: String { return "CurrentValueSubject" }
-
+        
         var customMirror: Mirror {
             lock.lock()
             defer { lock.unlock() }
@@ -246,7 +246,7 @@ extension CurrentValueSubject {
             ]
             return Mirror(self, children: children)
         }
-
+        
         var playgroundDescription: Any { return description }
     }
 }

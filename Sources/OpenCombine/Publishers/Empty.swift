@@ -1,14 +1,8 @@
-//
-//  Empty.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 16.06.2019.
-//
-
 /// A publisher that never publishes any values, and optionally finishes immediately.
 ///
 /// You can create a ”Never” publisher — one which never sends values and never
 /// finishes or fails — with the initializer `Empty(completeImmediately: false)`.
+// 只会发出, 结束的事件.
 public struct Empty<Output, Failure: Error>: Publisher, Equatable {
 
     /// Creates an empty publisher.

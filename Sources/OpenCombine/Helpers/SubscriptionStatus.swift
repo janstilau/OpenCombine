@@ -5,6 +5,7 @@
 //  Created by Sergej Jaskiewicz on 21.09.2019.
 //
 
+// 使用 Enum 当做盒子来进行使用.
 internal enum SubscriptionStatus {
     case awaitingSubscription
     case subscribed(Subscription)
@@ -12,6 +13,7 @@ internal enum SubscriptionStatus {
     case terminal
 }
 
+// 对于 Enum 来说, 使用计算属性, 将值进行提取, 是一个非常通用的设计.
 extension SubscriptionStatus {
     internal var isAwaitingSubscription: Bool {
         switch self {

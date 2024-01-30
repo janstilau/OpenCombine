@@ -5,6 +5,13 @@
 ///
 /// In contrast with `Result.Publisher`, a `Just` publisher can’t fail with an error.
 /// And unlike `Optional.Publisher`, a `Just` publisher always produces a value.
+
+/// 一个发布者，向每个订阅者仅发送一次输出，然后完成。
+///
+/// 您可以使用 `Just` 发布者启动一个发布者链。在将值替换为 `Publishers.Catch` 时，`Just` 发布者也很有用。
+///
+/// 与 `Result.Publisher` 不同，`Just` 发布者不会因错误而失败。
+/// 并且与 `Optional.Publisher` 不同，`Just` 发布者总是生成一个值。
 public struct Just<Output>: Publisher {
 
     public typealias Failure = Never
@@ -19,6 +26,9 @@ public struct Just<Output>: Publisher {
         self.output = output
     }
 
+    // Publisher 的责任, 是实现 receive(subscriber) 这个方法.
+    // 在这个方法里面, 是生成 Publisher 相互关联的 subscription 类, 然后传递给后方.
+    // func receive<Subscriber: OpenCombine.Subscriber>(subscriber: Subscriber)
     public func receive<Downstream: Subscriber>(subscriber: Downstream)
         where Downstream.Input == Output, Downstream.Failure == Never
     {
@@ -28,6 +38,7 @@ public struct Just<Output>: Publisher {
 
 extension Just: Equatable where Output: Equatable {}
 
+// 这里可以认为是 Just 相对于 Publisher 的特化. 各种 Publisher 的生成, 直接调用 Just 版本的, 直接生成 Publisher, 而不走那些特殊的生成 Publisher 的逻辑.
 extension Just where Output: Comparable {
 
     public func min() -> Just<Output> {
@@ -265,7 +276,11 @@ extension Just {
     }
 }
 
+
+// Just 相关的 Subscription 部分.
+// Subscription 除了可以 cancel, 还可以接收到下游的 demand.
 extension Just {
+    // 各种的, Publisher 的 Subscription 都是一个 Class, 这样才能完成循环引用.
     private final class Inner<Downstream: Subscriber>
         : Subscription,
           CustomStringConvertible,
@@ -287,10 +302,12 @@ extension Just {
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             guard let downstream = self.downstream.take() else { return }
+            // 只要下游开始需要数据了, 就把 value 传递下去, 然后下游直接接收到 completion 事件.
             _ = downstream.receive(value)
             downstream.receive(completion: .finished)
         }
 
+        // Just 的 Subscription, cancel 就是切断下游.
         func cancel() {
             downstream = nil
         }

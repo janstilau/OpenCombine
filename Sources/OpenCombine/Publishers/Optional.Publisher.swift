@@ -1,10 +1,3 @@
-//
-//  Optional.Publisher.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 17.06.2019.
-//
-
 extension Optional {
 
     /// A namespace for disambiguation when both OpenCombine and Combine are imported.
@@ -44,11 +37,13 @@ extension Optional {
             /// The kind of value published by this publisher.
             ///
             /// This publisher produces the type wrapped by the optional.
+            // Ouput 是 Optional 里面的值类型.
             public typealias Output = Wrapped
 
             /// The kind of error this publisher might publish.
             ///
             /// The optional publisher never produces errors.
+            // Error 是 Never.
             public typealias Failure = Never
 
             /// The output to deliver to each subscriber.
@@ -120,6 +115,7 @@ extension Optional.OCombine {
             self.downstream = downstream
         }
 
+        // 作为源头的 Publihser, 要在下游进行 request(_ demand 的时候, 来发送数据给下游.
         func request(_ demand: Subscribers.Demand) {
             demand.assertNonZero()
             guard let downstream = self.downstream.take() else { return }

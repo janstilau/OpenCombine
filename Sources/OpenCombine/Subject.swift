@@ -1,10 +1,3 @@
-//
-//  Subject.swift
-//  OpenCombine
-//
-//  Created by Sergej Jaskiewicz on 10.06.2019.
-//
-
 /// A publisher that exposes a method for outside callers to publish elements.
 ///
 /// A subject is a publisher that you can use to ”inject” values into a stream, by calling
@@ -34,6 +27,7 @@ public protocol Subject: AnyObject, Publisher {
     ///
     /// - Parameter subscription: The subscription instance through which the subscriber
     ///   can request elements.
+    // 这个只会在 SubjectSubscriber 里面使用到了. 
     func send(subscription: Subscription)
 }
 

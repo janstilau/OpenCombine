@@ -1,11 +1,6 @@
-//
-//  Fail.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 19.06.2019.
-//
 
 /// A publisher that immediately terminates with the specified error.
+// 只会发出, 失败的事件. 
 public struct Fail<Output, Failure: Error>: Publisher {
 
     /// Creates a publisher that immediately terminates with the specified failure.

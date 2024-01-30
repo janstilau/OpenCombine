@@ -1,10 +1,3 @@
-//
-//  PassthroughSubject.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 11.06.2019.
-//
-
 /// A subject that broadcasts elements to downstream subscribers.
 ///
 /// As a concrete implementation of `Subject`, the `PassthroughSubject` provides
@@ -14,6 +7,18 @@
 /// a buffer of the most recently-published element.
 /// A `PassthroughSubject` drops values if there are no subscribers, or its current demand
 /// is zero.
+
+/// 一个向下游订阅者广播元素的主题（Subject）。
+///
+/// 作为 `Subject` 的具体实现，`PassthroughSubject` 提供了一种将现有命令式代码适应 Combine 模型的便捷方式。
+///
+/// 与 `CurrentValueSubject` 不同，`PassthroughSubject` 没有初始值或最近发布的元素的缓冲区。
+/// 如果没有订阅者，或者其当前需求为零，`PassthroughSubject` 将丢弃值。
+
+/*
+ Subject 是一个多对多的关系.
+ 他可以有无数的上游, 也可以有无数的下游.
+ */
 public final class PassthroughSubject<Output, Failure: Error>: Subject {
 
     private let lock = UnfairLock.allocate()

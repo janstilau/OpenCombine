@@ -131,6 +131,10 @@ extension Publisher {
     ) -> AnyCancellable
         where Failure == Subject.Failure, Output == Subject.Output
     {
+        // Subject 是一个 Publisher, 它并不是一个 Receiver.
+        // 所以需要 SubjectSubscriber 包装一下.
+        // 这算是 Publisher 链条的中间节点. 后续的链条, 是链接到了 Subejct 上了.
+        // 而这是将 Subject, 连接到前面的链条. 
         let subscriber = SubjectSubscriber(subject)
         self.subscribe(subscriber)
         return AnyCancellable(subscriber)

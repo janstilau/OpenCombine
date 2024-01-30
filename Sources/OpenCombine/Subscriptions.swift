@@ -1,10 +1,3 @@
-//
-//  Subscriptions.swift
-//
-//
-//  Created by Sergej Jaskiewicz on 26.06.2019.
-//
-
 /// A namespace for symbols related to subscriptions.
 public enum Subscriptions {}
 
@@ -27,6 +20,7 @@ extension Subscriptions {
 
         private init() {}
 
+        // Subscription 的相关方法, 什么都不做.
         func request(_ demand: Subscribers.Demand) {}
 
         func cancel() {}
