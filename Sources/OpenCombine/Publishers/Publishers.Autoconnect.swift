@@ -19,6 +19,7 @@ extension ConnectablePublisher {
     ///         }
     /// - Returns: A publisher which automatically connects to its upstream connectable
     ///   publisher.
+    
     /// 自动处理连接或断开连接过程的连接发布者。
     ///
     /// 使用 `autoconnect()` 简化与 `ConnectablePublisher` 实例（例如 `OpenCombineFoundation` 中的 `TimerPublisher`）一起工作的过程。
@@ -85,6 +86,8 @@ extension Publishers {
             case .disconnected:
                 lock.unlock()
                 upstream.subscribe(inner)
+                
+                // 需要存储一个 connection, 这是一个 cancel 的句柄.
                 let connection = upstream.connect()
                 lock.lock()
                 state = .connected(refcount: 1, connection: connection)
@@ -99,6 +102,7 @@ extension Publishers {
                 if refcount <= 1 {
                     self.state = .disconnected
                     lock.unlock()
+                    // 必须要有这个过程. 因为 connectable, 它的取消是通过 connect 的返回值进行的.
                     connection.cancel()
                 } else {
                     state = .connected(refcount: refcount - 1, connection: connection)

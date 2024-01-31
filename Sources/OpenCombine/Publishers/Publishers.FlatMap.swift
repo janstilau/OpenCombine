@@ -1,9 +1,3 @@
-//
-//  Publishers.FlatMap.swift
-//
-//  Created by Eric Patey on 16.08.2019.
-//
-
 extension Publisher {
 
     /// Transforms all elements from an upstream publisher into a new publisher up to
@@ -58,6 +52,48 @@ extension Publisher {
     ///     a publisher that produces elements of that type.
     /// - Returns: A publisher that transforms elements from an upstream publisher into
     ///   a publisher of that element’s type.
+    
+    /*
+     flatMap(maxPublishers:_:) 是一个操作符，它将上游发布者的所有元素转换为一个新的发布者，最多可以指定一定数量的发布者。
+
+     OpenCombine的 flatMap(maxPublishers:_:) 操作符执行类似于Swift标准库中的 flatMap(_:) 操作符的功能，但它将来自一种类型的发布者的元素转换为一个新的发布者，然后将其发送给订阅者。在希望基于接收到的值为下游订阅者创建新事件系列时，请使用 flatMap(maxPublishers:_:)。闭包根据接收到的值创建新的 Publisher。新的 Publisher 可以发出多个事件，并且成功完成新的 Publisher 不会完成整体流。新的 Publisher 失败将导致整体流失败。
+
+     在下面的示例中，PassthroughSubject 发布 WeatherStation 元素。flatMap(maxPublishers:_:) 接收每个元素，从中创建一个 URL，并生成一个新的 URLSession.DataTaskPublisher，该发布者将发布从该 URL 加载的数据。
+
+     swift
+     Copy code
+     public struct WeatherStation {
+         public let stationID: String
+     }
+
+     var weatherPublisher = PassthroughSubject<WeatherStation, URLError>()
+
+     cancellable = weatherPublisher
+         .flatMap(maxPublishers: .unlimited) { station -> URLSession.DataTaskPublisher in
+             let url = URL(string: """
+             https://weatherapi.example.com/stations/\(station.stationID)\
+             /observations/latest
+             """)!
+             return URLSession.shared.dataTaskPublisher(for: url)
+         }
+         .sink(
+             receiveCompletion: { completion in
+                 // 处理发布者完成（正常或错误）。
+             },
+             receiveValue: {
+                 // 处理接收到的数据。
+             }
+         )
+
+     weatherPublisher.send(WeatherStation(stationID: "KSFO")) // 旧金山, 加利福尼亚
+     weatherPublisher.send(WeatherStation(stationID: "EGLC")) // 伦敦, 英国
+     weatherPublisher.send(WeatherStation(stationID: "ZBBB")) // 北京, 中国
+     参数：
+     maxPublishers：指定最大并发发布者订阅的数量，如果未指定，则为 Subscribers.Demand.unlimited。
+     transform：接受元素作为参数并返回生成该类型元素的发布者的闭包。
+     返回：将上游发布者的元素转换为该元素类型的发布者的发布者。
+     */
+    // 根据一个 Output, 生成一个新的 publisher, 然后下游接管这个新的 Publisher.
     public func flatMap<Result, Child: Publisher>(
         maxPublishers: Subscribers.Demand = .unlimited,
         _ transform: @escaping (Output) -> Child
@@ -154,6 +190,7 @@ extension Publishers {
             self.maxPublishers = maxPublishers
             self.transform = transform
         }
+        
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
             where Child.Output == Downstream.Input, Upstream.Failure == Downstream.Failure
         {
@@ -167,6 +204,8 @@ extension Publishers {
 }
 
 extension Publishers.FlatMap {
+    
+    // 中间工厂.
     private final class Outer<Downstream: Subscriber>
         : Subscriber,
           Subscription,
@@ -250,6 +289,9 @@ extension Publishers.FlatMap {
             if cancelledOrCompleted {
                 return .none
             }
+            
+            // 每次上游来临了数据, 都生成一个新的 Publisher.
+            // 然后新的 Publisher
             let child = map(input)
             lock.lock()
             let innerIndex = nextInnerIndex
@@ -428,6 +470,7 @@ extension Publishers.FlatMap {
             return .max(1)
         }
 
+        // 中间的 Publisher, Finish 不会引起整个链路的终止. 但是失败会. 
         private func receiveInner(completion: Subscribers.Completion<Child.Failure>,
                                   _ index: SubscriptionIndex) {
             switch completion {

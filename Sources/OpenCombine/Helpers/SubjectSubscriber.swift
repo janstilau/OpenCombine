@@ -107,6 +107,7 @@ internal final class SubjectSubscriber<Downstream: Subject>
         upstreamSubscription = nil
         downstreamSubject = nil
         lock.unlock()
+        // 上游的 subscription 进行 cancel. 
         subscription.cancel()
     }
 }

@@ -5,6 +5,7 @@
 //  Created by Sergej Jaskiewicz on 07.01.2020.
 //
 
+// switch to laster 是由要求的, 就是 output 是一个 Publisher.
 extension Publisher where Output: Publisher, Output.Failure == Failure {
 
     /// Republishes elements sent by the most recently received publisher.
@@ -64,6 +65,48 @@ extension Publisher where Output: Publisher, Output.Failure == Failure {
     /// connection is fast, the earlier data tasks may complete before `switchToLatest()`
     /// can cancel them. If this happens, the output includes multiple URLs whose tasks
     /// complete before cancellation.
+    ///
+    /*
+     switchToLatest() 是一个操作符，它会重新发布由最近接收到的发布者发送的元素。
+
+     该操作符适用于一个发布者的发布者，将元素的流扁平化，使其看起来就像它们来自单一的元素流。它会在接收到新的发布者时切换内部发布者，但对于下游订阅者来说，外部发布者保持不变。
+
+     例如，给定类型 AnyPublisher<URLSession.DataTaskPublisher, NSError>，调用 switchToLatest() 的结果类型是 SwitchToLatest<(Data, URLResponse), URLError>。下游订阅者看到的是连续的 (Data, URLResponse) 元素，看起来像是来自单一的 URLSession.DataTaskPublisher，尽管这些元素来自不同的上游发布者。
+
+     当此操作符从上游发布者接收到新的发布者时，它会取消先前的订阅。使用这个功能可以防止早期的发布者执行不必要的工作，比如从频繁更新的用户界面发布者创建网络请求发布者。
+
+     下面的示例每隔 0.1 秒更新一个 PassthroughSubject 的新值。map(_:) 操作符接收新值，并使用它创建一个新的 URLSession.DataTaskPublisher。通过使用 switchToLatest() 操作符，下游sink订阅者接收来自数据任务发布者的 (Data, URLResponse) 输出类型，而不是由 map(_:) 操作符产生的 URLSession.DataTaskPublisher 类型。此外，创建每个新的数据任务发布者都会取消先前的数据任务发布者。
+
+     swift
+     Copy code
+     let subject = PassthroughSubject<Int, Never>()
+     cancellable = subject
+         .setFailureType(to: URLError.self)
+         .map { index -> URLSession.DataTaskPublisher in
+             let url = URL(string: "https://example.org/get?index=\(index)")!
+             return URLSession.shared.dataTaskPublisher(for: url)
+         }
+         .switchToLatest()
+         .sink(
+             receiveCompletion: { print("Complete: \($0)") },
+             receiveValue: { (data, response) in
+                 guard let url = response.url else {
+                     print("Bad response.")
+                     return
+                 }
+                 print("URL: \(url)")
+             }
+         )
+
+     for index in 1...5 {
+         DispatchQueue.main.asyncAfter(deadline: .now() + TimeInterval(index/10)) {
+             subject.send(index)
+         }
+     }
+
+     // 打印 "URL: https://example.org/get?index=5"
+     该示例的确切行为取决于 asyncAfter 的值和网络连接的速度。如果延迟值较长，或者网络连接速度很快，较早的数据任务可能在 switchToLatest() 能够取消它们之前完成。如果发生这种情况，输出将包含在取消之前完成的多个URL。
+     */
     public func switchToLatest() -> Publishers.SwitchToLatest<Output, Self> {
         return .init(upstream: self)
     }
@@ -223,6 +266,7 @@ extension Publishers.SwitchToLatest {
             subscription.request(.unlimited)
         }
 
+        // 关键点.
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
             if cancelled || finished {
@@ -232,6 +276,7 @@ extension Publishers.SwitchToLatest {
 
             if let currentInnerSubscription = self.currentInnerSubscription.take()  {
                 lock.unlock()
+                // 在这里, 会把原来的进行取消.
                 currentInnerSubscription.cancel()
                 lock.lock()
             }
@@ -241,6 +286,7 @@ extension Publishers.SwitchToLatest {
             nextInnerIndex += 1
             awaitingInnerSubscription = true
             lock.unlock()
+            // 然后这里, 新生成一个响应流.
             input.subscribe(Side(inner: self, index: index))
             return .none
         }
@@ -345,6 +391,7 @@ extension Publishers.SwitchToLatest {
 
             lock.unlock()
             downstreamLock.lock()
+            // 下游接受到事件.
             let newDemand = downstream.receive(input)
             downstreamLock.unlock()
             if newDemand > 0 {

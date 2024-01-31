@@ -51,6 +51,46 @@ extension Publisher {
     ///
     /// - Parameter createSubject: A closure to create a new `Subject` each time
     ///   a subscriber attaches to the multicast publisher.
+    
+    /// 应用一个闭包来创建一个将元素传递给订阅者的主题。
+    ///
+    /// 当你有多个下游订阅者，但希望上游发布者每个事件只处理一次`receive(_:)`调用时，可以使用多播发布者。
+    /// 这在上游发布者执行昂贵的工作，而你不希望重复执行该工作时非常有用，比如执行网络请求。
+    ///
+    /// 与 `multicast(subject:)` 不同，此方法生成一个为每个订阅者创建单独 `Subject` 的发布者。
+    ///
+    /// 以下示例使用序列发布者作为计数器，发布三个由 `map(_:)` 操作符生成的随机数。
+    /// 它使用 `multicast(_:)` 操作符，其闭包创建一个 `PassthroughSubject` 以将相同的随机数传递给两个订阅者。
+    /// 由于多播发布者是 `ConnectablePublisher`，只有在调用 `connect()` 后才会开始发布。
+    ///
+    ///     let pub = ["First", "Second", "Third"].publisher
+    ///         .map( { return ($0, Int.random(in: 0...100)) } )
+    ///         .print("Random")
+    ///         .multicast { PassthroughSubject<(String, Int), Never>() }
+    ///
+    ///     cancellable1 = pub
+    ///        .sink { print ("Stream 1 received: \($0)")}
+    ///     cancellable2 = pub
+    ///        .sink { print ("Stream 2 received: \($0)")}
+    ///     pub.connect()
+    ///
+    ///     // 输出:
+    ///     // Random: receive value: (("First", 9))
+    ///     // Stream 2 received: ("First", 9)
+    ///     // Stream 1 received: ("First", 9)
+    ///     // Random: receive value: (("Second", 46))
+    ///     // Stream 2 received: ("Second", 46)
+    ///     // Stream 1 received: ("Second", 46)
+    ///     // Random: receive value: (("Third", 26))
+    ///     // Stream 2 received: ("Third", 26)
+    ///     // Stream 1 received: ("Third", 26)
+    ///
+    /// 在此示例中，输出显示`print(_:to:)`操作符仅接收每个随机值一次，然后将该值发送给两个订阅者。
+    ///
+    /// - Parameter createSubject: 一个闭包，每次订阅者连接到多播发布者时创建一个新的 `Subject`。
+    ///
+    /// - Returns: 一个多播发布者，用于在订阅者连接时生成新的 `Subject`。
+
     public func multicast<SubjectType: Subject>(
         _ createSubject: @escaping () -> SubjectType
     ) -> Publishers.Multicast<Self, SubjectType>
@@ -99,8 +139,46 @@ extension Publisher {
     ///
     /// In this example, the output shows that the `print(_:to:)` operator receives each
     /// random value only one time, and then sends the value to both subscribers.
-    ///
+    
     /// - Parameter subject: A subject to deliver elements to downstream subscribers.
+    /// 提供一个主题以将元素传递给多个订阅者。
+    ///
+    /// 当你有多个下游订阅者，但希望上游发布者每个事件只处理一次`receive(_:)`调用时，可以使用多播发布者。
+    /// 这在上游发布者执行昂贵的工作，而你不希望重复执行该工作时非常有用，比如执行网络请求。
+    ///
+    /// 与 `multicast(_:)` 不同，此方法生成一个发布者，它在所有下游订阅者之间共享提供的 `Subject`。
+    ///
+    /// 以下示例使用序列发布者作为计数器，发布三个由 `map(_:)` 操作符生成的随机数。
+    /// 它使用 `multicast(subject:)` 操作符与 `PassthroughSubject` 一起使用，以将相同的随机数传递给两个订阅者。
+    /// 由于多播发布者是 `ConnectablePublisher`，只有在调用 `connect()` 后才会开始发布。
+    ///
+    ///     let pub = ["First", "Second", "Third"].publisher
+    ///         .map( { return ($0, Int.random(in: 0...100)) } )
+    ///         .print("Random")
+    ///         .multicast(subject: PassthroughSubject<(String, Int), Never>())
+    ///
+    ///     cancellable1 = pub
+    ///         .sink { print ("Stream 1 received: \($0)")}
+    ///     cancellable2 = pub
+    ///         .sink { print ("Stream 2 received: \($0)")}
+    ///     pub.connect()
+    ///
+    ///     // 输出:
+    ///     // Random: receive value: (("First", 78))
+    ///     // Stream 2 received: ("First", 78)
+    ///     // Stream 1 received: ("First", 78)
+    ///     // Random: receive value: (("Second", 98))
+    ///     // Stream 2 received: ("Second", 98)
+    ///     // Stream 1 received: ("Second", 98)
+    ///     // Random: receive value: (("Third", 61))
+    ///     // Stream 2 received: ("Third", 61)
+    ///     // Stream 1 received: ("Third", 61)
+    ///
+    /// 在此示例中，输出显示`print(_:to:)`操作符仅接收每个随机值一次，然后将该值发送给两个订阅者。
+    ///
+    /// - Parameter subject: 一个主题，用于将元素传递给下游订阅者。
+    /// - Returns: 一个多播发布者，用于在订阅者连接时共享提供的 `Subject`。
+
     public func multicast<SubjectType: Subject>(
         subject: SubjectType
     ) -> Publishers.Multicast<Self, SubjectType>
@@ -130,6 +208,8 @@ extension Publishers {
 
         /// A closure to create a new Subject each time a subscriber attaches
         /// to the multicast publisher.
+        
+        // 这是一个闭包, 可以返回一个 Subject 的对象出来.
         public let createSubject: () -> SubjectType
 
         private let lock = UnfairLock.allocate()
@@ -167,9 +247,12 @@ extension Publishers {
             where SubjectType.Failure == Downstream.Failure,
                   SubjectType.Output == Downstream.Input
         {
+            // Subject 的内部, 会有 Demand 的管理.
             lazySubject.subscribe(Inner(parent: self, downstream: subscriber))
         }
 
+        // connect 的时候, 才真正的把 上游和 subject 进行关联.
+        // 使用这种方式, 完成了 ConnectablePublisher 的管理.
         public func connect() -> Cancellable {
             return upstream.subscribe(lazySubject)
         }
@@ -220,7 +303,11 @@ extension Publishers.Multicast {
         }
 
         fileprivate var playgroundDescription: Any { return description }
-
+        
+        
+        
+        
+        // 这个 Subscription, 会是 Subject - Conduit
         func receive(subscription: Subscription) {
             lock.lock()
             guard case let .ready(upstream, downstream) = state else {
@@ -244,6 +331,7 @@ extension Publishers.Multicast {
             lock.unlock()
             let newDemand = downstream.receive(input)
             if newDemand > 0 {
+                // Subject 的 Conduit 进行 demand 的管理.
                 subjectSubscription.request(newDemand)
             }
             return .none

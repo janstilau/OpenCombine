@@ -11,6 +11,7 @@ import COpenCombineHelpers
 extension Publishers {
 
     /// A publisher created by applying the zip function to two upstream publishers.
+    // 错误必须相同.
     public struct Zip<UpstreamA: Publisher, UpstreamB: Publisher>: Publisher
         where UpstreamA.Failure == UpstreamB.Failure
     {
@@ -578,6 +579,7 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
             if downstreamDemand != .none {
                 downstreamDemand -= 1
             }
+            // 将 () 发给下游.
             let newDemand = downstream.receive(value)
             if newDemand != .none {
                 downstreamDemand += newDemand
