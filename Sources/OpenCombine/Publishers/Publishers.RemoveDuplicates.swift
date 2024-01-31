@@ -26,6 +26,24 @@ extension Publisher where Output: Equatable {
     ///     // Prints: "0 1 2 3 4 0"
     ///
     /// - Returns: A publisher that consumes — rather than publishes — duplicate elements.
+    
+    /// 仅发布与上一个元素不匹配的元素。
+    ///
+    /// 使用 `removeDuplicates()` 从上游发布者中删除重复的元素。此操作符具有两个元素的记忆：
+    /// 该操作符使用当前和先前发布的元素作为比较的基础。
+    ///
+    /// 在下面的示例中，`removeDuplicates()` 在 `1`、`3` 和 `4` 的重复出现时触发。由于两个元素的
+    /// 记忆仅考虑当前元素和上一个元素，因此操作符在示例数据中打印最终的 `0`，因为它的直接前身是 `4`。
+    ///
+    ///     let numbers = [0, 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 0]
+    ///     cancellable = numbers.publisher
+    ///         .removeDuplicates()
+    ///         .sink { print("\($0)", terminator: " ") }
+    ///
+    /// // 打印: "0 1 2 3 4 0"
+    ///
+    /// - Returns: 一个消耗重复元素而不是发布它们的发布者。
+
     public func removeDuplicates() -> Publishers.RemoveDuplicates<Self> {
         return removeDuplicates(by: ==)
     }
@@ -202,11 +220,18 @@ extension Publishers.RemoveDuplicates {
     {
         private var last: Upstream.Output?
 
+        /*
+         receive (
+             newValue: Input
+         )
+         根本没有真正的实现. 它唯一的要求, 就是要返回一个 PartialCompletion
+         */
         override func receive(
             newValue: Input
         ) -> PartialCompletion<Upstream.Output?, Downstream.Failure> {
             let last = self.last
             self.last = newValue
+            // map 是 Optional 的 map. 
             return last.map {
                 filter($0, newValue) ? .continue(nil) : .continue(newValue)
             } ?? .continue(newValue)

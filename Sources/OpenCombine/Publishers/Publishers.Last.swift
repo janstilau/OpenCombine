@@ -23,6 +23,21 @@ extension Publisher {
     ///     // Prints: "10"
     ///
     /// - Returns: A publisher that only publishes the last element of a stream.
+    /// 在流完成后发布流的最后一个元素。
+    ///
+    /// 当需要仅从上游发布者发出最后一个元素时，请使用 `last()`。
+    ///
+    /// 在下面的示例中，范围发布者仅从序列发布者发出最后一个元素 `10`，然后正常完成。
+    ///
+    ///     let numbers = (-10...10)
+    ///     cancellable = numbers.publisher
+    ///         .last()
+    ///         .sink { print("\($0)") }
+    ///
+    ///     // 输出: "10"
+    ///
+    /// - Returns: 一个只发布流的最后一个元素的发布者。
+
     public func last() -> Publishers.Last<Self> {
         return .init(upstream: self)
     }
@@ -182,6 +197,7 @@ extension Publishers.Last {
             super.init(downstream: downstream, initial: nil, reduce: ())
         }
 
+        // 利用了 ReduceProducer, ReduceProducer 会在接受到完成事件的时候, 把 Result 的值传递过去.
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {
@@ -234,6 +250,8 @@ extension Publishers.TryLastWhere {
             super.init(downstream: downstream, initial: nil, reduce: predicate)
         }
 
+        // 所有的这种 try, 都是一个处理的结果
+        // 就是在 receive value 的时候, 进行错误的处理. 
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {

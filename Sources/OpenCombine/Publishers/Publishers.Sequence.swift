@@ -11,6 +11,7 @@ extension Publishers {
     ///
     /// When the publisher exhausts the elements in the sequence, the next request
     /// causes the publisher to finish.
+    /// 这段注释描述的是一个发布者（Publisher），它发布给定序列的元素。当发布者用尽序列中的元素时，下一个请求会导致发布者完成。
     public struct Sequence<Elements: Swift.Sequence, Failure: Error>: Publisher {
 
         public typealias Output = Elements.Element
@@ -102,6 +103,7 @@ extension Publishers.Sequence {
                 return
             }
 
+            // 对于 Sequence 来说, 它的值是固定的, 不需要上游进行一步方法生成的. 所以在下游进行 Demand 的 Request 的时候, 就进行了数据的传递. 
             while let downstream = self.downstream, pendingDemand > 0 {
                 if let current = self.next {
                     pendingDemand -= 1

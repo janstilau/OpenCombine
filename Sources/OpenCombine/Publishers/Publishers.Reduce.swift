@@ -33,6 +33,27 @@ extension Publisher {
     ///   If `reduce(_:_:)` receives an error from the upstream publisher, the operator
     ///   delivers it to the downstream subscriber, the publisher terminates and publishes
     ///   no value.
+    
+    /// 应用一个收集流中每个元素并在完成时发布最终结果的闭包。
+    ///
+    /// 使用 `reduce(_:_:)` 来收集元素流并根据提供的闭包产生累积值。
+    ///
+    /// 在以下示例中，`reduce(_:_:)` 操作符收集其上游发布者接收到的所有整数值：
+    ///
+    ///     let numbers = (0...10)
+    ///     cancellable = numbers.publisher
+    ///         .reduce(0, { accum, next in accum + next })
+    ///         .sink { print("\($0)") }
+    ///
+    /// // 打印: "55"
+    ///
+    /// - Parameters:
+    ///   - initialResult: 闭包在第一次调用时接收的值。
+    ///   - nextPartialResult: 通过取先前累积的值和从上游发布者接收到的下一个元素来产生新值的闭包。
+    /// - Returns: 一个应用闭包于所有接收到的元素并在上游发布者完成时产生累积值的发布者。
+    ///   如果 `reduce(_:_:)` 从上游发布者接收到错误，操作符将其传递给下游订阅者，发布者终止并发布
+    ///   没有值。
+
     public func reduce<Accumulator>(
         _ initialResult: Accumulator,
         _ nextPartialResult: @escaping (Accumulator, Output) -> Accumulator
@@ -165,12 +186,14 @@ extension Publishers.Reduce {
                          Upstream.Output,
                          Output,
                          Upstream.Failure,
+    // 在这里, 制定了 Reduce 的类型.
                          (Output, Upstream.Output) -> Output>
         where Downstream.Input == Output, Upstream.Failure == Downstream.Failure
     {
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {
+            // 真正的 Reduce 的实现.
             result = reduce(result!, newValue)
             return .continue
         }

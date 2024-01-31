@@ -31,6 +31,29 @@ extension Publisher {
     ///     output to the console by default.  A custom stream can be used to log messages
     ///     to other destinations.
     /// - Returns: A publisher that prints log messages for all publishing events.
+    
+    /// 打印所有发布事件的日志消息。
+    ///
+    /// 使用 `print(_:to:)` 在控制台上记录消息。
+    ///
+    /// 在下面的示例中，将在控制台上打印日志消息：
+    ///
+    ///     let integers = (1...2)
+    ///     cancellable = integers.publisher
+    ///        .print("Logged a message", to: nil)
+    ///        .sink { _ in }
+    ///
+    ///     // 打印:
+    ///     //  Logged a message: receive subscription: (1..<2)
+    ///     //  Logged a message: request unlimited
+    ///     //  Logged a message: receive value: (1)
+    ///     //  Logged a message: receive finished
+    ///
+    /// - Parameters:
+    ///   - prefix: 一个字符串，默认为空，用于给所有日志消息添加前缀。
+    ///   - stream: 一个用于文本输出的流，接收消息并默认将输出定向到控制台。可以使用自定义流将消息记录到其他位置。
+    /// - Returns: 一个发布者，用于打印所有发布事件的日志消息。
+
     public func print(_ prefix: String = "",
                       to stream: TextOutputStream? = nil) -> Publishers.Print<Self> {
         return .init(upstream: self, prefix: prefix, to: stream)
@@ -121,6 +144,7 @@ extension Publishers.Print {
             lock.deallocate()
         }
 
+        // 在所有的事件中, 进行相关的 Log 操作.
         func receive(subscription: Subscription) {
             log("\(prefix)receive subscription: (\(subscription))")
             lock.lock()

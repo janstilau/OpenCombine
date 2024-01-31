@@ -30,6 +30,9 @@ extension Publisher {
     /// - Returns: A publisher that transforms elements by applying a closure that
     ///   receives its previous return value and the next element from the upstream
     ///   publisher.
+    /*
+     scan(_:_:) 操作符用于从上游发布者接收当前元素，并将其提供给一个闭包，同时还提供了该闭包上一次返回的最后一个值。通过此操作符，你可以累积先前发布的所有值，并将其与每个新发布的值相结合。
+     */
     public func scan<Result>(
         _ initialResult: Result,
         _ nextPartialResult: @escaping (Result, Output) -> Result
@@ -189,6 +192,7 @@ extension Publishers.Scan {
         }
 
         func receive(_ input: Input) -> Subscribers.Demand {
+            // 每次从上游拿到数据之后, 是使用 nextPartialResult 生成一个新的 Output, 然后下游拿到的是这个 Output. 
             result = nextPartialResult(result, input)
             return downstream.receive(result)
         }

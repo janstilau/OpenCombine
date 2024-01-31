@@ -35,6 +35,30 @@ extension Publisher {
     ///   - options: Options that customize the delivery of elements.
     /// - Returns: A publisher which performs upstream operations on the specified
     ///   scheduler.
+    
+    /// 指定在其中执行订阅、取消和请求操作的调度器。
+    ///
+    /// 与 `receive(on:options:)` 不同，该操作符影响下游消息，而 `subscribe(on:options:)` 改变上游消息的执行上下文。
+    ///
+    /// 在以下示例中，`subscribe(on:options:)` 操作符导致 `ioPerformingPublisher` 在 `backgroundQueue` 上接收请求，
+    /// 而 `receive(on:options:)` 导致 `uiUpdatingSubscriber` 在 `RunLoop.main` 上接收元素和完成。
+    ///
+    ///     let ioPerformingPublisher == // 一些发布者。
+    ///     let uiUpdatingSubscriber == // 一些更新 UI 的订阅者。
+    ///
+    ///     ioPerformingPublisher
+    ///         .subscribe(on: backgroundQueue)
+    ///         .receive(on: RunLoop.main)
+    ///         .subscribe(uiUpdatingSubscriber)
+    ///
+    ///
+    /// 使用 `subscribe(on:options:)` 还会导致上游发布者使用指定的调度器执行 `cancel()` 操作。
+    ///
+    /// - Parameters:
+    ///   - scheduler: 用于向上游发布者发送消息的调度器。
+    ///   - options: 自定义元素传递的选项。
+    /// - Returns: 一个在指定调度器上执行上游操作的发布者。
+
     public func subscribe<Context: Scheduler>(
         on scheduler: Context,
         options: Context.SchedulerOptions? = nil
@@ -150,6 +174,7 @@ extension Publishers.SubscribeOn {
             downstream.receive(completion: completion)
         }
 
+        // 下游对上游的事件, 使用 scheduler 进行调度. 
         func request(_ demand: Subscribers.Demand) {
             lock.lock()
             guard case let .subscribed(subscription) = state else {

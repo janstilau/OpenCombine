@@ -9,6 +9,8 @@ extension Publishers {
 
     /// A publisher that converts any failure from the
     /// upstream publisher into a new error.
+    
+    /// 一个将上游发布者的任何失败转换为新错误的发布者。
     public struct MapError<Upstream: Publisher, Failure: Error>: Publisher {
 
         /// The kind of values published by this publisher.
@@ -83,6 +85,43 @@ extension Publisher {
     ///   and returns a new error for the publisher to terminate with.
     /// - Returns: A publisher that replaces any upstream failure with a new error
     ///   produced by the `transform` closure.
+    
+    /// 将上游发布者的任何失败转换为新错误。
+    ///
+    /// 当需要用另一种错误类型替换错误，或者下游操作符需要其输入的错误类型匹配时，使用 `mapError(_:)` 操作符。
+    ///
+    /// 以下示例使用 `tryMap(_:)` 操作符将 `1` 除以由序列发布者产生的每个元素。当发布者产生 `0` 时，
+    /// `tryMap(_:)` 会失败，并抛出一个 `DivisionByZeroError`。`mapError(_:)` 操作符将其转换为 `MyGenericError`。
+    ///
+    ///     struct DivisionByZeroError: Error {}
+    ///     struct MyGenericError: Error { var wrappedError: Error }
+    ///
+    ///     func myDivide(_ dividend: Double, _ divisor: Double) throws -> Double {
+    ///         guard divisor != 0 else { throw DivisionByZeroError() }
+    ///         return dividend / divisor
+    ///     }
+    ///
+    ///     let divisors: [Double] = [5, 4, 3, 2, 1, 0]
+    ///     divisors.publisher
+    ///         .tryMap { try myDivide(1, $0) }
+    ///         // 主要是为了, 进行下游的 Error 类型的匹配.
+    ///         .mapError { MyGenericError(wrappedError: $0) }
+    ///         .sink(
+    ///             receiveCompletion: { print ("completion: \($0)") ,
+    ///             receiveValue: { print ("value: \($0)") }
+    ///          )
+    ///
+    ///     // Prints:
+    ///     //   value: 0.2
+    ///     //   value: 0.25
+    ///     //   value: 0.3333333333333333
+    ///     //   value: 0.5
+    ///     //   value: 1.0
+    ///     //   completion: failure(MyGenericError(wrappedError: DivisionByZeroError()))"
+    ///
+    /// - Parameter transform: 一个接受上游失败作为参数的闭包，返回一个新错误，以终止发布者。
+    /// - Returns: 一个发布者，用 `transform` 闭包产生的新错误替换任何上游失败。
+
     public func mapError<NewFailure: Error>(
         _ transform: @escaping (Failure) -> NewFailure
     ) -> Publishers.MapError<Self, NewFailure>
@@ -128,6 +167,7 @@ extension Publishers.MapError {
             return downstream.receive(input)
         }
 
+        // 在接受到完成事件的时候, 将对应的 Error 类型进行修改. 
         func receive(completion: Subscribers.Completion<Failure>) {
             switch completion {
             case .finished:

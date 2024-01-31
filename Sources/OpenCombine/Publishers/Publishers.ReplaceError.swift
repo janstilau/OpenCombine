@@ -36,6 +36,29 @@ extension Publisher {
     /// - Parameter output: An element to emit when the upstream publisher fails.
     /// - Returns: A publisher that replaces an error from the upstream publisher with
     ///   the provided output element.
+    
+    /// 用提供的元素替换流中的任何错误。
+    ///
+    /// 如果上游发布者因错误而失败，此发布者将发射提供的元素，然后正常完成。
+    ///
+    /// 在下面的示例中，字符串发布者以 `MyError` 实例失败，该实例向下游发送失败完成。`replaceError(with:)` 操作符通过发布字符串 `"(replacement element)"` 来处理失败，并正常完成。
+    ///
+    ///     struct MyError: Error {}
+    ///     let fail = Fail<String, MyError>(error: MyError())
+    ///     cancellable = fail
+    ///         .replaceError(with: "(replacement element)")
+    ///         .sink(
+    ///             receiveCompletion: { print ("\($0)") },
+    ///             receiveValue: { print ("\($0)", terminator: " ") }
+    ///         )
+    ///
+    /// // 打印: "(replacement element) finished"。
+    ///
+    /// 当您想要通过发送单个替代元素处理错误并结束流时，`replaceError(with:)` 功能非常有用。使用 `catch(_:)` 从错误中恢复，并提供替代发布者以继续向下游订阅者提供元素。
+    ///
+    /// - Parameter output: 上游发布者失败时要发射的元素。
+    /// - Returns: 一个发布者，用提供的输出元素替换上游发布者的错误。
+
     public func replaceError(with output: Output) -> Publishers.ReplaceError<Self> {
         return .init(upstream: self, output: output)
     }
@@ -165,6 +188,7 @@ extension Publishers.ReplaceError {
                 }
                 status = .terminal
                 lock.unlock()
+                // 发生了错误, 使用 output 代替, 然后立马结束.
                 _ = downstream.receive(output)
                 downstream.receive(completion: .finished)
             }

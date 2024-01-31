@@ -75,6 +75,32 @@ extension Publisher where Failure == Never {
     ///
     /// - Parameter failureType: The `Failure` type presented by this publisher.
     /// - Returns: A publisher that appears to send the specified failure type.
+    
+    /// 改变上游发布者声明的失败类型。
+    ///
+    /// 在需要设置无法失败的发布者的错误类型时，请使用 `setFailureType(to:)`。
+    ///
+    /// 相反，如果上游可能失败，您将使用 `mapError(_:)` 来提供将错误类型转换为下游发布者所需类型的说明。
+    ///
+    /// 以下示例有两个具有不匹配错误类型的发布者：`pub1` 的错误类型是 `Never`，而 `pub2` 的错误类型是 `Error`。
+    /// 由于不匹配，`combineLatest(_:)` 操作符要求 `pub1` 使用 `setFailureType(to:)`，
+    /// 使其看起来好像 `pub1` 可以生成 `Error` 类型，就像 `pub2` 一样。
+    ///
+    ///     let pub1 = [0, 1, 2, 3, 4, 5].publisher
+    ///     let pub2 = CurrentValueSubject<Int, Error>(0)
+    ///     let cancellable = pub1
+    ///         .setFailureType(to: Error.self)
+    ///         .combineLatest(pub2)
+    ///         .sink(
+    ///             receiveCompletion: { print("completed: \($0)") },
+    ///             receiveValue: { print("value: \($0)")}
+    ///          )
+    ///
+    ///     // 输出: "value: (5, 0)"。
+    ///
+    /// - Parameter failureType: 由此发布者呈现的 `Failure` 类型。
+    /// - Returns: 一个看起来会发送指定失败类型的发布者。
+
     public func setFailureType<NewFailure: Error>(
         to failureType: NewFailure.Type
     ) -> Publishers.SetFailureType<Self, NewFailure> {
@@ -90,6 +116,7 @@ extension Publishers.SetFailureType {
           CustomPlaygroundDisplayConvertible
         where Upstream.Output == Downstream.Input, Failure == Downstream.Failure
     {
+        // 所有的都是透传, 只是将泛型的类型进行了改变. 
         private let downstream: Downstream
         let combineIdentifier = CombineIdentifier()
 

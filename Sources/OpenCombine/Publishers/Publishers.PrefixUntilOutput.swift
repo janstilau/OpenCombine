@@ -15,6 +15,13 @@ extension Publisher {
     /// - Parameter publisher: A second publisher.
     /// - Returns: A publisher that republishes elements until the second publisher
     ///   publishes an element.
+    /// 重新发布元素，直到另一个发布者发出一个元素。
+    ///
+    /// 在第二个发布者发布一个元素后，此方法返回的发布者将完成。
+    ///
+    /// - Parameter publisher: 第二个发布者。
+    /// - Returns: 一个发布者，重新发布元素，直到第二个发布者发布一个元素。
+
     public func prefix<Other: Publisher>(
         untilOutputFrom publisher: Other
     ) -> Publishers.PrefixUntilOutput<Self, Other> {

@@ -28,6 +28,23 @@ extension Publisher {
     ///   returns a Boolean value that indicates whether publishing should continue.
     /// - Returns: A publisher that passes through elements until the predicate indicates
     ///   publishing should finish.
+    
+    /// 在谓词闭包指示继续发布的情况下重新发布元素。
+    ///
+    /// 使用 `prefix(while:)` 在满足您指定的条件的情况下发出值。当闭包返回 `false` 时，发布者完成。
+    ///
+    /// 在下面的示例中，`prefix(while:)` 操作符在接收到的元素小于五时发出值：
+    ///
+    ///     let numbers = (0...10)
+    ///     numbers.publisher
+    ///         .prefix { $0 < 5 }
+    ///         .sink { print("\($0)", terminator: " ") }
+    ///
+    ///     // 打印: "0 1 2 3 4"
+    ///
+    /// - Parameter predicate: 一个接受元素作为参数的闭包，返回一个布尔值，指示是否应继续发布。
+    /// - Returns: 一个发布者，传递元素直到谓词指示发布应该完成。
+
     public func prefix(
         while predicate: @escaping (Output) -> Bool
     ) -> Publishers.PrefixWhile<Self> {
@@ -138,6 +155,7 @@ extension Publishers.PrefixWhile {
 
         typealias Failure = Upstream.Failure
 
+        // 利用了 FilterProducer 的实现. 
         override func receive(
             newValue: Input
         ) -> PartialCompletion<Upstream.Output?, Downstream.Failure> {

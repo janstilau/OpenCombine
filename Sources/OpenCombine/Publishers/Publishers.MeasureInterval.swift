@@ -37,6 +37,31 @@ extension Publisher {
     ///   - options: Options that customize the delivery of elements.
     /// - Returns: A publisher that emits elements representing the time interval between
     ///   the elements it receives.
+    
+    /// 测量并发出从上游发布者接收的事件之间的时间间隔。
+    ///
+    /// 使用 `measureInterval(using:options:)` 来测量从上游发布者传递的事件之间的时间。
+    ///
+    /// 在下面的示例中，一个1秒的 `Timer` 被用作事件发布者的数据源；`measureInterval(using:options:)` 操作符报告了在主运行循环上接收事件之间经过的时间：
+    ///
+    ///     cancellable = Timer.publish(every: 1, on: .main, in: .default)
+    ///         .autoconnect()
+    ///         .measureInterval(using: RunLoop.main)
+    ///         .sink { print("\($0)", terminator: "\n") }
+    ///
+    ///     // Prints:
+    ///     //      Stride(magnitude: 1.0013610124588013)
+    ///     //      Stride(magnitude: 0.9992760419845581)
+    ///
+    /// 返回的发布者的输出类型是所提供调度器的时间间隔。
+    ///
+    /// 该操作符使用所提供调度器的 `now` 属性来测量事件之间的间隔。
+    ///
+    /// - Parameters:
+    ///   - scheduler: 用于跟踪事件定时的调度器。
+    ///   - options: 自定义元素传递的选项。
+    /// - Returns: 一个发布者，发出代表接收到的元素之间时间间隔的元素。
+
     public func measureInterval<Context: Scheduler>(
         using scheduler: Context,
         options: Context.SchedulerOptions? = nil
@@ -113,6 +138,7 @@ extension Publishers.MeasureInterval {
             lock.deallocate()
         }
 
+        // 惯例实现.
         func receive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = state else {
@@ -137,6 +163,7 @@ extension Publishers.MeasureInterval {
             let now = scheduler.now
             last = now
             lock.unlock()
+            // 收到的数据, 是事件间隔.
             let newDemand = downstream.receive(previousTime.distance(to: now))
             if newDemand > 0 {
                 subscription.request(newDemand)

@@ -34,6 +34,32 @@ extension Publisher {
     /// The output type of this publisher is `Never`.
     ///
     /// - Returns: A publisher that ignores all upstream elements.
+    
+    /// 忽略所有上游元素，但传递完成状态（完成或失败）。
+    ///
+    /// 使用 `ignoreOutput()` 运算符来确定发布者是否能够成功完成或将失败。
+    ///
+    /// 在下面的示例中，数组发布者 (`numbers`) 成功地交付了其前五个元素，如 `ignoreOutput()` 运算符所示。
+    /// 该运算符消耗但不会向下游重新发布元素。但是，第六个元素 `0` 导致抛出错误的闭包捕获到
+    /// `NoZeroValuesAllowedError`，从而终止了流。
+    ///
+    ///     struct NoZeroValuesAllowedError: Error {}
+    ///     let numbers = [1, 2, 3, 4, 5, 0, 6, 7, 8, 9]
+    ///     cancellable = numbers.publisher
+    ///         .tryFilter({ anInt in
+    ///             guard anInt != 0 else { throw NoZeroValuesAllowedError() }
+    ///             return anInt < 20
+    ///         })
+    ///         .ignoreOutput()
+    ///         .sink(receiveCompletion: {print("completion: \($0)")},
+    ///               receiveValue: {print("value \($0)")})
+    ///
+    ///     // 输出: "completion: failure(NoZeroValuesAllowedError())"
+    ///
+    /// 该发布者的输出类型为 `Never`。
+    ///
+    /// - Returns: 一个忽略所有上游元素的发布者。
+
     public func ignoreOutput() -> Publishers.IgnoreOutput<Self> {
         return .init(upstream: self)
     }
@@ -44,6 +70,7 @@ extension Publishers {
     /// state (finish or failed).
     public struct IgnoreOutput<Upstream: Publisher>: Publisher {
 
+        // Never, 也就是不会输出 Output.
         public typealias Output = Never
 
         public typealias Failure = Upstream.Failure
@@ -85,13 +112,16 @@ extension Publishers.IgnoreOutput {
 
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
+            // 无限要上游的数据.
             subscription.request(.unlimited)
         }
 
+        // 不传递给下游的数据.
         func receive(_ input: Input) -> Subscribers.Demand {
             return .none
         }
 
+        // 传递给下游, 完成事件. 
         func receive(completion: Subscribers.Completion<Failure>) {
             downstream.receive(completion: completion)
         }
