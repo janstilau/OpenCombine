@@ -59,6 +59,48 @@ extension Publisher {
     ///     the reason for termination.
     /// - Returns: A publisher that terminates if the specified interval elapses with no
     ///   events received from the upstream publisher.
+    
+    /// 在上游发布者在指定时间间隔内未产生元素时终止发布。
+    ///
+    /// 使用 `timeout(_:scheduler:options:customError:)` 来在指定的超时时间内终止发布者，如果在该时间内没有元素被接收到。
+    ///
+    /// 在下面的示例中，一个 `PassthroughSubject` 发布 `String` 元素，并在其 `TIME_OUT` 为 5 秒的窗口内超时，如果未收到新元素。在经过指定的 2 秒 `WAIT_TIME` 后，发布了单个值；然后，发布者超时并正常完成。
+    ///
+    ///     var WAIT_TIME : Int = 2
+    ///     var TIMEOUT_TIME : Int = 5
+    ///
+    ///     let subject = PassthroughSubject<String, Never>()
+    ///     let cancellable = subject
+    ///         .timeout(.seconds(TIMEOUT_TIME),
+    ///                  scheduler: DispatchQueue.main,
+    ///                  options: nil,
+    ///                  customError: nil)
+    ///         .sink(
+    ///               receiveCompletion: { print ("completion: \($0) at \(Date())") },
+    ///               receiveValue: { print ("value: \($0) at \(Date())") }
+    ///          )
+    ///
+    ///     DispatchQueue.main.asyncAfter(
+    ///         deadline: .now() + .seconds(WAIT_TIME),
+    ///         execute: {
+    ///             subject.send("Some data - sent after a delay of \(WAIT_TIME) seconds")
+    ///         }
+    ///     )
+    ///
+    ///     // 打印:
+    ///     //   value: Some data - sent after a delay of 2 seconds at
+    ///     //          2020-03-10 23:47:59 +0000
+    ///     //   completion: finished at 2020-03-10 23:48:04 +0000
+    ///
+    /// 如果 `customError` 为 `nil`，则发布者会正常完成；如果为 `customError` 提供了闭包，则在超时时上游发布者会终止，并将由该闭包返回的错误作为终止的原因传递给下游。
+    ///
+    /// - Parameters:
+    ///   - interval: 发布者可以在不发出元素的最长时间间隔，以调度程序的时间系统表示。
+    ///   - scheduler: 用于传递事件的调度程序。
+    ///   - options: 定制元素传递的调度程序选项。
+    ///   - customError: 一个在发布者超时时执行的闭包。发布者将通过该闭包返回的错误将其作为终止的原因发送给订阅者。
+    /// - Returns: 一个发布者，在指定的时间间隔内未从上游发布者接收到事件时终止。
+
     public func timeout<Context: Scheduler>(
         _ interval: Context.SchedulerTimeType.Stride,
         scheduler: Context,
@@ -189,6 +231,8 @@ extension Publishers.Timeout {
                 lock.unlock()
                 return .none
             }
+            
+            // 收到上游的数据之后, 重置定时器.
             timer?.cancel()
             didTimeout = false
             timer = timeoutClock()
@@ -207,6 +251,7 @@ extension Publishers.Timeout {
             }
             timer?.cancel()
             lock.unlock()
+            // 上游收到了完成事件, 还是通过调度地, 也就是说, 所有的数据都是通过调度器向下游进行的发送 .
             scheduler.schedule(options: options) {
                 self.scheduledReceive(completion: completion)
             }
@@ -255,11 +300,13 @@ extension Publishers.Timeout {
             lock.unlock()
             subscription.cancel()
             downstreamLock.lock()
+            // 向下游, 发送事件.
             downstream
                 .receive(completion: customError.map { .failure($0()) } ?? .finished)
             downstreamLock.unlock()
         }
 
+        // 生产定时器, 超时之后, 就触发 Complete 的事件.
         private func timeoutClock() -> AnyCancellable {
             let cancellable = scheduler
                 .schedule(after: scheduler.now.advanced(by: interval),
