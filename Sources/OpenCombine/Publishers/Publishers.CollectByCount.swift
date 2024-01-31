@@ -35,6 +35,26 @@ extension Publisher {
     ///   publishing.
     /// - Returns: A publisher that collects up to the specified number of elements, and
     ///   then publishes them as an array.
+    /// 收集最多指定数量的元素，然后发出一次包含该集合的数组。
+    ///
+    /// 使用 `collect(_:)` 从上游发布者发出最多 `count` 个元素的数组。如果上游发布者在收集指定数量的元素之前完成，那么此发布者将发送一个仅包含它收到的项目的数组，这可能少于 `count` 个元素。
+    ///
+    /// 如果上游发布者以错误失败，此发布者将将错误转发给下游接收器，而不是发送其输出。
+    ///
+    /// 在下面的示例中，`collect(_:)` 运算符根据请求的集合大小 `5` 发出一个部分数组和两个完整数组：
+    ///
+    ///     let numbers = (0...10)
+    ///     cancellable = numbers.publisher
+    ///         .collect(5)
+    ///         .sink { print("\($0)", terminator: " ") }
+    ///
+    ///     // 输出: "[0, 1, 2, 3, 4] [5, 6, 7, 8, 9] [10] "
+    ///
+    /// > 注意: 当此发布者收到 `.max(n)` 元素的请求时，它会从上游发布者请求 `.max(count * n)` 元素。
+    ///
+    /// - Parameter count: 发布之前要缓冲的最大接收元素数。
+    /// - Returns: 一个发布者，收集最多指定数量的元素，然后将它们作为数组发布。
+
     public func collect(_ count: Int) -> Publishers.CollectByCount<Self> {
         return .init(upstream: self, count: count)
     }
@@ -117,6 +137,7 @@ extension Publishers.CollectByCount {
             downstream.receive(subscription: self)
         }
 
+        // 积累到一定的数量, 然后发送所有的数据.
         func receive(_ input: Upstream.Output) -> Subscribers.Demand {
             lock.lock()
             if subscription == nil {
@@ -130,6 +151,8 @@ extension Publishers.CollectByCount {
             }
             let output = self.buffer.take()
             lock.unlock()
+            // 下游, 会在每次获取到数据的时候, 返回自己的 demand 的值.
+            // 也可以, 主动调用上游 Subscription 的 request(_ demand: Subscribers.Demand) 方法, 主动的索取数据. 
             return downstream.receive(output) * count
         }
 
@@ -142,11 +165,13 @@ extension Publishers.CollectByCount {
                 if buffer.isEmpty {
                     lock.unlock()
                 } else {
+                    // 最后, 会清空现有的数据.
                     let buffer = self.buffer.take()
                     lock.unlock()
                     _ = downstream.receive(buffer)
                 }
             case .failure:
+                // 如果发送了错误, 不会发送现有的数据.
                 buffer = []
                 lock.unlock()
             }

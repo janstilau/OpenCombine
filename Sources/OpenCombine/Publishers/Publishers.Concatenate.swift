@@ -25,6 +25,23 @@ extension Publisher {
     /// - Parameter elements: The elements to publish before this publisher’s elements.
     /// - Returns: A publisher that prefixes the specified elements prior to this
     ///   publisher’s elements.
+    ///
+    /// 在发布者的输出前添加指定的值。
+    ///
+    /// 当需要在发布者的输出前添加特定元素时，使用 `prepend(_:)`。
+    ///
+    /// 在下面的示例中，`prepend(_:)` 运算符在重新发布来自 `dataElements` 的所有元素之前，发布提供的元素：
+    ///
+    ///     let dataElements = (0...10)
+    ///     cancellable = dataElements.publisher
+    ///         .prepend(0, 1, 255)
+    ///         .sink { print("\($0)", terminator: " ") }
+    ///
+    ///     // 输出: "0 1 255 0 1 2 3 4 5 6 7 8 9 10"
+    ///
+    /// - Parameter elements: 要在此发布者的元素之前发布的元素。
+    /// - Returns: 一个发布者，在此发布者的元素之前添加指定的元素。
+
     public func prepend(
         _ elements: Output...
     ) -> Publishers.Concatenate<Publishers.Sequence<[Output], Failure>, Self> {
@@ -56,6 +73,7 @@ extension Publisher {
     ) -> Publishers.Concatenate<Publishers.Sequence<Elements, Failure>, Self>
         where Output == Elements.Element
     {
+        // 将 Array 变为了一个新的 Publihser.
         return prepend(.init(sequence: elements))
     }
 
@@ -178,6 +196,7 @@ extension Publishers {
     /// A publisher that emits all of one publisher’s elements before those from another
     /// publisher.
     public struct Concatenate<Prefix: Publisher, Suffix: Publisher>: Publisher
+    // 前后的两个 Publisher, 必须类型一样.
         where Prefix.Failure == Suffix.Failure, Prefix.Output == Suffix.Output
     {
         public typealias Output = Suffix.Output
@@ -227,6 +246,7 @@ extension Publishers.Concatenate {
             let inner: Inner<Downstream>
         }
 
+        // 这种, 需要进行切换 Publisher 的 Sink 节点, 一般都有两种 State 切换的过程.
         private let downstream: Downstream
 
         private var prefixState = SubscriptionStatus.awaitingSubscription
@@ -257,6 +277,7 @@ extension Publishers.Concatenate {
                 return
             }
             lock.unlock()
+            // 不管是谁的 subscription, 当下游要数据的时候, 找 subscription 要数据就可以.
             subscription.request(demand)
         }
 
@@ -290,6 +311,7 @@ extension Publishers.Concatenate {
 
         // MARK: - Private
 
+        // prefix Publisher 的处理.
         private func prefixReceive(subscription: Subscription) {
             lock.lock()
             guard case .awaitingSubscription = prefixState else {
@@ -330,6 +352,7 @@ extension Publishers.Concatenate {
             lock.unlock()
             switch completion {
             case .finished:
+                // 上游发送完毕了, 下游继续.
                 suffix?.subscribe(SuffixSubscriber(inner: self))
             case .failure:
                 downstream.receive(completion: completion)

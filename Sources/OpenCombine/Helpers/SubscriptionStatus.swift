@@ -6,6 +6,7 @@
 //
 
 // 使用 Enum 当做盒子来进行使用.
+// 基本上, 想要做 Subscription 和 Subscriber 的类, 都要使用这个做状态的管理. 
 internal enum SubscriptionStatus {
     case awaitingSubscription
     case subscribed(Subscription)

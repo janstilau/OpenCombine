@@ -9,7 +9,8 @@
 /// `Publishers.Count`, `Publishers.FirstWhere`, `Publishers.AllSatisfy` and more.
 ///
 /// Subclasses must override the `receive(newValue:)` and `description`.
-///
+
+
 /// 充当订阅者和订阅的辅助类。
 ///
 /// 类似于 `reduce` 的操作符向上游发布者（作为订阅者）和向下游订阅者（作为订阅）发送其 `Inner` 类的实例，
@@ -19,6 +20,9 @@
 /// `Publishers.FirstWhere`、`Publishers.AllSatisfy` 等等。
 ///
 /// 子类必须重写 `receive(newValue:)` 和 `description`。
+/*
+ reduce 是一种高阶函数，通常用于将一个集合（比如数组）的所有元素通过某种规则进行累积，最终得到一个单一的结果。这函数的核心思想是将一个二元操作应用于集合中的元素，不断地累积结果。
+ */
 
 // Reduce, 一系列的值, 变为一个值的过程.
 internal class ReduceProducer<Downstream: Subscriber,
@@ -26,7 +30,7 @@ internal class ReduceProducer<Downstream: Subscriber,
                               Output,
                               UpstreamFailure: Error,
                               Reducer>
-// Reducer 是一个闭包.
+// Reducer 是一个闭包. 所以其实是可以
 : CustomStringConvertible,
   CustomReflectable
 where Downstream.Input == Output
@@ -39,7 +43,7 @@ where Downstream.Input == Output
     
     private let initial: Output?
     
-    internal final let reduce: Reducer
+    internal final let reduce: Reducer // reduce 在父类里面, 其实根本没有用到. 如何使用, 是各个子类根据自己传递的 block 的类型, 自己使用的. 
     
     private var status = SubscriptionStatus.awaitingSubscription
     
@@ -134,6 +138,8 @@ where Downstream.Input == Output
         downstream.receive(completion: .failure(failure as! Downstream.Failure))
     }
     
+    // ReduceProducer 的统一语义, 就是将一系列值进行变化, 最终生成一个 Result 的值.
+    // 所以它只会在收到 complete 事件的时候, 才会发送这个数据.
     private func sendResultAndFinish(_ result: Output?) {
         assert(completed && upstreamCompleted)
         if let result = result {
@@ -172,6 +178,8 @@ extension ReduceProducer: Subscriber {
         //
         // This can lead to data races if the contract is violated
         // (like when we receive input from multiple threads simultaneously).
+        
+        // 不一定是上游发送了 Complete, 在各个真正的业务子类里面, 其实可以在 receive(_ input: Input) 提前完成 Complte 的. 比如, firstWhere, 在第一个满足需求的收到之后, 就会发送 reuslt 给下游.
         switch self.receive(newValue: input) {
         case .continue:
             break
@@ -186,6 +194,7 @@ extension ReduceProducer: Subscriber {
             let result = self.result
             lock.unlock()
             
+            // 在过程中, 认为完毕了, 会调用上游节点的 cancel 方法.
             subscription.cancel()
             
             guard downstreamRequested else { break }

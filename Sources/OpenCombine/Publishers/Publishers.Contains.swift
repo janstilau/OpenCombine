@@ -62,6 +62,22 @@ extension Publisher {
     ///   the closure’s comparison logic.
     /// - Returns: A publisher that emits the Boolean value `true` when the upstream
     ///   publisher emits a matching value.
+    /// 在接收到与参数相等的元素时发布一个布尔值。
+    ///
+    /// 使用 `contains(_:)` 来查找上游中第一个与提供的参数相等的元素。`Publishers.Contains` 发布者会消耗所有接收到的元素，直到上游发布者产生一个匹配的元素。在找到第一个匹配项时，它会发出 `true` 并正常完成。如果上游正常完成但没有产生匹配的元素，此发布者会发出 `false` 并完成。
+    ///
+    /// 在下面的示例中，`contains(_:)` 运算符在第一次从 `numbers.publisher` 接收到值 `5` 时发出 `true`，然后正常完成。
+    ///
+    ///     let numbers = [-1, 5, 10, 5]
+    ///     numbers.publisher
+    ///         .contains(5)
+    ///         .sink { print("\($0)") }
+    ///
+    ///     // 输出: "true"
+    ///
+    /// - Parameter output: 与之匹配的元素。
+    /// - Returns: 一个发布者，当上游发布者发出匹配的值时，发出布尔值 `true`。
+
     public func contains(
         where predicate: @escaping (Output) -> Bool
     ) -> Publishers.ContainsWhere<Self> {

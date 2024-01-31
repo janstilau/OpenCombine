@@ -89,6 +89,8 @@ extension Publishers {
         
         public typealias Output = Upstream.Output
         
+        // 最为关键的一点, 就是 Failure 变为了 Never.
+        // 这样的话, 才能对接后续的 Subscriber, 例如 assignOn, Complte.
         public typealias Failure = Never
         
         /// The publisher from which this publisher receives elements.

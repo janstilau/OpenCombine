@@ -176,7 +176,7 @@ extension Publishers {
         
         public typealias Output = Bool
         
-        // Error 发生了坍塌.
+        // 所有 Try 开头的 Operator, 都会进行 Error 类型的坍塌. 
         public typealias Failure = Error
         
         /// The publisher from which this publisher receives elements.
@@ -247,6 +247,7 @@ extension Publishers.TryAllSatisfy {
             super.init(downstream: downstream, initial: true, reduce: predicate)
         }
         
+        //
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {

@@ -34,6 +34,26 @@ extension Publisher {
     /// - Parameter transform: A closure that receives a value and returns an optional
     ///   value.
     /// - Returns: Any non-`nil` optional results of the calling the supplied closure.
+    /// 对每个接收到的元素调用闭包，并发布任何具有值的返回的可选项。
+    ///
+    /// OpenCombine 的 `compactMap(_:)` 运算符执行类似于 Swift 标准库中的 `compactMap(_:)` 的功能：
+    /// OpenCombine 中的 `compactMap(_:)` 运算符会从发布者的流中移除 `nil` 元素，并将非 `nil` 元素重新发布给下游订阅者。
+    ///
+    /// 下面的示例使用数字范围作为基于集合的发布者的源。`compactMap(_:)` 运算符消耗 `numbers` 发布者的每个元素，尝试使用元素作为键访问字典。
+    /// 如果示例的字典由于不存在的键返回 `nil`，`compactMap(_:)` 将过滤掉 `nil`（缺失）元素。
+    ///
+    ///     let numbers = (0...5)
+    ///     let romanNumeralDict: [Int: String] =
+    ///         [1: "I", 2: "II", 3: "III", 5: "V"]
+    ///
+    ///     cancellable = numbers.publisher
+    ///         .compactMap { romanNumeralDict[$0] }
+    ///         .sink { print("\($0)", terminator: " ") }
+    ///
+    ///     // 输出: "I II III V"
+    ///
+    /// - Parameter transform: 一个接收值并返回一个可选值的闭包。
+    /// - Returns: 调用所提供闭包后的任何非 `nil` 可选结果。
     public func compactMap<ElementOfResult>(
         _ transform: @escaping (Output) -> ElementOfResult?
     ) -> Publishers.CompactMap<Self, ElementOfResult> {
@@ -80,6 +100,37 @@ extension Publisher {
     /// - Parameter transform: An error-throwing closure that receives a value and returns
     ///   an optional value.
     /// - Returns: Any non-`nil` optional results of calling the supplied closure.
+    /// 对每个接收到的元素调用一个可能抛出错误的闭包，并发布任何具有值的返回的可选项。
+    ///
+    /// 使用 `tryCompactMap(_:)` 来基于你提供的可能抛出错误的闭包移除发布者流中的 `nil` 元素。
+    /// 如果闭包抛出错误，发布者将取消上游发布者并将抛出的错误作为 `Publisher.Failure` 发送给下游订阅者。
+    ///
+    /// 以下示例使用数字数组作为基于集合的发布者的源。`tryCompactMap(_:)` 运算符消耗发布者的每个整数，并使用字典将数字从阿拉伯数字转换为罗马数字，作为可选的 `String`。
+    ///
+    /// 如果 `tryCompactMap(_:)` 调用的闭包未能查找到罗马数字，它将返回可选的字符串 `(Unknown)`。
+    ///
+    /// 如果 `tryCompactMap(_:)` 调用的闭包确定输入为 `0`，它将抛出一个错误。`tryCompactMap(_:)` 运算符捕获此错误并停止发布，发送包装错误的 `Subscribers.Completion.failure(_:)`。
+    ///
+    ///     struct ParseError: Error {}
+    ///     func romanNumeral(from: Int) throws -> String? {
+    ///         let romanNumeralDict: [Int : String] =
+    ///             [1: "I", 2: "II", 3: "III", 4: "IV", 5: "V"]
+    ///         guard from != 0 else { throw ParseError() }
+    ///         return romanNumeralDict[from]
+    ///     }
+    ///     let numbers = [6, 5, 4, 3, 2, 1, 0]
+    ///     cancellable = numbers.publisher
+    ///         .tryCompactMap { try romanNumeral(from: $0) }
+    ///         .sink(
+    ///               receiveCompletion: { print ("\($0)") },
+    ///               receiveValue: { print ("\($0)", terminator: " ") }
+    ///          )
+    ///
+    ///     // 输出: "(Unknown) V IV III II I failure(ParseError())"
+    ///
+    /// - Parameter transform: 一个可能抛出错误的闭包，接收一个值并返回一个可选值。
+    /// - Returns: 调用所提供闭包后的任何非 `nil` 可选结果。
+
     public func tryCompactMap<ElementOfResult>(
         _ transform: @escaping (Output) throws -> ElementOfResult?
     ) -> Publishers.TryCompactMap<Self, ElementOfResult> {
@@ -192,11 +243,14 @@ extension Publishers.CompactMap {
             self.filter = filter
         }
 
+        // 透传.
         func receive(subscription: Subscription) {
             downstream.receive(subscription: subscription)
         }
 
         func receive(_ input: Input) -> Subscribers.Demand {
+            // 如果不符合要求, 就不传递, 但是拉取一个数据
+            // 如果符合要求, 就透传
             if let output = filter(input) {
                 return downstream.receive(output)
             }

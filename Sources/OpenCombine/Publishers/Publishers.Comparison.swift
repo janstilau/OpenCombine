@@ -29,6 +29,23 @@ extension Publisher where Output: Comparable {
     ///
     /// - Returns: A publisher that publishes the minimum value received from the upstream
     ///   publisher, after the upstream publisher finishes.
+    /// 在上游发布者完成后，发布接收到的最小值。
+    ///
+    /// 使用 `min()` 来查找从上游发布者流中的元素中的最小值。
+    ///
+    /// 在下面的示例中，`min()` 运算符在发布者完成时发出一个值，该值是从上游接收到的值中的最小值，即 `-1`。
+    ///
+    ///     let numbers = [-1, 0, 10, 5]
+    ///     numbers.publisher
+    ///         .min()
+    ///         .sink { print("\($0)") }
+    ///
+    ///     // 输出: "-1"
+    ///
+    /// 在此发布者收到对更多项的请求后，它会从上游发布者请求无限数量的项。
+    ///
+    /// - Returns: 一个发布者，发布接收到的最小值，该值在上游发布者完成后发布。
+
     public func min() -> Publishers.Comparison<Self> {
         return max(by: >)
     }
@@ -315,6 +332,8 @@ extension Publishers.Comparison {
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {
             if let result = self.result {
+                // 在接受到上游数据的时候, 不断地更新 result 的值.
+                // 最后, 发送 result 的值. 
                 if reduce(result, newValue) {
                     self.result = newValue
                 }
