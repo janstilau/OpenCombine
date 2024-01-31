@@ -166,8 +166,10 @@ extension URLSession.OCombine.DataTaskPublisher {
                 lock.unlock()
                 return
             }
+            // 下游要数据的时候, 才真正的进行了请求.
             if self.task == nil {
                 task = parent.session.dataTask(with: parent.request,
+                                               // 直接使用的 completionHandler 的方式, 而不是 Delegate 的方式.
                                                completionHandler: handleResponse)
             }
             self.demand += demand

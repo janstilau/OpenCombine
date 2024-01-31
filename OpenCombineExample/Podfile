@@ -8,6 +8,8 @@ target 'OpenCombineExample' do
 #  use_frameworks!
   
   pod 'OpenCombine', :path => '../'
+  pod 'OpenCombineDispatch', :path => '../'
+  pod 'OpenCombineFoundation', :path => '../'
 
   # Pods for OpenCombineExample
 

@@ -164,6 +164,7 @@ extension Notification {
             self.center = center
             self.name = name
             self.object = object
+            // 在这里, 完成了对于 NotificationCenter 的注册.
             self.observation = center
                 .addObserver(forName: name, object: object, queue: nil) { [weak self] in
                     self?.didReceiveNotification($0, downstream: downstream)
@@ -208,6 +209,7 @@ extension Notification {
             }
             self.object = nil
             lock.unlock()
+            // cancel 的时候, 会完成对于 removeObserver 的调用.
             center.removeObserver(observation)
         }
 

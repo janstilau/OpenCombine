@@ -9,7 +9,7 @@ import Dispatch
 import OpenCombine
 
 extension DispatchQueue {
-
+    
     /// A namespace for disambiguation when both OpenCombine and Combine are imported.
     ///
     /// Combine extends `DispatchQueue` with new methods and nested types.
@@ -25,26 +25,26 @@ extension DispatchQueue {
     ///
     /// You can omit this whenever Combine is not available (e. g. on Linux).
     public struct OCombine: Scheduler {
-
+        
         public let queue: DispatchQueue
-
+        
         public init(_ queue: DispatchQueue) {
             self.queue = queue
         }
-
+        
         /// The scheduler time type used by the dispatch queue.
         public struct SchedulerTimeType: Strideable, Codable, Hashable {
-
+            
             /// The dispatch time represented by this type.
             public var dispatchTime: DispatchTime
-
+            
             /// Creates a dispatch queue time type instance.
             ///
             /// - Parameter time: The dispatch time to represent.
             public init(_ time: DispatchTime) {
                 dispatchTime = time
             }
-
+            
             /// Returns the distance to another dispatch queue time.
             ///
             /// - Parameter other: Another dispatch queue time.
@@ -54,11 +54,11 @@ extension DispatchQueue {
                 let end = other.dispatchTime.rawValue
                 return .nanoseconds(
                     end >= start
-                        ? Int(Int64(bitPattern: end) - Int64(bitPattern: start))
-                        : -Int(Int64(bitPattern: start) - Int64(bitPattern: end))
+                    ? Int(Int64(bitPattern: end) - Int64(bitPattern: start))
+                    : -Int(Int64(bitPattern: start) - Int64(bitPattern: end))
                 )
             }
-
+            
             /// Returns a dispatch queue scheduler time calculated by advancing
             /// this instance’s time by the given interval.
             ///
@@ -67,24 +67,24 @@ extension DispatchQueue {
             ///   interval from this instance’s time.
             public func advanced(by stride: Stride) -> SchedulerTimeType {
                 return stride.magnitude == .max
-                    ? .init(.distantFuture)
-                    : .init(dispatchTime + stride.timeInterval)
+                ? .init(.distantFuture)
+                : .init(dispatchTime + stride.timeInterval)
             }
-
+            
             public func hash(into hasher: inout Hasher) {
                 hasher.combine(dispatchTime.rawValue)
             }
-
+            
             public func encode(to encoder: Encoder) throws {
                 var container = encoder.singleValueContainer()
                 try container.encode(dispatchTime.uptimeNanoseconds)
             }
-
+            
             public init(from decoder: Decoder) throws {
                 let container = try decoder.singleValueContainer()
                 dispatchTime = try .init(uptimeNanoseconds: container.decode(UInt64.self))
             }
-
+            
             /// A type that represents the distance between two values.
             public struct Stride: SchedulerTimeIntervalConvertible,
                                   Comparable,
@@ -92,20 +92,20 @@ extension DispatchQueue {
                                   ExpressibleByFloatLiteral,
                                   Hashable,
                                   Codable {
-
+                
                 /// If created via floating point literal, the value is
                 /// converted to nanoseconds via multiplication.
                 public typealias FloatLiteralType = Double
-
+                
                 /// Nanoseconds, same as DispatchTimeInterval.
                 public typealias IntegerLiteralType = Int
-
+                
                 /// A type that can represent the absolute value of any possible
                 /// value of the conforming type.
                 public typealias Magnitude = Int
-
+                
                 private var _nanoseconds: Int64
-
+                
                 /// The value of this time interval in nanoseconds.
                 public var magnitude: Int {
                     get {
@@ -115,17 +115,17 @@ extension DispatchQueue {
                         _nanoseconds = Int64(newValue)
                     }
                 }
-
+                
                 /// A `DispatchTimeInterval` created with the value of this type
                 /// in nanoseconds.
                 public var timeInterval: DispatchTimeInterval {
                     return .nanoseconds(magnitude)
                 }
-
+                
                 private init(magnitude: Int64) {
                     _nanoseconds = magnitude
                 }
-
+                
                 /// Creates a dispatch queue time interval from the given
                 /// dispatch time interval.
                 ///
@@ -140,12 +140,12 @@ extension DispatchQueue {
                         self = .microseconds(microseconds)
                     case .nanoseconds(let nanoseconds):
                         self = .nanoseconds(nanoseconds)
-// This dance is to avoid the warning 'default will never be executed'
-// on non-Darwin platforms.
-// There really shouldn't be a warning.
-// See https://forums.swift.org/t/unknown-default-produces-a-warning-on-linux-with-non-frozen-enum/31687
-//
-// Thanks to Jeremy David Giesbrecht for suggesting this workaround.
+                        // This dance is to avoid the warning 'default will never be executed'
+                        // on non-Darwin platforms.
+                        // There really shouldn't be a warning.
+                        // See https://forums.swift.org/t/unknown-default-produces-a-warning-on-linux-with-non-frozen-enum/31687
+                        //
+                        // Thanks to Jeremy David Giesbrecht for suggesting this workaround.
 #if canImport(Darwin)
                     case .never:
                         self = .nanoseconds(.max)
@@ -161,7 +161,7 @@ extension DispatchQueue {
 #endif
                     }
                 }
-
+                
                 public // testable
                 init(__guessFromUnknown timeInterval: DispatchTimeInterval) {
                     // Let's take some reference time,
@@ -180,12 +180,12 @@ extension DispatchQueue {
                     // That's with Int being 64 bits. Since here only UInt64 can overflow,
                     // when Int is 32 bits, we don't have this issue.
                     // It should be more than enough.
-
+                    
                     let referenceTime = DispatchTime(uptimeNanoseconds: .max / 13)
                     self = SchedulerTimeType(referenceTime)
                         .distance(to: SchedulerTimeType(referenceTime + timeInterval))
                 }
-
+                
                 /// Creates a dispatch queue time interval from a floating-point
                 /// seconds value.
                 ///
@@ -193,53 +193,53 @@ extension DispatchQueue {
                 public init(floatLiteral value: Double) {
                     self = .seconds(value)
                 }
-
+                
                 /// Creates a dispatch queue time interval from an integer seconds value.
                 ///
                 /// - Parameter value: The number of seconds, as an `Int`.
                 public init(integerLiteral value: Int) {
                     self = .seconds(value)
                 }
-
+                
                 /// Creates a dispatch queue time interval from a binary integer type.
                 ///
                 /// If `exactly` cannot convert to an `Int`, the resulting time interval
                 /// is `nil`.
-                /// 
+                ///
                 /// - Parameter exactly: A binary integer representing a time interval.
                 public init?<Source: BinaryInteger>(exactly source: Source) {
                     guard let value = Int(exactly: source) else { return nil }
                     self = .seconds(value)
                 }
-
+                
                 public static func < (lhs: Stride, rhs: Stride) -> Bool {
                     return lhs._nanoseconds < rhs._nanoseconds
                 }
-
+                
                 public static func * (lhs: Stride, rhs: Stride) -> Stride {
                     return Stride(magnitude: 0)
                 }
-
+                
                 public static func + (lhs: Stride, rhs: Stride) -> Stride {
                     return Stride(magnitude: lhs._nanoseconds + rhs._nanoseconds)
                 }
-
+                
                 public static func - (lhs: Stride, rhs: Stride) -> Stride {
                     return Stride(magnitude: lhs._nanoseconds - rhs._nanoseconds)
                 }
-
+                
                 public static func -= (lhs: inout Stride, rhs: Stride) {
                     lhs._nanoseconds -= rhs._nanoseconds
                 }
-
+                
                 public static func *= (lhs: inout Stride, rhs: Stride) {
                     lhs._nanoseconds = 0
                 }
-
+                
                 public static func += (lhs: inout Stride, rhs: Stride) {
                     lhs._nanoseconds += rhs._nanoseconds
                 }
-
+                
                 public static func seconds(_ value: Double) -> Stride {
                     let nanoseconds = value * 1_000_000_000
                     if nanoseconds >= Double(Int64.max) {
@@ -250,38 +250,39 @@ extension DispatchQueue {
                     }
                     return Stride(magnitude: Int64(nanoseconds))
                 }
-
+                
                 public static func seconds(_ value: Int) -> Stride {
                     return Stride(magnitude: clampedIntProduct(Int64(value),
                                                                1_000_000_000))
                 }
-
+                
                 public static func milliseconds(_ value: Int) -> Stride {
                     return Stride(magnitude: clampedIntProduct(Int64(value), 1_000_000))
                 }
-
+                
                 public static func microseconds(_ value: Int) -> Stride {
                     return Stride(magnitude: clampedIntProduct(Int64(value), 1_000))
                 }
-
+                
                 public static func nanoseconds(_ value: Int) -> Stride {
                     return Stride(magnitude: Int64(value))
                 }
             }
         }
-
+        
+        // DispatchQueue 有着 DispatchQueue 的 Options.
         /// Options that affect the operation of the dispatch queue scheduler.
         public struct SchedulerOptions {
-
+            
             /// The dispatch queue quality of service.
             public var qos: DispatchQoS
-
+            
             /// The dispatch queue work item flags.
             public var flags: DispatchWorkItemFlags
-
+            
             /// The dispatch group, if any, that should be used for performing actions.
             public var group: DispatchGroup?
-
+            
             public init(qos: DispatchQoS = .unspecified,
                         flags: DispatchWorkItemFlags = [],
                         group: DispatchGroup? = nil) {
@@ -290,15 +291,15 @@ extension DispatchQueue {
                 self.group = group
             }
         }
-
+        
         public var minimumTolerance: SchedulerTimeType.Stride {
             return .nanoseconds(0)
         }
-
+        
         public var now: SchedulerTimeType {
             return .init(.now())
         }
-
+        
         public func schedule(options: SchedulerOptions?,
                              _ action: @escaping () -> Void) {
             let options = options ?? .init()
@@ -307,7 +308,7 @@ extension DispatchQueue {
                         flags: options.flags,
                         execute: action)
         }
-
+        
         public func schedule(after date: SchedulerTimeType,
                              tolerance: SchedulerTimeType.Stride,
                              options: SchedulerOptions?,
@@ -318,7 +319,7 @@ extension DispatchQueue {
                              flags: options.flags,
                              execute: action)
         }
-
+        
         /// Performs the action at some time after the specified date, at the specified
         /// frequency, optionally taking into account tolerance if possible.
         public func schedule(after date: SchedulerTimeType,
@@ -338,7 +339,7 @@ extension DispatchQueue {
             return AnyCancellable(timer.cancel)
         }
     }
-
+    
     /// A namespace for disambiguation when both OpenCombine and Combine are imported.
     ///
     /// Combine extends `DispatchQueue` with new methods and nested types.
@@ -360,33 +361,33 @@ extension DispatchQueue {
 
 #if !canImport(Combine)
 extension DispatchQueue: OpenCombine.Scheduler {
-
+    
     /// Options that affect the operation of the dispatch queue scheduler.
     public typealias SchedulerOptions = OCombine.SchedulerOptions
-
+    
     /// The scheduler time type used by the dispatch queue.
     public typealias SchedulerTimeType = OCombine.SchedulerTimeType
-
+    
     public var minimumTolerance: OCombine.SchedulerTimeType.Stride {
         return ocombine.minimumTolerance
     }
-
+    
     public var now: OCombine.SchedulerTimeType {
         return ocombine.now
     }
-
+    
     public func schedule(options: OCombine.SchedulerOptions?,
                          _ action: @escaping () -> Void) {
         ocombine.schedule(options: options, action)
     }
-
+    
     public func schedule(after date: OCombine.SchedulerTimeType,
                          tolerance: OCombine.SchedulerTimeType.Stride,
                          options: OCombine.SchedulerOptions?,
                          _ action: @escaping () -> Void) {
         ocombine.schedule(after: date, tolerance: tolerance, options: options, action)
     }
-
+    
     public func schedule(after date: OCombine.SchedulerTimeType,
                          interval: OCombine.SchedulerTimeType.Stride,
                          tolerance: OCombine.SchedulerTimeType.Stride,
