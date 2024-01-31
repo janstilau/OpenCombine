@@ -26,6 +26,22 @@ extension Publisher {
     /// - Parameter isIncluded: A closure that takes one element and returns
     ///   a Boolean value indicating whether to republish the element.
     /// - Returns: A publisher that republishes all elements that satisfy the closure.
+    /// 重新发布与提供的闭包匹配的所有元素。
+    ///
+    /// OpenCombine 的 `filter(_:)` 操作符执行类似于 Swift 标准库中的 `filter(_:)` 操作的操作：它使用闭包测试每个元素，以确定是否将该元素重新发布到下游订阅者。
+    ///
+    /// 以下示例使用一个过滤操作，接收一个 `Int` 并且仅在它为偶数时重新发布该值。
+    ///
+    ///     let numbers: [Int] = [1, 2, 3, 4, 5]
+    ///     cancellable = numbers.publisher
+    ///         .filter { $0 % 2 == 0 }
+    ///         .sink { print("\($0)", terminator: " ") }
+    ///
+    ///     // 输出: "2 4"
+    ///
+    /// - Parameter isIncluded: 一个接受一个元素并返回一个布尔值的闭包，指示是否重新发布该元素。
+    /// - Returns: 一个发布者，重新发布满足闭包条件的所有元素。
+
     public func filter(
         _ isIncluded: @escaping (Output) -> Bool
     ) -> Publishers.Filter<Self> {
@@ -62,6 +78,33 @@ extension Publisher {
     /// - Parameter isIncluded: A closure that takes one element and returns a Boolean
     ///   value that indicated whether to republish the element or throws an error.
     /// - Returns: A publisher that republishes all elements that satisfy the closure.
+    /// 重新发布与提供的错误抛出闭包匹配的所有元素。
+    ///
+    /// 使用 `tryFilter(_:)` 来过滤在错误抛出闭包中评估的元素。如果 `isIncluded` 闭包抛出错误，则发布者以该错误失败。
+    ///
+    /// 在下面的示例中，`tryFilter(_:)` 检查发布者提供的除数是否为零，并抛出 `DivisionByZeroError`，然后以抛出的错误终止发布者：
+    ///
+    ///     struct DivisionByZeroError: Error {}
+    ///
+    ///     let numbers: [Int] = [1, 2, 3, 4, 0, 5]
+    ///     cancellable = numbers.publisher
+    ///         .tryFilter {
+    ///             if $0 == 0 {
+    ///                 throw DivisionByZeroError()
+    ///             } else {
+    ///                 return $0 % 2 == 0
+    ///             }
+    ///         }
+    ///         .sink(
+    ///             receiveCompletion: { print ("\($0)") },
+    ///             receiveValue: { print ("\($0)", terminator: " ") }
+    ///          )
+    ///
+    ///     // 输出: "2 4 failure(DivisionByZeroError())".
+    ///
+    /// - Parameter isIncluded: 一个接受一个元素并返回一个布尔值的闭包，指示是否重新发布该元素或抛出错误。
+    /// - Returns: 一个发布者，重新发布满足闭包条件的所有元素。
+
     public func tryFilter(
         _ isIncluded: @escaping (Output) throws -> Bool
     ) -> Publishers.TryFilter<Self> {
@@ -203,6 +246,7 @@ extension Publishers.Filter {
             downstream.receive(subscription: subscription)
         }
 
+        // 过滤了, 还是要一个数据.
         func receive(_ input: Input) -> Subscribers.Demand {
             if filter(input) {
                 return downstream.receive(input)

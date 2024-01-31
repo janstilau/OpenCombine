@@ -64,6 +64,7 @@ extension Publisher {
     ///   - options: Options relevant to the scheduler’s behavior.
     /// - Returns: A publisher that delays delivery of elements and completion to
     ///   the downstream receiver.
+    
     /// 将所有输出的传递延迟到下游接收器指定的时间段，使用特定的调度器。
     ///
     /// 当需要延迟元素传递到下游一定时间时，请使用 `delay(for:tolerance:scheduler:options:)`。
@@ -252,6 +253,7 @@ extension Publishers.Delay {
             return .none
         }
         
+        // 还是, 使用特定的名称, 将方法的执行环境进行标明, 这是一个非常好的习惯.
         private func scheduledReceive(_ input: Input) {
             lock.lock()
             guard state.subscription != nil else {

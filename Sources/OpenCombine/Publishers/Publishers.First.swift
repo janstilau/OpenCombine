@@ -26,6 +26,22 @@ extension Publisher {
     ///     // Print: "-10"
     ///
     /// - Returns: A publisher that only publishes the first element of a stream.
+    /// 发布流的第一个元素，然后完成。
+    ///
+    /// 使用 `first()` 仅发布上游发布者的第一个元素，然后正常完成。`first()` 操作符在下游至少请求一个元素后立即从上游请求 `Subscribers.Demand.unlimited`。
+    /// 如果上游在 `first()` 收到任何元素之前完成，则它将在不发出任何值的情况下完成。
+    ///
+    /// 在此示例中，`first()` 发布者重新发布序列发布者接收到的第一个元素 `-10`，然后正常完成。
+    ///
+    ///     let numbers = (-10...10)
+    ///     cancellable = numbers.publisher
+    ///         .first()
+    ///         .sink { print("\($0)") }
+    ///
+    ///     // 输出: "-10"
+    ///
+    /// - Returns: 一个仅发布流的第一个元素的发布者。
+
     public func first() -> Publishers.First<Self> {
         return .init(upstream: self)
     }
@@ -191,6 +207,7 @@ extension Publishers.First {
             super.init(downstream: downstream, initial: nil, reduce: ())
         }
 
+        // 接收到第一个, 然后就 finish 了. 
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {

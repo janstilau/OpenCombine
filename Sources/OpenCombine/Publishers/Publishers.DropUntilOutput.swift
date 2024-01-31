@@ -43,6 +43,31 @@ extension Publisher {
     /// - Parameter publisher: A publisher to monitor for its first emitted element.
     /// - Returns: A publisher that drops elements from the upstream publisher until
     ///   the `other` publisher produces a value.
+    /// 忽略来自上游发布者的元素，直到它接收到来自第二个发布者的元素。
+    ///
+    /// 使用 `drop(untilOutputFrom:)` 来忽略来自上游发布者的元素，直到另一个第二个发布者传递其第一个元素。
+    /// 此发布者从第二个发布者请求一个值，并忽略（丢弃）从上游发布者接收到的所有元素，直到第二个发布者产生一个值。在第二个发布者产生一个元素后，`drop(untilOutputFrom:)` 取消对第二个发布者的订阅，并允许上游发布者的事件通过。
+    ///
+    /// 在此发布者从上游发布者接收到订阅之后，它将通过下游对上游发布者的背压请求。如果上游发布者在其他发布者产生项目之前对这些请求做出响应，此发布者将放弃从上游发布者接收到的元素。
+    ///
+    /// 在下面的示例中，`pub1` 发布者推迟发布其元素，直到 `pub2` 发布者传递其第一个元素：
+    ///
+    ///     let upstream = PassthroughSubject<Int, Never>()
+    ///     let second = PassthroughSubject<String, Never>()
+    ///     cancellable = upstream
+    ///         .drop(untilOutputFrom: second)
+    ///         .sink { print("\($0)", terminator: " ") }
+    ///
+    ///     upstream.send(1)
+    ///     upstream.send(2)
+    ///     second.send("A")
+    ///     upstream.send(3)
+    ///     upstream.send(4)
+    ///     // 输出 "3 4"
+    ///
+    /// - Parameter publisher: 要监视其第一个发出元素的发布者。
+    /// - Returns: 一个发布者，它会在第二个发布者产生值之前从上游发布者中删除元素。
+
     public func drop<Other: Publisher>(
         untilOutputFrom publisher: Other
     ) -> Publishers.DropUntilOutput<Self, Other> where Failure == Other.Failure {
@@ -152,6 +177,7 @@ extension Publishers.DropUntilOutput {
 
         func receive(_ input: Input) -> Subscribers.Demand {
             lock.lock()
+            // 使用来处理上游的数据.
             if !triggered || cancelled {
                 pendingDemand -= 1
                 lock.unlock()
@@ -184,12 +210,14 @@ extension Publishers.DropUntilOutput {
                 return
             }
             otherSubscription = subscription
+            // 只要一个数据.
             subscription.request(.max(1))
         }
 
         private func receiveOther(_ input: Other.Output) -> Subscribers.Demand {
             lock.lock()
             triggered = true
+            // 不对调用 otherSubscription 的 cancel.
             otherSubscription = nil
             lock.unlock()
             return .none
@@ -203,6 +231,7 @@ extension Publishers.DropUntilOutput {
                 return
             }
 
+            // 如果, upstreamSubscription 还没有 trigger, 而 other finish 了, 那就是 upstreamSubscription 永远不会有触发的机会了.
             otherFinished = true
             if let upstreamSubscription = self.upstreamSubscription.take() {
                 lock.unlock()

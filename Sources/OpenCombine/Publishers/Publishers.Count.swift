@@ -21,6 +21,19 @@ extension Publisher {
     ///
     /// - Returns: A publisher that consumes all elements until the upstream publisher
     ///   finishes, then emits a single value with the total number of elements received.
+    /// 发布从上游发布者接收到的元素数量。
+    ///
+    /// 使用 `count()` 来确定上游发布者在完成之前接收到的元素数量：
+    ///
+    ///     let numbers = (0...10)
+    ///     cancellable = numbers.publisher
+    ///         .count()
+    ///         .sink { print("\($0)") }
+    ///
+    ///     // 输出: "11"
+    ///
+    /// - Returns: 一个发布者，它会消耗所有元素，直到上游发布者完成，然后发出一个带有接收到的元素总数的单个值。
+
     public func count() -> Publishers.Count<Self> {
         return Publishers.Count(upstream: self)
     }
@@ -75,6 +88,7 @@ extension Publishers.Count {
             super.init(downstream: downstream, initial: 0, reduce: ())
         }
 
+        // 还是 ReduceProducer, reduce 是一个 (), 也就是根本没用
         override func receive(
             newValue: Upstream.Output
         ) -> PartialCompletion<Void, Downstream.Failure> {

@@ -51,6 +51,43 @@ extension Publisher {
     ///     for more elements. Defaults to `nil`.
     /// - Returns: A publisher that performs the specified closures when publisher events
     ///   occur.
+    /// 在发布者事件发生时执行指定的闭包。
+    ///
+    /// 使用 `handleEvents` 当你想要检查元素在发布者生命周期的各个阶段的进展时。
+    ///
+    /// 在下面的示例中，整数的发布者展示了在元素处理生命周期的每个阶段打印调试信息的效果：
+    ///
+    ///     let integers = (0...2)
+    ///     cancellable = integers.publisher
+    ///         .handleEvents(receiveSubscription: { subs in
+    ///             print("Subscription: \(subs.combineIdentifier)")
+    ///         }, receiveOutput: { anInt in
+    ///             print("in output handler, received \(anInt)")
+    ///         }, receiveCompletion: { _ in
+    ///             print("in completion handler")
+    ///         }, receiveCancel: {
+    ///             print("received cancel")
+    ///         }, receiveRequest: { (demand) in
+    ///             print("received demand: \(demand.description)")
+    ///         })
+    ///         .sink { _ in return }
+    ///
+    ///     // 输出:
+    ///     //   received demand: unlimited
+    ///     //   Subscription: 0x7f81284734c0
+    ///     //   in output handler, received 0
+    ///     //   in output handler, received 1
+    ///     //   in output handler, received 2
+    ///     //   in completion handler
+    ///
+    /// - Parameters:
+    ///   - receiveSubscription: 当发布者从上游接收订阅时执行的闭包。默认为 `nil`。
+    ///   - receiveOutput: 当发布者从上游接收值时执行的闭包。默认为 `nil`。
+    ///   - receiveCompletion: 当发布者从上游接收完成时执行的闭包。默认为 `nil`。
+    ///   - receiveCancel: 当下游接收方取消发布时执行的闭包。默认为 `nil`。
+    ///   - receiveRequest: 当发布者接收到对更多元素的请求时执行的闭包。默认为 `nil`。
+    /// - Returns: 一个在发布者事件发生时执行指定闭包的发布者。
+
     public func handleEvents(
         receiveSubscription: ((Subscription) -> Void)? = nil,
         receiveOutput: ((Output) -> Void)? = nil,

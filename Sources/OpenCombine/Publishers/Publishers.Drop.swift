@@ -22,6 +22,23 @@ extension Publisher {
     ///
     /// - Parameter count: The number of elements to omit. The default is `1`.
     /// - Returns: A publisher that doesn’t republish the first `count` elements.
+    
+    /// 在重新发布后续元素之前省略指定数量的元素。
+    ///
+    /// 当您想要从上游发布者中删除前 `n` 个元素并重新发布其余元素时，请使用 `dropFirst(_:)`。
+    ///
+    /// 下面的示例从流中删除前五个元素：
+    ///
+    ///     let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    ///     cancellable = numbers.publisher
+    ///         .dropFirst(5)
+    ///         .sink { print("\($0)", terminator: " ") }
+    ///
+    ///     // 输出: "6 7 8 9 10 "
+    ///
+    /// - Parameter count: 要省略的元素数量。默认值为 `1`。
+    /// - Returns: 一个不会重新发布前 `count` 个元素的发布者。
+
     public func dropFirst(_ count: Int = 1) -> Publishers.Drop<Self> {
         return .init(upstream: self, count: count)
     }

@@ -30,6 +30,23 @@ extension Publisher {
     ///   output.
     /// - Returns: A publisher that skips over elements until the provided closure returns
     ///   `false`.
+    /// 在重新发布所有剩余元素之前，从上游发布者中省略元素，直到给定闭包返回 false。
+    ///
+    /// 使用 `drop(while:)` 来省略来自上游发布者的元素，直到接收到的元素满足您指定的条件为止。
+    ///
+    /// 在下面的示例中，该操作符在流中省略所有元素，直到到达第一个正整数的元素，之后该操作符发布所有剩余元素：
+    ///
+    ///     let numbers = [-62, -1, 0, 10, 0, 22, 41, -1, 5]
+    ///     cancellable = numbers.publisher
+    ///         .drop { $0 <= 0 }
+    ///         .sink { print("\($0)") }
+    ///
+    ///     // 输出: "10 0 22 41 -1 5"
+    ///
+    ///
+    /// - Parameter predicate: 一个接受元素作为参数并返回一个布尔值的闭包，指示是否从发布者的输出中省略该元素。
+    /// - Returns: 一个发布者，跳过元素，直到提供的闭包返回 `false`。
+
     public func drop(
         while predicate: @escaping (Output) -> Bool
     ) -> Publishers.DropWhile<Self> {
@@ -191,9 +208,11 @@ extension Publishers.DropWhile {
             lock.unlock()
 
             if dropping {
+                // 过滤了, 还是向上游要一个数据
                 if shouldDrop(input) {
                     return .max(1)
                 } else {
+                    // 修改数据, 以后的都要了. 
                     lock.lock()
                     self.dropping = false
                     lock.unlock()

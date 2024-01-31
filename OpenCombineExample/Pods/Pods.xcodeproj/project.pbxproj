@@ -359,7 +359,6 @@
 				1D728418CC1DDA162B35309CBFE4BFA0 /* Publishers.DropWhile.swift */,
 				0D198531144ACF7FBA2843BC5928BC00 /* Publishers.Filter.swift */,
 				69155D520FAFEEC0B2D57461A9C47E6C /* Publishers.First.swift */,
-				2FBCB096EA5081DC66CD3120344AA46F /* Publishers.FlatMap.swift */,
 				2333E87BF34FE55008FC8F10414A3F0B /* Publishers.HandleEvents.swift */,
 				F989DAA16B894F075B1AFA52209668FB /* Publishers.IgnoreOutput.swift */,
 				CC0BA94CE113C343497AD5CDF2C1C8D8 /* Publishers.Last.swift */,
@@ -389,6 +388,7 @@
 				4AB6050F87F30292F280E65533220537 /* Publishers.Zip.swift */,
 				139EC8433B3F978BB8E9D6BDD6A62439 /* Record.swift */,
 				7A4F4170CA650CD23E11350CDE8426D0 /* Result.Publisher.swift */,
+				2FBCB096EA5081DC66CD3120344AA46F /* Publishers.FlatMap.swift */,
 			);
 			path = Publishers;
 			sourceTree = "<group>";
