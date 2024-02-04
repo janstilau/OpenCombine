@@ -1,10 +1,5 @@
-//
-//  PublishedSubject.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 29.10.2020.
-//
 
+// 专门有一个 Subject, 用在了 @Published 里面.
 internal final class PublishedSubject<Output>: Subject {
 
     internal typealias Failure = Never
@@ -21,6 +16,7 @@ internal final class PublishedSubject<Output>: Subject {
 
     private var changePublisher: ObservableObjectPublisher?
 
+    // 当修改 @Published 的时候, 会来到这里. 
     internal var value: Output {
         get {
             lock.lock()
@@ -78,6 +74,11 @@ internal final class PublishedSubject<Output>: Subject {
         let downstreams = self.downstreams
         let changePublisher = self.changePublisher
         lock.unlock()
+        // 每次值改变, 都会使用这个 Publisher 进行新的信号的发送.
+        // 然后才是 currentValue 的修改.
+        
+        // $publihser 里面, 是将 receiver 添加到了 subject 的 downstream 里面了
+        // objectWillChange 更多的是为了通知, UI 需要变化了.
         changePublisher?.send()
         downstreams.forEach { conduit in
             conduit.offer(input)

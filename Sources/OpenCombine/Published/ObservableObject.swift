@@ -1,10 +1,3 @@
-//
-//  ObservableObject.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 08/09/2019.
-//
-
 /// A type of object with a publisher that emits before the object has changed.
 ///
 /// By default an `ObservableObject` synthesizes an `objectWillChange` publisher that
@@ -32,6 +25,13 @@
 ///     print(john.haveBirthday())
 ///     // Prints "24 will change"
 ///     // Prints "25"
+
+/// 一种具有在对象发生更改之前发出的发布者的对象类型。
+///
+/// 默认情况下，ObservableObject 会合成一个 objectWillChange 发布者，在其任何 @Published 属性更改之前发出更改的值。
+///
+/// swift /// class Contact: ObservableObject { /// @Published var name: String /// @Published var age: Int /// /// init(name: String, age: Int) { /// self.name = name /// self.age = age /// } /// /// func haveBirthday() -> Int { /// age += 1 /// } /// } /// /// let john = Contact(name: "John Appleseed", age: 24) /// cancellable = john.objectWillChange /// .sink { _ in /// print("\(john.age) 将要发生改变") /// } /// print(john.haveBirthday()) /// // 打印 "24 将要发生改变" /// // 打印 “25" /// ///
+/// 在上面的例子中，objectWillChange 发布者在 john.age 属性发生更改之前发出，然后通过 sink 订阅者进行捕获并打印。
 public protocol ObservableObject: AnyObject {
 
     /// The type of publisher that emits before the object has changed.
@@ -42,6 +42,7 @@ public protocol ObservableObject: AnyObject {
     var objectWillChange: ObjectWillChangePublisher { get }
 }
 
+// 这其实就是一个特殊的标识, 用来进行下方的判断的.
 private protocol _ObservableObjectProperty {
     var objectWillChange: ObservableObjectPublisher? { get nonmutating set }
 }
@@ -49,6 +50,7 @@ private protocol _ObservableObjectProperty {
 #if swift(>=5.1)
 extension Published: _ObservableObjectProperty {}
 
+// ObservableObject 用来生命特殊标识的.
 extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPublisher {
 
     /// A publisher that emits before the object has changed.
@@ -57,6 +59,7 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
         var reflection: Mirror? = Mirror(reflecting: self)
         while let aClass = reflection {
             for (_, property) in aClass.children {
+                // 在这里, 用来查找所有的 Published 标识多的属性.
                 guard let property = property as? _ObservableObjectProperty else {
                     // Visit other fields until we meet a @Published field
                     continue
@@ -82,6 +85,7 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
                     return publisher
                 }
 
+                // 给这个对象的, 所有的 @Published property, 都增加了相同的 ObservableObjectPublisher 对象. 
                 property.objectWillChange = lazilyCreatedPublisher
 
                 // Continue visiting other fields.
@@ -95,8 +99,10 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
 #endif
 
 /// A publisher that publishes changes from observable objects.
+// 这是一个类似于 Subject 的实现.
 public final class ObservableObjectPublisher: Publisher {
 
+    // ObservableObjectPublisher 不发送数据, 仅仅是发送事件.
     public typealias Output = Void
 
     public typealias Failure = Never
@@ -171,6 +177,7 @@ extension ObservableObjectPublisher {
             case terminal
         }
 
+        // 一个弱引用.
         private weak var parent: ObservableObjectPublisher?
         private let downstream: Downstream
         private let downstreamLock = UnfairRecursiveLock.allocate()
