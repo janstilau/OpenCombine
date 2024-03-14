@@ -8,7 +8,7 @@
 #if swift(>=5.1)
 
 extension Publisher where Failure == Never {
-
+    
     /// Republishes elements received from a publisher, by assigning them to a property
     /// marked as a publisher.
     ///
@@ -105,6 +105,7 @@ extension Publisher where Failure == Never {
 /// 一种发布带有属性标记的类型。
 ///
 /// 使用 `@Published` 属性标记发布属性将创建此类型的发布者。你可以使用 `$` 操作符访问该发布者，如下所示：
+/// 从这里可以看出, 这个属性的内部, 其实是创建了一个发布者在.
 ///
 /// ```swift
 /// class Weather {
@@ -126,6 +127,7 @@ extension Publisher where Failure == Never {
 /// // 当前温度: 25.0
 /// ```
 ///
+/// 原来这 Publisher, 会是在真正设置值之前, 发出去. 
 /// 当属性发生变化时，在属性的 `willSet` 块中进行发布，这意味着订阅者在实际设置属性之前接收到新值。在上面的例子中，第二次 `sink` 执行其闭包时，它接收到参数值 `25`。但是，如果闭包评估 `weather.temperature`，返回的值将是 `20`。
 ///
 /// > 重要提示: `@Published` 属性是类约束的。请将其与类的属性一起使用，而不是与结构等非类类型一起使用。
@@ -137,31 +139,31 @@ extension Publisher where Failure == Never {
 @available(swift, introduced: 5.1)
 @propertyWrapper
 public struct Published<Value> {
-
+    
     /// A publisher for properties marked with the `@Published` attribute.
     // 在 Published 这个 Wrapper 的内部, 其实是存储了一个 Publisher.
     public struct Publisher: OpenCombine.Publisher {
-
+        
         public typealias Output = Value
-
+        
         public typealias Failure = Never
-
+        
         fileprivate let subject: PublishedSubject<Value>
-
+        
         /*
          在这个 Publihser 里面, 她不是一个工程, 而是里面存储了一个 Subject 的对象. 然后, 每次有下游的时候, 其实是把这个下游, 添加到了这个 Subject 对象上面.
          */
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where Downstream.Input == Value, Downstream.Failure == Never
+        where Downstream.Input == Value, Downstream.Failure == Never
         {
             subject.subscribe(subscriber)
         }
-
+        
         fileprivate init(_ output: Output) {
             subject = .init(output)
         }
     }
-
+    
     private enum Storage {
         case value(Value)
         case publisher(Publisher)
@@ -170,12 +172,12 @@ public struct Published<Value> {
     @propertyWrapper
     private final class Box {
         var wrappedValue: Storage
-
+        
         init(wrappedValue: Storage) {
             self.wrappedValue = wrappedValue
         }
     }
-
+    
     /*
      Published 是一个结构体.
      但是里面存储的, 是一个引用值, Box
@@ -187,7 +189,7 @@ public struct Published<Value> {
      因为 Box 是一个引用值, 所以, 在进行拷贝的时候, 其实所有的 Published 的, 都会有一个 Publisher.
      */
     @Box private var storage: Storage
-
+    
     // 这个一点作用都没有发生.
     // 这是 Internal 的一个值, 外界是没有办法使用的.
     internal var objectWillChange: ObservableObjectPublisher? {
@@ -203,7 +205,7 @@ public struct Published<Value> {
             getPublisher().subject.objectWillChange = newValue
         }
     }
-
+    
     /// Creates the published instance with an initial wrapped value.
     ///
     /// Don't use this initializer directly. Instead, create a property with
@@ -215,7 +217,7 @@ public struct Published<Value> {
     public init(initialValue: Value) {
         self.init(wrappedValue: initialValue)
     }
-
+    
     /// Creates the published instance with an initial value.
     ///
     /// Don't use this initializer directly. Instead, create a property with
@@ -228,13 +230,13 @@ public struct Published<Value> {
         // 使用 propertyWrapper 修饰的对象, 其实会有一个 _ 开头的真正的属性.
         _storage = Box(wrappedValue: .value(wrappedValue))
     }
-
+    
     /// The property for which this instance exposes a publisher.
     ///
     /// The `projectedValue` is the property accessed with the `$` operator.
     public var projectedValue: Publisher {
         mutating get {
-            // get 里面, 可能会修改自己的值, 所以使用 mutating 进行了修饰. 
+            // get 里面, 可能会修改自己的值, 所以使用 mutating 进行了修饰.
             return getPublisher()
         }
         set { // swiftlint:disable:this unused_setter_value
@@ -247,8 +249,9 @@ public struct Published<Value> {
             }
         }
     }
-
+    
     /// Note: This method can mutate `storage`
+    /// 这个方法, 其实有着副作用的. 
     internal func getPublisher() -> Publisher {
         switch storage {
         case .value(let value):
@@ -268,7 +271,7 @@ public struct Published<Value> {
         set { fatalError() } // swiftlint:disable:this unused_setter_value
     }
     // swiftlint:enable let_var_whitespace
-
+    
     public static subscript<EnclosingSelf: AnyObject>(
         _enclosingInstance object: EnclosingSelf,
         wrapped wrappedKeyPath: ReferenceWritableKeyPath<EnclosingSelf, Value>,

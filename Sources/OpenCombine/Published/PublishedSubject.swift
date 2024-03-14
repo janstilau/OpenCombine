@@ -1,5 +1,6 @@
 
 // 专门有一个 Subject, 用在了 @Published 里面.
+// 这里的实现, 是和 Subject 里面的一样的.
 internal final class PublishedSubject<Output>: Subject {
 
     internal typealias Failure = Never

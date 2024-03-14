@@ -35,6 +35,8 @@
 public protocol ObservableObject: AnyObject {
 
     /// The type of publisher that emits before the object has changed.
+    // 执行了一个关联类型, associatedtype ObjectWillChangePublisher: Publisher
+    // 如果这个关联类型, 里面的类型 Failure 是 Nevel, 那么这个关联类型有一个默认值, 就是 ObservableObjectPublisher
     associatedtype ObjectWillChangePublisher: Publisher = ObservableObjectPublisher
         where ObjectWillChangePublisher.Failure == Never
 
@@ -66,6 +68,7 @@ extension ObservableObject where ObjectWillChangePublisher == ObservableObjectPu
                 }
 
                 // Now we know that the field is @Published.
+                // 如果, 这个 Property 已经有了 objectWillChange, 那么也就不赋值了. 
                 if let alreadyInstalledPublisher = property.objectWillChange {
                     installedPublisher = alreadyInstalledPublisher
                     // Don't visit other fields, as all @Published fields
