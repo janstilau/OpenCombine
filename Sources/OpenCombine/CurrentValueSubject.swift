@@ -1,4 +1,3 @@
-
 /// A subject that wraps a single value and publishes a new element whenever the value
 /// changes.
 ///
@@ -13,6 +12,7 @@
 /// 与 `PassthroughSubject` 不同，`CurrentValueSubject` 保持最近发布的元素的缓冲区。
 ///
 /// 在 `CurrentValueSubject` 上调用 `send(_:)` 也会更新当前值，相当于直接更新 `value`。
+
 public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     
     private let lock = UnfairLock.allocate()
@@ -21,10 +21,13 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     
     private var completion: Subscribers.Completion<Failure>?
     
+    // Subject 的下游.
     private var downstreams = ConduitList<Output, Failure>.empty
     
+    // Current 一定要有当前值.
     private var currentValue: Output
     
+    // Subject 的上游.
     private var upstreamSubscriptions: [Subscription] = []
     
     // 和 PassThrough 没有太多的区别, 只不过, 比如要有一个 Value 的值.
@@ -38,7 +41,6 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
         set {
             lock.lock()
             currentValue = newValue
-            // 之所以, 需要把 currentValue 包装成为 value, 就是为了这里.
             sendValueAndConsumeLock(newValue)
         }
     }
@@ -51,12 +53,14 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     }
     
     deinit {
+        // 析构的时候, 要把上游的全部取消??
         for subscription in upstreamSubscriptions {
             subscription.cancel()
         }
         lock.deallocate()
     }
     
+    // 这个触发的几率不高, 将 Subject 成为下游的时候才会触发.
     public func send(subscription: Subscription) {
         lock.lock()
         upstreamSubscriptions.append(subscription)
@@ -70,12 +74,15 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     where Output == Downstream.Input, Failure == Downstream.Failure
     {
         lock.lock()
+        // 从这里来看, active 是一个废属性.
         if active {
+            // 对于 Subject 来说, 每一个下游都是单独的进行管理的.
             let conduit = Conduit(parent: self, downstream: subscriber)
             downstreams.insert(conduit)
             lock.unlock()
             subscriber.receive(subscription: conduit)
         } else {
+            // 如果, 已经是完结状态了, 直接就给新的下游发送 completeion 的状态.
             let completion = self.completion!
             lock.unlock()
             subscriber.receive(subscription: Subscriptions.empty)
@@ -90,9 +97,6 @@ public final class CurrentValueSubject<Output, Failure: Error>: Subject {
     
     // ConsumeLock, 明确的表明了, 里面要进行 unlock 的操作.
     private func sendValueAndConsumeLock(_ newValue: Output) {
-#if DEBUG
-        lock.assertOwner()
-#endif
         guard active else {
             lock.unlock()
             return

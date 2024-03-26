@@ -4,6 +4,11 @@
 /// its `send()` method. This can be useful for adapting existing imperative code to the
 /// Combine model.
 
+/*
+ Subject 其实就是一个 Publisher, 只不过可以用来主动地进行数据的发送.
+ send, send(completion
+ */
+
 /// 一个发布者，公开了一个供外部调用者发布元素的方法。
 ///
 /// 主题是一个您可以使用其 send() 方法来“注入”值到流中的发布者。这对于将现有的命令式代码适应为Combine模型非常有用。
