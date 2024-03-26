@@ -4,6 +4,7 @@ extension Publisher {
     ///
     /// Use `eraseToAnyPublisher()` to expose an instance of `AnyPublisher`` to
     /// the downstream subscriber, rather than this publisher’s actual type.
+    
     /// This form of _type erasure_ preserves abstraction across API boundaries, such as
     /// different modules.
     /// When you expose your publishers as the `AnyPublisher` type, you can change
@@ -109,6 +110,7 @@ public struct AnyPublisher<Output, Failure: Error>
     where Output == PublisherType.Output, Failure == PublisherType.Failure
     {
         // If this has already been boxed, avoid boxing again
+        // box 之所以使用引用值, 其实页就是为了这里. 可以直接进行传递.
         if let erased = publisher as? AnyPublisher<Output, Failure> {
             box = erased.box
         } else {

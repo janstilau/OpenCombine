@@ -9,8 +9,8 @@ public protocol Cancellable {
     func cancel()
 }
 
+// 使用了 AnyCancellable, 将自己变为了一个引用类型, 并且在 AnyCancellable 中, 触发了 cancel 的动作. 
 extension Cancellable {
-
     /// Stores this cancellable instance in the specified collection.
     ///
     /// - Parameter collection: The collection in which to store this `Cancellable`.

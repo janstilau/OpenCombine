@@ -40,6 +40,7 @@ public final class AnyCancellable: Cancellable, Hashable {
         hasher.combine(ObjectIdentifier(self))
     }
     
+    // 类似于 RAII 的技术, 在析构的时候, 进行闭包的触发.
     deinit {
         _cancel?()
     }
