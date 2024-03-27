@@ -10,6 +10,8 @@ target 'OpenCombineExample' do
   pod 'OpenCombine', :path => '../'
   pod 'OpenCombineDispatch', :path => '../'
   pod 'OpenCombineFoundation', :path => '../'
+  pod 'CombineExt', :path => '../CombineExt/.'
+  pod 'CombineCocoa', :path => '../CombineCocoa/.'
 
   # Pods for OpenCombineExample
 
