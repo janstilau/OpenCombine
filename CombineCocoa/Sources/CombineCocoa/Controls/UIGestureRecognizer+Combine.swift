@@ -1,15 +1,10 @@
-//
-//  UIGestureRecognizer+Combine.swift
-//  CombineCocoa
-//
-//  Created by Shai Mishali on 12/08/2019.
-//  Copyright © 2020 Combine Community. All rights reserved.
-//
 
 #if !(os(iOS) && (arch(i386) || arch(arm)))
 import Combine
 import UIKit
 
+
+// 所有的都是, 将对应的 Subscription, 作为 Gesture 的 Target, 这样就可以在自己被触发的时候, 发送事件到后方了.
 // MARK: - Gesture Publishers
 @available(iOS 13.0, *)
 public extension UITapGestureRecognizer {

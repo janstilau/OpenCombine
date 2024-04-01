@@ -11,6 +11,7 @@ import Combine
 import Foundation
 import UIKit.UIControl
 
+// 用这个 Publisher, 来完成各个 UIControl 的 Event 事件到 Publisher 的转变.
 // MARK: - Publisher
 @available(iOS 13.0, *)
 public extension Combine.Publishers {
@@ -48,7 +49,9 @@ public extension Combine.Publishers {
 @available(iOS 13.0, *)
 extension Combine.Publishers.ControlEvent {
     private final class Subscription<S: Subscriber, Control: UIControl>: Combine.Subscription where S.Input == Void {
+        // 强引用
         private var subscriber: S?
+        // 弱引用.
         weak private var control: Control?
 
         init(subscriber: S, control: Control, event: Control.Event) {

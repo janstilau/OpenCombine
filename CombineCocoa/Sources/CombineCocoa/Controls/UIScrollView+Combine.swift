@@ -11,6 +11,7 @@ import UIKit
 import Combine
 
 // swiftlint:disable force_cast
+// 这里的实现, 应该是抄的 rx.
 @available(iOS 13.0, *)
 public extension UIScrollView {
     /// A publisher emitting content offset changes from this UIScrollView.
@@ -25,6 +26,7 @@ public extension UIScrollView {
     ///                     Defaults to 0
     /// - returns: A publisher that emits when the bottom of the UIScrollView is reached within the provided threshold.
     func reachedBottomPublisher(offset: CGFloat = 0) -> AnyPublisher<Void, Never> {
+        // 每次 contentOffset 发生了改变之后, 都会计算一下是否到底了.
         contentOffsetPublisher
             .map { [weak self] contentOffset -> Bool in
                 guard let self = self else { return false }
@@ -34,8 +36,8 @@ public extension UIScrollView {
                 return yDelta > threshold
             }
             .removeDuplicates()
-            .filter { $0 }
-            .map { _ in () }
+            .filter { $0 } // 这里是将 True 的事件进行过滤
+            .map { _ in () } // map 将内容改变成为了事件, 这是一个经常会使用到的模式.
             .eraseToAnyPublisher()
     }
 

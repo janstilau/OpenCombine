@@ -24,6 +24,9 @@ public extension Combine.Publishers {
         public typealias Failure = Never
 
         private let control: Control
+        // Control, Target, Action.
+        // Target 就是 Subscription, Action 就是 Subscription 中的方法.
+        // 也就是, Control 触发的事件, 要经过 Subscription 来进行处理. 然后, Subscription 才能发送数据到后面的节点. 
         private let addTargetAction: (Control, AnyObject, Selector) -> Void
         private let removeTargetAction: (Control?, AnyObject, Selector) -> Void
 

@@ -12,6 +12,7 @@ import Foundation
 import UIKit.UIControl
 
 // MARK: - Publisher
+// 当这些值发生了变化的时候, 就 Publish 数据给下游.
 @available(iOS 13.0, *)
 public extension Combine.Publishers {
     /// A Control Property is a publisher that emits the value at the provided keypath
@@ -56,6 +57,7 @@ extension Combine.Publishers.ControlProperty {
     private final class Subscription<S: Subscriber, Control: UIControl, Value>: Combine.Subscription where S.Input == Value {
         private var subscriber: S?
         weak private var control: Control?
+        
         let keyPath: KeyPath<Control, Value>
         private var didEmitInitial = false
         private let event: Control.Event
@@ -94,6 +96,7 @@ extension Combine.Publishers.ControlProperty {
     }
 }
 
+// 相应的数据, 定义在相应的类型下面.
 extension UIControl.Event {
     static var defaultValueEvents: UIControl.Event {
         return [.allEditingEvents, .valueChanged]
