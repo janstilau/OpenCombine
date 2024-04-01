@@ -41,6 +41,9 @@ public extension UIScrollView {
             .eraseToAnyPublisher()
     }
 
+    /*
+     delegateProxy 
+     */
     /// Combine wrapper for `scrollViewDidScroll(_:)`
     var didScrollPublisher: AnyPublisher<Void, Never> {
         let selector = #selector(UIScrollViewDelegate.scrollViewDidScroll(_:))
@@ -80,7 +83,6 @@ public extension UIScrollView {
             .map { values in
                 let targetContentOffsetValue = values[2] as! NSValue
                 let rawPointer = targetContentOffsetValue.pointerValue!
-
                 return (values[1] as! CGPoint, rawPointer.bindMemory(to: CGPoint.self, capacity: MemoryLayout<CGPoint>.size))
             }
             .eraseToAnyPublisher()
@@ -139,9 +141,13 @@ public extension UIScrollView {
     }
 }
 
+/*
+ DelegateProxy 这个类里面, 实现了各个 Delegate 的方法.
+ */
 @available(iOS 13.0, *)
 private class ScrollViewDelegateProxy: DelegateProxy, UIScrollViewDelegate, DelegateProxyType {
     func setDelegate(to object: UIScrollView) {
+        // 这里把 Delegate 给替换了.
         object.delegate = self
     }
 }

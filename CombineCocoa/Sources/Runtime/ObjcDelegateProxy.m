@@ -47,6 +47,7 @@ static NSMutableDictionary<NSValue *, NSSet<NSValue *> *> *allSelectors;
 
 - (void)interceptedSelector:(SEL _Nonnull)selector arguments:(NSArray * _Nonnull)arguments {}
 
+// 这里就是最终调用的地方. 
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
     NSArray * _Nonnull arguments = unpackInvocation(anInvocation);

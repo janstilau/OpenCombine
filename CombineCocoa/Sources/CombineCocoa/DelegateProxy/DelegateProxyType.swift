@@ -23,15 +23,15 @@ public extension DelegateProxyType where Self: DelegateProxy {
         objc_sync_enter(self)
         defer { objc_sync_exit(self) }
 
+        // 动态的, 给 Object 绑定一个 DelegateProxyType
         let delegateProxy: Self
-
         if let associatedObject = objc_getAssociatedObject(object, &associatedKey) as? Self {
             delegateProxy = associatedObject
         } else {
             delegateProxy = .init()
             objc_setAssociatedObject(object, &associatedKey, delegateProxy, .OBJC_ASSOCIATION_RETAIN)
         }
-
+        // 这里实现的不好, 应该还是要保留原来的 Delegate 才对. 
         delegateProxy.setDelegate(to: object)
 
         return delegateProxy
