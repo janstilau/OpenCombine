@@ -1,10 +1,3 @@
-//
-//  Publishers.SwitchToLatest.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 07.01.2020.
-//
-
 // switch to laster 是由要求的, 就是 output 是一个 Publisher.
 extension Publisher where Output: Publisher, Output.Failure == Failure {
 
