@@ -194,6 +194,7 @@ extension Publishers {
     ///
     /// Use a multicast publisher when you have multiple downstream subscribers, but you
     /// want upstream publishers to only process one `receive(_:)` call per event.
+    // 这是一个引用对象了.
     public final class Multicast<Upstream: Publisher, SubjectType: Subject>
         : ConnectablePublisher
         where Upstream.Failure == SubjectType.Failure,
@@ -243,6 +244,7 @@ extension Publishers {
             lock.deallocate()
         }
 
+        // 下游来临, 是将下游添加到了 subject 上了.
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
             where SubjectType.Failure == Downstream.Failure,
                   SubjectType.Output == Downstream.Input
@@ -260,7 +262,7 @@ extension Publishers {
 }
 
 extension Publishers.Multicast {
-
+    // 没太明白, 这个 Inner 有什么意义啊. 
     private final class Inner<Downstream: Subscriber>
         : Subscriber,
           Subscription,

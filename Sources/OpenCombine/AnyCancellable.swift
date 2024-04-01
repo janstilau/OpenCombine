@@ -46,6 +46,7 @@ public final class AnyCancellable: Cancellable, Hashable {
     }
 }
 
+// 各个最终的节点, 返回的都会是 AnyCancellable. 这样, 才能够 store in collection
 extension AnyCancellable {
     
     /// Stores this type-erasing cancellable instance in the specified collection.

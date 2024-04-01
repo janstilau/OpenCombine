@@ -16,6 +16,7 @@ public extension Publisher {
     /// - Parameter value: The constant with which to replace each upstream value.
     /// - Returns: A new publisher wrapping the upstream, but with output type `Value`.
     func mapToValue<Value>(_ value: Value) -> Publishers.Map<Self, Value> {
+        // 无论
         map { _ in value }
     }
 
