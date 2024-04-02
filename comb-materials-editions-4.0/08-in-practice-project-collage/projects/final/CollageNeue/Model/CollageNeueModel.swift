@@ -3,15 +3,17 @@ import UIKit
 import Photos
 
 class CollageNeueModel: ObservableObject {
+  
   static let collageSize = CGSize(width: UIScreen.main.bounds.width, height: 200)
   
-  // MARK: - Collage
+  @Published var imagePreview: UIImage?
   
+  // MARK: - Collage
   private(set) var lastSavedPhotoID = ""
   private(set) var lastErrorMessage = ""
   private var subscriptions = Set<AnyCancellable>()
   private let currentImages = CurrentValueSubject<[UIImage], Never>([])
-  @Published var imagePreview: UIImage?
+  
   let updateUISubject = PassthroughSubject<Int, Never>()
   
   private(set) var selectedPhotosSubject =

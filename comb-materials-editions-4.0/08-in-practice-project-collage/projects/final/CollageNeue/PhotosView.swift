@@ -13,13 +13,14 @@ struct PhotosView: View {
   @State private var photos = PHFetchResult<PHAsset>()
   @State private var imageManager = PHCachingImageManager()
   @State private var isDisplayingError = false
-
+  
   var body: some View {
     NavigationView {
       ScrollView {
         LazyVGrid(columns: columns, spacing: 2) {
           ForEach((0..<photos.count), id: \.self) { index in
             let asset = photos[index]
+            // 每次都触发, Image 的加载.
             let _ = model.enqueueThumbnail(asset: asset)
             
             Button(action: {
@@ -60,7 +61,7 @@ struct PhotosView: View {
       model.bindPhotoPicker()
     }
     .onDisappear {
-      // 为什么从 UI 层, 来完成数据的发送呢. 
+      // 为什么从 UI 层, 来完成数据的发送呢.
       model.selectedPhotosSubject.send(completion: .finished)
     }
   }
