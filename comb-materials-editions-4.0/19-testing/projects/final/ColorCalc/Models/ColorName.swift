@@ -32,6 +32,7 @@
 
 import Foundation
 
+// 将所有的颜色值, 进行了统一管理. 
 enum ColorName: String {
   case aliceBlue = "F0F8FF"
   case antiqueWhite = "FAEBD7"
