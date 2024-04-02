@@ -29,6 +29,7 @@ fileprivate final class ShareReplaySubscription<Output, Failure: Error>: Subscri
         self.completion = completion
     }
     
+    // 收到了上级结束事件, 直接就把缓存给清了???
     private func complete(with completion: Subscribers.Completion<Failure>) {
         // 9
         guard let subscriber = subscriber else { return }
@@ -63,6 +64,7 @@ fileprivate final class ShareReplaySubscription<Output, Failure: Error>: Subscri
         if demand != .none {
             self.demand += demand
         }
+        // 下方节点想要, 尝试发送数据
         emitAsNeeded()
     }
     
@@ -74,7 +76,7 @@ fileprivate final class ShareReplaySubscription<Output, Failure: Error>: Subscri
             // 18
             buffer.removeFirst()
         }
-        // 19
+        // 上方节点发送了数据, 尝试发送数据.
         emitAsNeeded()
     }
     
@@ -92,6 +94,7 @@ fileprivate final class ShareReplaySubscription<Output, Failure: Error>: Subscri
 
 extension Publishers {
     // 20
+    // 这是一个 Class, 要公用.
     final class ShareReplay<Upstream: Publisher>: Publisher {
         // 21
         typealias Output = Upstream.Output
@@ -242,38 +245,3 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
         }
     )
 }
-
-//: [Next](@next)
-/*:
- Copyright (c) 2023 Kodeco Inc.
- 
- Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights
- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- copies of the Software, and to permit persons to whom the Software is
- furnished to do so, subject to the following conditions:
- 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
- 
- Notwithstanding the foregoing, you may not use, copy, modify, merge, publish,
- distribute, sublicense, create a derivative work, and/or sell copies of the
- Software in any work that is designed, intended, or marketed for pedagogical or
- instructional purposes related to programming, coding, application development,
- or information technology.  Permission for such use, copying, modification,
- merger, publication, distribution, sublicensing, creation of derivative works,
- or sale is expressly withheld.
- 
- This project and source code may use libraries or frameworks that are
- released under various Open-Source licenses. Use of those libraries and
- frameworks are governed by their own individual licenses.
- 
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- THE SOFTWARE.
- */

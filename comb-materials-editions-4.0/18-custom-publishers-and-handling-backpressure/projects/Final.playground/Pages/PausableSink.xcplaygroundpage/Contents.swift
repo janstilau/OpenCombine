@@ -1,10 +1,17 @@
 import Combine
 import Foundation
 
+// 这是一个经常看到的例子 .
+
 protocol Pausable {
     var paused: Bool { get }
     func resume()
 }
+
+/*
+ 最后链条的结尾, 要实现 Cancellable
+ 并且在 cancel 的时候, 触发上游的节点的 cancel 方法.
+ */
 
 // 1
 final class PausableSubscriber<Input, Failure: Error>:
@@ -18,6 +25,7 @@ final class PausableSubscriber<Input, Failure: Error>:
     let receiveCompletion: (Subscribers.Completion<Failure>) -> Void
     
     // 5
+    // 存储上游节点.
     private var subscription: Subscription? = nil
     // 6
     var paused = false
@@ -31,10 +39,12 @@ final class PausableSubscriber<Input, Failure: Error>:
     
     // 8
     func cancel() {
+        // 触发上游的节点, 打破循环引用.
         subscription?.cancel()
         subscription = nil
     }
     
+    // pipeline 建立的时候, 强引用上级节点.
     func receive(subscription: Subscription) {
         // 9
         self.subscription = subscription
@@ -42,13 +52,16 @@ final class PausableSubscriber<Input, Failure: Error>:
         subscription.request(.max(1))
     }
     
+    // 每次收到数据之后, 更新需求.
     func receive(_ input: Input) -> Subscribers.Demand {
         // 11
+        // 每次, 根据 receiveValue 的返回值, 来判断是否
         paused = receiveValue(input) == false
         // 12
         return paused ? .none : .max(1)
     }
     
+    // 收到结束事件的时候, 进行类似的内存清空操作.
     func receive(completion: Subscribers.Completion<Failure>) {
         // 13
         receiveCompletion(completion)
@@ -72,6 +85,7 @@ extension Publisher {
         receiveValue: @escaping ((Output) -> Bool))
     -> Pausable & Cancellable {
         // 16
+        // 类似于 Sink 的一个操作.
         let pausable = PausableSubscriber(
             receiveValue: receiveValue,
             receiveCompletion: receiveCompletion)
@@ -101,39 +115,3 @@ let timer = Timer.publish(every: 1, on: .main, in: .common)
         print("Subscription is paused, resuming")
         subscription.resume()
     }
-
-
-//: [Next](@next)
-/*:
- Copyright (c) 2023 Kodeco Inc.
- 
- Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights
- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- copies of the Software, and to permit persons to whom the Software is
- furnished to do so, subject to the following conditions:
- 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
- 
- Notwithstanding the foregoing, you may not use, copy, modify, merge, publish,
- distribute, sublicense, create a derivative work, and/or sell copies of the
- Software in any work that is designed, intended, or marketed for pedagogical or
- instructional purposes related to programming, coding, application development,
- or information technology.  Permission for such use, copying, modification,
- merger, publication, distribution, sublicensing, creation of derivative works,
- or sale is expressly withheld.
- 
- This project and source code may use libraries or frameworks that are
- released under various Open-Source licenses. Use of those libraries and
- frameworks are governed by their own individual licenses.
- 
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- THE SOFTWARE.
- */
