@@ -32,6 +32,7 @@ final class CalculatorViewModel: ObservableObject {
         ? .black : .white
     }
     
+    // input 会是动作, 根据动作, 来进行当前属性的修改. 
     func process(_ input: String) {
         switch input {
         case Constant.clear:
@@ -57,6 +58,7 @@ final class CalculatorViewModel: ObservableObject {
         // 这里使用了 Share.
         let hexTextShared = $hexText.share()
         
+        // $hexText 的变化, 会对 name 造成修改.
         hexTextShared
             .map {
                 if let name = ColorName(hex: $0) {
@@ -70,6 +72,7 @@ final class CalculatorViewModel: ObservableObject {
         // 对上一级的 Publisher, 重新进行了加工处理. 
         let colorValuesShared = hexTextShared
             .map { hex -> (Double, Double, Double, Double)? in
+                // 会将 16 进制的数据, 变为了 rgba 的数据.
                 Color.redGreenBlueOpacity(forHex: hex)
             }
             .share()
