@@ -256,6 +256,7 @@ extension Publishers {
         // connect 的时候, 才真正的把 上游和 subject 进行关联.
         // 使用这种方式, 完成了 ConnectablePublisher 的管理.
         public func connect() -> Cancellable {
+            // 返回是的一个 SubjectSubscriber.
             return upstream.subscribe(lazySubject)
         }
     }

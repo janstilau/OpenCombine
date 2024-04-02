@@ -27,39 +27,33 @@ public struct AsyncPublisher<Upstream: Publisher>: AsyncSequence
         fileprivate let inner: Inner
 
         public mutating func next() async -> Element? {
+            return
             /*
-             Execute an operation with a cancellation handler that’s immediately invoked if the current task is canceled.
-             使用立即调用的取消处理程序执行一个操作，如果当前任务被取消。
-             This differs from the operation cooperatively checking for cancellation and reacting to it in that the cancellation handler is always and immediately invoked when the task is canceled.
-             For example, even if the operation is running code that never checks for cancellation, a cancellation handler still runs and provides a chance to run some cleanup code.
-             这与协作检查取消并对其做出反应的操作不同，因为取消处理程序在任务被取消时总是立即被调用。例如，即使操作正在运行从不检查取消的代码，取消处理程序仍会运行并提供机会运行一些清理代码。
+             这与协作地检查取消并对其做出反应的操作不同之处在于，当任务被取消时，取消处理程序总是会立即被调用。
 
-             Cancellation handlers which acquire locks must take care to avoid deadlock.
-             The cancellation handler may be invoked while holding internal locks associated with the task or other tasks.
-             Other operations on the task, such as resuming a continuation, may acquire these same internal locks. Therefore, if a cancellation handler must acquire a lock, other code should not cancel tasks or resume continuations while holding that lock.
-             取消处理程序必须小心避免死锁，如果它们获取锁。取消处理程序可能在持有与任务或其他任务相关的内部锁时被调用。对任务的其他操作，例如恢复继续，可能会获取相同的内部锁。因此，如果取消处理程序必须获取锁，则在持有该锁时，其他代码不应取消任务或恢复继续。
+             例如，即使操作正在运行从不检查取消的代码，取消处理程序仍然会运行并提供机会运行一些清理代码。
 
-             Doesn’t check for cancellation, and always executes the passed operation.
-             不检查取消，并始终执行传递的 operation 。
+             获取锁的取消处理程序必须小心避免死锁。
 
-             The operation executes on the calling execution context and does not suspend by itself, unless the code contained within the closure does. If cancellation occurs while the operation is running, the cancellation handler will execute concurrently with the operation.
-             operation 在调用执行上下文中执行，并且不会自行暂停，除非闭包中包含的代码暂停。如果在操作运行时发生取消，取消 handler 将与 operation 并发执行。
+             取消处理程序可能在持有与任务或其他任务关联的内部锁时被调用。
 
-             Already cancelled tasks 已取消的任务
-             When withTaskCancellationHandler is used in a Task that has already been cancelled, the onCancel cancellation handler will be executed immediately before operation gets to execute. This allows the cancellation handler to set some external “cancelled” flag that the operation may be atomically checking for in order to avoid performing any actual work once the operation gets to run.
-             当 withTaskCancellationHandler 在已经被取消的 Task 中使用时， onCancel 取消 handler 将在操作执行之前立即执行。这允许取消处理程序设置一些外部的“取消”标志，操作可能会原子地检查以避免在操作运行时执行任何实际工作。
-             
-             withTaskCancellationHandler {
-                 
-             } onCancel: {
-                 
-             }
-             
-             withTaskCancellationHandler 是 Swift 5.5 中引入的一个新的 API，它允许你在任务被取消时执行一些清理工作。
-             withTaskCancellationHandler 函数接受两个闭包参数：一个是你的主任务，另一个是在任务被取消时需要执行的清理工作。这个函数会返回主任务
+             对任务的其他操作，例如恢复一个继续操作，可能会获取这些相同的内部锁。
+
+             因此，如果取消处理程序必须获取锁，则在持有该锁时其他代码不应取消任务或恢复继续操作，以避免死锁。
+
+             不检查取消，并且始终执行传递的操作。
+
+             操作在调用方的执行上下文中执行，并且除非闭包内的代码自己挂起，否则不会自行挂起。
+
+             如果在操作运行时发生取消，取消处理程序将与操作并发执行。
+
+             已经取消的任务。
+
+             当在已经取消的任务中使用 withTaskCancellationHandler 时，onCancel 取消处理程序将在操作执行之前立即执行。
+
+             这使得取消处理程序可以设置一些外部的“已取消”标志，供操作在执行前原子地检查，以避免执行任何实际工作。
              */
-            // 当异步任务取消了之后, 直接将前置的 Publisher 也尽心了取消. 
-            return await withTaskCancellationHandler(
+            await withTaskCancellationHandler(
                 handler: { [inner] in inner.cancel() },
                 operation: { [inner] in await inner.next() }
             )
@@ -162,7 +156,7 @@ extension AsyncPublisher.Iterator {
             pendedContinuation.resumeAllWithNil()
         }
 
-        
+        // 这是外界进行触发的地方.
         fileprivate func next() async -> Input? {
             return await withUnsafeContinuation { continuation in
                 // 所有的 lock, unlock, 都在 await 一侧完成的.
@@ -209,6 +203,7 @@ public struct AsyncThrowingPublisher<Upstream: Publisher>: AsyncSequence
         fileprivate let inner: Inner
 
         public mutating func next() async throws -> Element? {
+            
             return try await withTaskCancellationHandler(
                 handler: { [inner] in inner.cancel() },
                 operation: { [inner] in try await inner.next() }

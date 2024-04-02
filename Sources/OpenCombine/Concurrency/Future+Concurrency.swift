@@ -9,6 +9,8 @@ extension Future where Failure == Never {
     @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
     public var value: Output {
         get async {
+            // 既然已经调用了, 就是需要这个数据了.
+            // 在 ContinuationSubscriber.withUnsafeSubscription 的内部, 会建立 Pipeline, 在接收到上游的数据之后, 调用协程的回复. 
             await ContinuationSubscriber.withUnsafeSubscription(self)
         }
     }
