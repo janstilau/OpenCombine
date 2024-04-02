@@ -81,6 +81,8 @@ struct API {
             }
             .filter { !$0.isEmpty }
             .flatMap { storyIDs in
+                // 原本是通过 EndPoint.stories.url 获取到一组 id.
+                // 通过 flatMap, 变为了一个新的 Publisher. 后面的内容, 其实都是在处理这个新的 Publisher 的数据. 
                 return self.mergedStories(ids: storyIDs)
             }
             .scan([], { (stories, story) -> [Story] in

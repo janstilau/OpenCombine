@@ -9,6 +9,7 @@ struct HNReader: App {
     let viewModel = ReaderViewModel()
     
     init() {
+        // userSettings.$keywords 的改变, 会直接影响到了 viewModel 里面的数据. 
         userSettings.$keywords
             .map { $0.map { $0.value } }
             .assign(to: \.filter, on: viewModel)

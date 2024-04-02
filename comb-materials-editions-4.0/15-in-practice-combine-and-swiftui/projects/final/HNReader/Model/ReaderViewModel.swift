@@ -8,6 +8,8 @@ class ReaderViewModel: ObservableObject {
     
     @Published var filter = [String]()
     
+    // filter 的改变, 会影响到 stories
+    // 而 stories 是和 UI 相关的. 
     var stories: [Story] {
         guard !filter.isEmpty else {
             return allStories
@@ -22,6 +24,7 @@ class ReaderViewModel: ObservableObject {
     
     @Published var error: API.Error? = nil
     
+    // View 事件里面, 触发了 ViewModel 的 Action 去进行网络数据的获取. 然后触发了 UI 的改变.
     func fetchStories() {
         api
             .stories()
