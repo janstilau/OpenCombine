@@ -39,10 +39,12 @@ struct CalculatorButton: View {
 
   var body: some View {
     Button(action: {
+        // View 的 Ation, 是触发了 ViewModel 里面的反复噶. 
       self.viewModel.process(self.text)
     }) {
       Text(text)
         .font(Font.system(size: 48, weight: .regular, design: .monospaced))
+        // View 的具体显示, 是 ViewModel 里面呈现
         .foregroundColor(viewModel.contrastingColor)
     }
   }

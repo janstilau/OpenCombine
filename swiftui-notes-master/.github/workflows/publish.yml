@@ -1,0 +1,62 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+          persist-credentials: false
+    # If you're using actions/checkout@v2 you must set persist-credentials to false
+    # in most cases for the deployment to work correctly.
+
+    #- name: pwd
+    #  run: pwd
+    # result: /home/runner/work/swiftui-notes/swiftui-notes
+
+    - name: generate html with asciidoctor from docs/
+      run: docker run --rm -v $(pwd):/documents/ --name asciidoc-to-html heckj/docker-asciidoctor asciidoctor -v -t -D /documents/output -r ./docs/lib/google-analytics-docinfoprocessor.rb docs/using-combine-book.adoc
+      # results to appear in the directory 'output', which on GH action is owned by root, not `me`
+
+    - name: generate zh-CN html with asciidoctor from docs/
+      run: docker run --rm -v $(pwd):/documents/ --name asciidoc-to-html heckj/docker-asciidoctor asciidoctor -v -t -D /documents/output -r ./docs/lib/google-analytics-docinfoprocessor.rb docs_zh-CN/using-combine_zh-CN.adoc
+      # results to appear in the directory 'output', which on GH action is owned by root, not `me` 
+
+    - name: permission check
+      run: ls -altr
+
+    - name: fs-scan output
+      run: find output
+
+    - name: create build directory and images directory
+      run: |
+        mkdir -p build
+        mkdir -p build/images
+
+    - name: copy images into HTML output directory
+      run: cp -r docs/images/* build/images
+
+    - name: copy en HTML into build directory
+      run: cp output/using-combine-book.html build/index.html
+
+    - name: copy zh-CN HTML into build directory
+      run: cp output/using-combine_zh-CN.html build/index_zh-CN.html
+
+    - name: permission check
+      run: ls -altr
+
+    - name: fs-scan build
+      run: find build
+
+    # docs: https://github.com/marketplace/actions/deploy-to-github-pages
+    - name: Deploy 🚀
+      uses: JamesIves/github-pages-deploy-action@releases/v3
+      with:
+        ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        BRANCH: gh-pages # The branch the action should deploy to.
+        FOLDER: build # The folder the action should deploy.
