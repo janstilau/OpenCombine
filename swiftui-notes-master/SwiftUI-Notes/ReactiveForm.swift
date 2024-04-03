@@ -21,6 +21,7 @@ struct ReactiveForm: View {
                 .font(.headline)
             
             Form {
+                // TextFiled 这里是双向绑定, 可以引起 ViewModel 里面的数据变化. 
                 TextField("first entry", text: $model.firstEntry)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .lineLimit(1)

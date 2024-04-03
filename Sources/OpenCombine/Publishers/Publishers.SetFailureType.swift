@@ -1,10 +1,3 @@
-//
-//  Publishers.SetFailureType.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 08.07.2019.
-//
-
 extension Publishers {
 
     /// A publisher that appears to send a specified failure type.
@@ -12,6 +5,7 @@ extension Publishers {
     /// The publisher cannot actually fail with the specified type and instead
     /// just finishes normally. Use this publisher type when you need to match
     /// the error types for two mismatched publishers.
+    // 上游的 Failure 必须是 Never.
     public struct SetFailureType<Upstream: Publisher, Failure: Error>: Publisher
         where Upstream.Failure == Never
     {
@@ -31,6 +25,7 @@ extension Publishers {
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
             where Downstream.Failure == Failure, Downstream.Input == Output
         {
+            // 就这个, 也有一个中间的对象.
             upstream.subscribe(Inner(downstream: subscriber))
         }
 

@@ -23,12 +23,12 @@ class SinkSubscriberTests: XCTestCase {
         wait(for: [expectation], timeout: 5.0)
         XCTAssertNotNil(cancellable)
     }
-
+    
     func testDualSink() {
         // setup
         let expectation = XCTestExpectation(description: "async sink test")
         let examplePublisher = Just(5)
-
+        
         // validate
         let cancellable = examplePublisher.sink(receiveCompletion: { err in
             print(".sink() received the completion", String(describing: err))
@@ -37,11 +37,11 @@ class SinkSubscriberTests: XCTestCase {
             print(".sink() received \(String(describing: value))")
             XCTAssertEqual(value, 5)
         })
-
+        
         wait(for: [expectation], timeout: 5.0)
         XCTAssertNotNil(cancellable)
     }
-
+    
     func testSinkReceiveDataThenError() {
         // setup - preconditions
         let expectedValues = ["firstStringValue", "secondStringValue"]
@@ -52,7 +52,7 @@ class SinkSubscriberTests: XCTestCase {
         var countCompletionsReceived = 0
         // setup
         let simplePublisher = PassthroughSubject<String, Error>()
-
+        
         let cancellable = simplePublisher
             .sink(receiveCompletion: { completion in
                 countCompletionsReceived += 1
@@ -76,30 +76,31 @@ class SinkSubscriberTests: XCTestCase {
                 countValuesReceived += 1
                 print(".sink() received \(someValue)")
             })
-
+        
         // validate
         XCTAssertNotNil(cancellable)
         XCTAssertEqual(countValuesReceived, 0)
         XCTAssertEqual(countCompletionsReceived, 0)
-
+        
         simplePublisher.send("firstStringValue")
         XCTAssertEqual(countValuesReceived, 1)
         XCTAssertEqual(countCompletionsReceived, 0)
-
+        
         simplePublisher.send("secondStringValue")
         XCTAssertEqual(countValuesReceived, 2)
         XCTAssertEqual(countCompletionsReceived, 0)
-
+        
         simplePublisher.send(completion: Subscribers.Completion.failure(TestFailureCondition.anErrorExample))
         XCTAssertEqual(countValuesReceived, 2)
         XCTAssertEqual(countCompletionsReceived, 1)
-
+        
         // this data will never be seen by anything in the pipeline above because we've already sent a completion
+        // 当发出了完成事件之后, 这条 pipeline 就已经完毕了, 也就没有办法, 继续发送事件了.
         simplePublisher.send(completion: Subscribers.Completion.finished)
         XCTAssertEqual(countValuesReceived, 2)
         XCTAssertEqual(countCompletionsReceived, 1)
     }
-
+    
     func testSinkReceiveDataThenCancelled() {
         // setup - preconditions
         let expectedValues = ["firstStringValue"]
@@ -107,7 +108,7 @@ class SinkSubscriberTests: XCTestCase {
         var countCompletionsReceived = 0
         // setup
         let simplePublisher = PassthroughSubject<String, Error>()
-
+        
         let cancellablePipeline = simplePublisher
             .sink(receiveCompletion: { completion in
                 countCompletionsReceived += 1
@@ -130,22 +131,23 @@ class SinkSubscriberTests: XCTestCase {
                 countValuesReceived += 1
                 print(".sink() received \(someValue)")
             })
-
+        
         // validate
         XCTAssertEqual(countValuesReceived, 0)
         XCTAssertEqual(countCompletionsReceived, 0)
-
+        
         simplePublisher.send("firstStringValue")
         XCTAssertEqual(countValuesReceived, 1)
         XCTAssertEqual(countCompletionsReceived, 0)
-
+        
         cancellablePipeline.cancel()
         // the pipeline doesn't process anything after the cancel, either values or completions
-
+        
+        // 当 cancel 了之后,  subject 也就没有了发送数据和事件的能力了. 
         simplePublisher.send("secondStringValue")
         XCTAssertEqual(countValuesReceived, 1)
         XCTAssertEqual(countCompletionsReceived, 0)
-
+        
         simplePublisher.send(completion: Subscribers.Completion.finished)
         XCTAssertEqual(countValuesReceived, 1)
         XCTAssertEqual(countCompletionsReceived, 0)

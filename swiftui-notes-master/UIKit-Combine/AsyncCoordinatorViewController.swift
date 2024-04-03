@@ -107,6 +107,10 @@ class AsyncCoordinatorViewController: UIViewController {
         super.viewDidLoad()
         activityIndicator.stopAnimating()
         
+        /*
+         Flat Map 可以用于, 前面的一个任务完成之后, 执行后面的一个任务.
+         Zip 用于, 同时完成多个任务之后, 进行后续的操作.
+         */
         coordinatedPipeline = createFuturePublisher(button: step1_button)
             .flatMap { value -> AnyPublisher<Bool, Error> in
                 let step2_1 = self.createFuturePublisher(button: self.step2_1_button)

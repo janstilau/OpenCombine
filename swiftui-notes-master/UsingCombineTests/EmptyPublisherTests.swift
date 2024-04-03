@@ -18,6 +18,7 @@ class EmptyPublisherTests: XCTestCase {
                 print(".sink() received the completion", String(describing: completion))
                 switch completion {
                 case .finished:
+                    // Empty 不会发送数据, 直接发送 finish 事件. 
                     expectation.fulfill()
                 case let .failure(anError):
                     print("received error: ", anError)

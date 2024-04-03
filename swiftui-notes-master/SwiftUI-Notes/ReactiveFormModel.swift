@@ -20,6 +20,7 @@ class ReactiveFormModel: ObservableObject {
     var submitAllowed: AnyPublisher<Bool, Never>!
     
     init() {
+        // 数据变化之后, 会引起后续的动作. 
         let validationPipeline = Publishers.CombineLatest($firstEntry, $secondEntry)
             .map { arg -> [String] in
                 var diagMsgs = [String]()

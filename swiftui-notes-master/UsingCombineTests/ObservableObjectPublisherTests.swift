@@ -12,6 +12,8 @@ import XCTest
 class ObservableObjectPublisherTests: XCTestCase {
     func testCodeExample() {
         let expectation = XCTestExpectation(description: debugDescription)
+        
+        // 在方法的内部, 构建了一个类型.
         class Contact: ObservableObject {
             @Published var name: String
             @Published var age: Int
@@ -28,6 +30,9 @@ class ObservableObjectPublisherTests: XCTestCase {
         }
         
         let john = Contact(name: "John Appleseed", age: 24)
+        /*
+         ObservableObject 的 objectWillChange, 是会在属性变化前, 发出信号的.
+         */
         let cancellable = john.objectWillChange.sink { _ in
             expectation.fulfill()
             print("will change")
@@ -59,7 +64,9 @@ class ObservableObjectPublisherTests: XCTestCase {
         
         let example = ExampleObject(someProperty: "quietly, please")
         
+        // 从这里可以看到, 这是一个懒加载的函数.
         XCTAssertNotNil(example.objectWillChange)
+        
         let cancellable = example.objectWillChange
             .print("cancellable")
             .sink(receiveCompletion: { completion in
@@ -81,6 +88,7 @@ class ObservableObjectPublisherTests: XCTestCase {
             })
         
         XCTAssertEqual(example.someProperty, "quietly, please")
+        // 对于 objectWillChange 来说, 不应该收到完成事件.
         let result = example.shoutProperty()
         XCTAssertEqual(result, "QUIETLY, PLEASE")
         

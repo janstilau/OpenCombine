@@ -98,9 +98,9 @@ class GithubViewController: UIViewController {
                 return "unknown"
             }
             .receive(on: RunLoop.main)
-            .assign(to: \.text, on: repositoryCountLabel)
+            .assign(to: \.text, on: repositoryCountLabel) // 数据修改, 引起了 UI 的变化.
         
-        let avatarViewSub = $githubUserData
+        let avatarViewSub = $githubUserData // 数据修改, 触发了新的异步动作. 
         // When I first wrote this publisher pipeline, the type I was
         // aiming for was <GithubAPIUser?, Never>, where the value was an
         // optional. The commented out .filter below was to prevent a `nil` // GithubAPIUser object from propagating further and attempting to

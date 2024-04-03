@@ -32,7 +32,9 @@ class DeferredPublisherTests: XCTestCase {
         var outputValue = false
         let expectation = XCTestExpectation(description: debugDescription)
 
+        // Deferred 和 Future 经常联系在一起
         let deferredPublisher = Deferred {
+            // 这是 Future 常见的使用方式, 将 Completion 的函数, 改造成为一个 Publihser. 
             Future<Bool, Error> { promise in
                 self.asyncAPICall(sabotage: false) { grantedAccess, err in
                     if let err = err {
