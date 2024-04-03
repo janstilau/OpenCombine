@@ -104,6 +104,7 @@ internal final class SubjectSubscriber<Downstream: Subject>
             lock.unlock()
             return
         }
+        // 把上游干掉了, 把下游干掉了. 
         upstreamSubscription = nil
         downstreamSubject = nil
         lock.unlock()

@@ -75,6 +75,8 @@ struct MainView: View {
       PhotosView().environmentObject(model)
     }
     .onAppear(perform: model.bindMainView)
+    // Adds an action to perform when this view detects data emitted by the given publisher.
+    // The action to perform when an event is emitted by publisher. The event emitted by publisher is passed as a parameter to action.
     .onReceive(model.updateUISubject, perform: updateUI)
   }
   
