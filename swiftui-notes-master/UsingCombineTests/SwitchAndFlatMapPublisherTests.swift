@@ -64,7 +64,6 @@ class SwitchAndFlatMapPublisherTests: XCTestCase {
                 backDoorPublisher.eraseToAnyPublisher()
             }
             .eraseToAnyPublisher()
-        //            .print()
             .sink(receiveCompletion: { fini in
                 print(" ** .sink() received the completion:", String(describing: fini))
             }, receiveValue: { stringValue in
@@ -78,6 +77,8 @@ class SwitchAndFlatMapPublisherTests: XCTestCase {
         let redFish = "redfish"
         let blueFish = "bluefish"
         
+        // simpleControlledPublisher 发送一下, 就产生一个新的注册, simpleControlledPublisher 发送了四下就四个注册,
+        // backDoorPublisher 每次都递增次说话.
         simpleControlledPublisher.send(oneFish)
         backDoorPublisher.send("first response")
         // backDoorPublisher.send(completion: .finished)
@@ -172,9 +173,9 @@ class SwitchAndFlatMapPublisherTests: XCTestCase {
             .flatMap { value in // takes a String in and returns a Publisher
                 Just(value)
                     .decode(type: IPInfo.self, decoder: JSONDecoder())
-                //                .catch { _ in
-                //                    return Publishers.Just(IPInfo(ip: "8.8.8.8"))
-                //                }
+//                    .catch { _ in
+//                        return Publishers.Just(IPInfo(ip: "8.8.8.8"))
+//                    }
             }
             .sink(receiveCompletion: { fini in
                 print(".sink() received the completion:", String(describing: fini))
@@ -205,7 +206,6 @@ class SwitchAndFlatMapPublisherTests: XCTestCase {
     func testSwitchToLatest() {
         func APIProxyExample(someString: String) -> AnyPublisher<[String], Never> {
             // an example function that might act akin to an API call that returns a publisher with a response.
-            
             // in this case we just return a publisher with the input value inside a list
             return Just([someString]).eraseToAnyPublisher()
         }
@@ -213,6 +213,7 @@ class SwitchAndFlatMapPublisherTests: XCTestCase {
         let simpleSubjectPublisher = PassthroughSubject<String, Never>()
         
         let cancellable = simpleSubjectPublisher
+        // map + switchToLatest 已经是一个固定的搭配了.
             .map { stringValue in
                 APIProxyExample(someString: stringValue)
             }
@@ -257,15 +258,18 @@ class SwitchAndFlatMapPublisherTests: XCTestCase {
                     print("Started")
                 },
                 receiveCancel: {
+                    // subject 连续发送, 会把第一个生产的 Publihser 取消了.
                     print("Canceled")
                     canceled.fulfill()
                 }
             )
         }.switchToLatest().sink(
             receiveCompletion: { _ in
+                //  subject.send(completion: .finished) 这里, 并且当前的 Complete, 才可以触发这里.
                 finished.fulfill()
             },
             receiveValue: { _ in
+                // 第二个 Just 会引起这里的变化.
                 valuesCount += 1
             }
         )
@@ -293,6 +297,7 @@ class SwitchAndFlatMapPublisherTests: XCTestCase {
         var outerCompleted = false
         subscription = Just("trigger")
             .map { _ -> AnyPublisher<Void, Never> in
+                // 在这里, 开启了一个定时器.
                 Timer
                     .publish(every: 0.1, on: RunLoop.current, in: .common)
                     .autoconnect()
@@ -305,6 +310,12 @@ class SwitchAndFlatMapPublisherTests: XCTestCase {
             .switchToLatest()
             .print("post-stl")
             .sink(
+                /*
+                 inner completed: finished
+                 post-stl: receive finished
+                 completed finished
+                 */
+                // Just 一定是可以 Complete 的.
                 receiveCompletion: {
                     print("completed \($0)")
                     outerCompleted = true

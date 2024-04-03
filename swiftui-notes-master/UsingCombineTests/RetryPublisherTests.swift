@@ -13,11 +13,11 @@ class RetryPublisherTests: XCTestCase {
     enum TestFailureCondition: Error {
         case invalidServerResponse
     }
-
+    
     func testRetryOperatorWithPassthroughSubject() {
         // setup
         let simpleControlledPublisher = PassthroughSubject<String, Error>()
-
+        
         let cancellable = simpleControlledPublisher
             .print(debugDescription)
             .retry(1)
@@ -27,30 +27,31 @@ class RetryPublisherTests: XCTestCase {
                 XCTAssertNotNil(stringValue)
                 print(" ** .sink() received \(stringValue)")
             })
-
+        
         let oneFish = "onefish"
         let twoFish = "twofish"
         let redFish = "redfish"
         let blueFish = "bluefish"
-
+        
         simpleControlledPublisher.send(oneFish)
         simpleControlledPublisher.send(twoFish)
-
+        
         // with an error response, this prints two results and hangs...
+        // 发送了错误, 因为 retry 的缘故, 又一次订阅到了前面的的 Publisher .
         simpleControlledPublisher.send(completion: Subscribers.Completion.failure(TestFailureCondition.invalidServerResponse))
-
+        
         // with a completion, this prints two results and ends
         // simpleControlledPublisher.send(completion: .finished)
-
+        
         simpleControlledPublisher.send(redFish)
         simpleControlledPublisher.send(blueFish)
         XCTAssertNotNil(cancellable)
     }
-
+    
     func testRetryOperatorWithCurrentValueSubject() {
         // setup
         let simpleControlledPublisher = CurrentValueSubject<String, Error>("initial value")
-
+        
         let cancellable = simpleControlledPublisher
             .print("(1)>")
             .retry(3)
@@ -61,16 +62,20 @@ class RetryPublisherTests: XCTestCase {
                 XCTAssertNotNil(stringValue)
                 print(" ** .sink() received \(stringValue)")
             })
-
+        
         let oneFish = "onefish"
-
+        
         simpleControlledPublisher.send(oneFish)
         // with an error response, this prints two results and hangs...
         simpleControlledPublisher.send(completion: Subscribers.Completion.failure(TestFailureCondition.invalidServerResponse))
+        // 错误了之后, 还是向 simpleControlledPublisher 进行 request, 然后收到的当前值, 是 TestFailureCondition.invalidServerResponse
+        // 不断地导致 retry. 最终消耗完毕了次数. 
         XCTAssertNotNil(cancellable)
+        simpleControlledPublisher.send(oneFish)
+        print("end")
         // with a completion, this prints two results and ends
         // simpleControlledPublisher.send(completion: .finished)
-
+        
         //        output:
         //        (1)>: receive subscription: (CurrentValueSubject)
         //        (2)>: receive subscription: (Retry)
@@ -86,7 +91,7 @@ class RetryPublisherTests: XCTestCase {
         //        (2)>: receive finished
         //        ** .sink() received the completion: finished
     }
-
+    
     func testRetryWithOneShotJustPublisher() {
         // setup
         let cancellable = Just<String>("yo")
@@ -112,10 +117,10 @@ class RetryPublisherTests: XCTestCase {
         //        (2)>: receive finished
         //        ** .sink() received the completion: finished
     }
-
+    
     func testRetryWithOneShotFailPublisher() {
         // setup
-
+        
         let cancellable = Fail(outputType: String.self, failure: TestFailureCondition.invalidServerResponse)
             .print("(1)>")
             .retry(3)
@@ -141,16 +146,16 @@ class RetryPublisherTests: XCTestCase {
         //        (2)>: receive subscription: (Retry)
         //        (2)>: request unlimited
     }
-
+    
     func testRetryDelayOnFailureOnly() {
         // setup
         let expectation = XCTestExpectation(description: debugDescription)
         var asyncAPICallCount = 0
         var futureClosureHandlerCount = 0
-
+        
         let msTimeFormatter = DateFormatter()
         msTimeFormatter.dateFormat = "[HH:mm:ss.SSSS] "
-
+        
         // example of a asynchronous function to be called from within a Future and its completion closure
         func instrumentedAsyncAPICall(sabotage: Bool, completion completionBlock: @escaping ((Bool, Error?) -> Void)) {
             DispatchQueue.global(qos: .background).async {
@@ -165,7 +170,7 @@ class RetryPublisherTests: XCTestCase {
                 completionBlock(true, nil)
             }
         }
-
+        
         let upstreamPublisher = Deferred {
             Future<String, Error> { promise in
                 futureClosureHandlerCount += 1
@@ -183,37 +188,37 @@ class RetryPublisherTests: XCTestCase {
                 }
             }
         }
-        .eraseToAnyPublisher()
-
+            .eraseToAnyPublisher()
+        
         // this test is an idea proposed by anachev (ref: https://github.com/heckj/swiftui-notes/issues/164)
         // on how to enable a "delay on error only". I have an example of using retry() with a random delay
         // elsewhere in the book (https://heckj.github.io/swiftui-notes/#patterns-retry), but it *always*
         // delays the call - which isn't an ideal solution.
         // This was his suggestion at an attempt to do better.
-
+        
         let resultPublisher = upstreamPublisher.catch { _ -> AnyPublisher<String, Error> in
             print(msTimeFormatter.string(from: Date()) + "delaying on error for ~3 seconds ")
             return Publishers.Delay(upstream: upstreamPublisher,
                                     interval: 3,
                                     tolerance: 1,
                                     scheduler: DispatchQueue.global())
-                // moving retry into this block reduces the number of duplicate requests
-                // In effect, there's the original request, and the `retry(2)` here will operate
-                // two additional retries on the otherwise one-shot publisher that is initiated with
-                // the `Publishers.Delay()` just above. Just starting this publisher with delay makes
-                // an additional request, so the total number of requests ends up being 4 (assuming all
-                // fail). However, no delay is introduced in this sequence if the original request
-                // is successful.
-                .retry(2)
-                .eraseToAnyPublisher()
+            // moving retry into this block reduces the number of duplicate requests
+            // In effect, there's the original request, and the `retry(2)` here will operate
+            // two additional retries on the otherwise one-shot publisher that is initiated with
+            // the `Publishers.Delay()` just above. Just starting this publisher with delay makes
+            // an additional request, so the total number of requests ends up being 4 (assuming all
+            // fail). However, no delay is introduced in this sequence if the original request
+            // is successful.
+            .retry(2)
+            .eraseToAnyPublisher()
         }
-
+        
         XCTAssertEqual(asyncAPICallCount, 0)
         XCTAssertEqual(futureClosureHandlerCount, 0)
-
+        
         let cancellable = resultPublisher.sink(receiveCompletion: { err in
             print(msTimeFormatter.string(from: Date()) + ".sink() received the completion: ", String(describing: err))
-
+            
             // The surprise here is that the underlying asynchronous API call is made not 3 times, but 6 times.
             // From the output in the test, which includes timestamps down to the ms to make it easier to see WHEN
             // things are happening, the retry process ends up double-invoking the upstream publisher.
@@ -226,7 +231,7 @@ class RetryPublisherTests: XCTestCase {
             print(".sink() received value: ", value)
             XCTFail("no value should be returned")
         })
-
+        
         wait(for: [expectation], timeout: 30.0)
         XCTAssertNotNil(cancellable)
     }

@@ -29,11 +29,11 @@ class MergingPipelineTests: XCTestCase {
         }
         return true
     }
-
+    
     func testCombineLatest() {
         // setup
         let testScheduler = TestScheduler(initialClock: 0)
-
+        
         // set up the inputs and timing
         let testablePublisher1: TestablePublisher<String, Never> = testScheduler.createRelativeTestablePublisher([
             (100, .input("a")),
@@ -45,24 +45,24 @@ class MergingPipelineTests: XCTestCase {
             (250, .input(2)),
             (300, .input(3)),
         ])
-
+        
         let merged = Publishers.CombineLatest(testablePublisher1, testablePublisher2)
-
+        
         // validate
-
+        
         // run the virtual time scheduler
         let testableSubscriber = testScheduler.start { merged }
-
+        
         // check the collected results
         XCTAssertEqual(testableSubscriber.recordedOutput.count, 6)
-
+        
         // print(testableSubscriber.recordedOutput)
         // TestSequence<(String, Int), Never>(contents: [(200, .subscribe), (300, .input(("a", 1))), (400, .input(("b", 1))), (450, .input(("b", 2))), (500, .input(("b", 3))), (550, .input(("c", 3)))])
-
+        
         let firstInSequence = testableSubscriber.recordedOutput[0]
         XCTAssertEqual(firstInSequence.0, 200) // checks the virtualtime of the subscription
         // which is always expected to be 200 with this scheduled
-
+        
         // filter the output signals down to just the inputs - drop any subscriptions, cancel, or completions
         let outputSignals = testableSubscriber.recordedOutput.filter { _, signal -> Bool in
             // input type is (VirtualTime, Signal<(String, Int), Never>)
@@ -76,7 +76,7 @@ class MergingPipelineTests: XCTestCase {
         XCTAssertEqual(outputSignals.count, 5)
         // print(outputSignals)
         // TestSequence<(String, Int), Never>(contents: [(300, .input(("a", 1))), (400, .input(("b", 1))), (450, .input(("b", 2))), (500, .input(("b", 3))), (550, .input(("c", 3)))])
-
+        
         // NOTE(heckj) - well this is an ugly hack, but it works
         // normally an Entwine Signal would be equatable because the enumeration includes equatable conformance.
         // However, that equatable conformance relies on the underlying type being passed around to be equatable.
@@ -91,7 +91,7 @@ class MergingPipelineTests: XCTestCase {
         let foo = outputSignals[0].1.debugDescription // converts the signal into a string using debugDescription
         let expected = Signal<(String, Int), Never>.input(("a", 1)).debugDescription
         XCTAssertEqual(foo, expected)
-
+        
         XCTAssertTrue(
             testSequenceMatch(sequenceItem: outputSignals[0], time: 300, inputvalues: ("a", 1))
         )
@@ -107,20 +107,20 @@ class MergingPipelineTests: XCTestCase {
         XCTAssertTrue(
             testSequenceMatch(sequenceItem: outputSignals[4], time: 550, inputvalues: ("c", 3))
         )
-
+        
         // In hindsight, I don't know that I really care about the timing of all these results, aside
         // from the fact that it makes for an illuminating record of how combineLatest() itself
         // functions.
     }
-
+    
     func testCombineLatestWithFailure() {
         // setup
         enum TestFailureCondition: Error {
             case example
         }
-
+        
         let testScheduler = TestScheduler(initialClock: 0)
-
+        
         // set up the inputs and timing
         let testablePublisher1: TestablePublisher<String, Error> = testScheduler.createRelativeTestablePublisher([
             (100, .input("a")),
@@ -134,34 +134,34 @@ class MergingPipelineTests: XCTestCase {
             (300, .input(3)),
             (450, .input(4)),
         ])
-
+        
         let merged = Publishers.CombineLatest(testablePublisher1, testablePublisher2)
-
+        
         // validate
-
+        
         // run the virtual time scheduler
         let testableSubscriber = testScheduler.start { merged }
-
+        
         // check the collected results
         XCTAssertEqual(testableSubscriber.recordedOutput.count, 7)
         print(testableSubscriber.recordedOutput)
-
-//        TestSequence<(String, Int), Error>(contents:
-//            [(200, .subscribe),
-//             (300, .input(("a", 1))),
-//             (400, .input(("b", 1))),
-//             (450, .input(("b", 2))),
-//             (500, .input(("b", 3))),
-//             (550, .input(("c", 3))),
-//             (600, .completion(failure(UsingCombineTests.MergingPipelineTests.(unknown context at $108734d68).(unknown context at $108734dd8).TestFailureCondition.example)))
-//        terminating one of the streams completing with .failure terminates all of the pipeline
-//            ])
-
+        
+        //        TestSequence<(String, Int), Error>(contents:
+        //            [(200, .subscribe),
+        //             (300, .input(("a", 1))),
+        //             (400, .input(("b", 1))),
+        //             (450, .input(("b", 2))),
+        //             (500, .input(("b", 3))),
+        //             (550, .input(("c", 3))),
+        //             (600, .completion(failure(UsingCombineTests.MergingPipelineTests.(unknown context at $108734d68).(unknown context at $108734dd8).TestFailureCondition.example)))
+        //        terminating one of the streams completing with .failure terminates all of the pipeline
+        //            ])
+        
         // verify the virtual time of the subscription signal
         XCTAssertEqual(testableSubscriber.recordedOutput[0].0, 200)
         // verify that the first signal was a subscription
         XCTAssertEqual(testableSubscriber.recordedOutput[0].1.debugDescription, ".subscribe")
-
+        
         XCTAssertTrue(
             testSequenceMatch(sequenceItem: testableSubscriber.recordedOutput[1], time: 300, inputvalues: ("a", 1))
         )
@@ -177,17 +177,17 @@ class MergingPipelineTests: XCTestCase {
         XCTAssertTrue(
             testSequenceMatch(sequenceItem: testableSubscriber.recordedOutput[5], time: 550, inputvalues: ("c", 3))
         )
-
+        
         // verify the virtual time of the completion signal
         XCTAssertEqual(testableSubscriber.recordedOutput[6].0, 600)
         // verify that the final signal was a completion
         XCTAssertTrue(testableSubscriber.recordedOutput[6].1.isCompletion)
     }
-
+    
     func testCombineLatest3() {
         // setup
         let testScheduler = TestScheduler(initialClock: 0)
-
+        
         // set up the inputs and timing
         let testablePublisher1: TestablePublisher<String, Never> = testScheduler.createRelativeTestablePublisher([
             (100, .input("a")),
@@ -206,14 +206,14 @@ class MergingPipelineTests: XCTestCase {
             (200, .input("y")),
             (350, .input("z")),
         ])
-
+        
         let mergedPipeline = Publishers.CombineLatest3(testablePublisher1, testablePublisher2, testablePublisher3)
-
+        
         // validate
-
+        
         // run the virtual time scheduler
         let testableSubscriber = testScheduler.start { mergedPipeline }
-
+        
         let expected: TestSequence<(String, Int, String), Never> = [
             (200, .subscription),
             (300, .input(("a", 1, "x"))),
@@ -233,11 +233,11 @@ class MergingPipelineTests: XCTestCase {
         let mappedResults = testableSubscriber.recordedOutput.mapInput(Tuple3.init)
         XCTAssertEqual(mappedResults, mappedExpected)
     }
-
+    
     func testZip() {
         // setup
         let testScheduler = TestScheduler(initialClock: 0)
-
+        
         // set up the inputs and timing
         let testablePublisher1: TestablePublisher<String, Never> = testScheduler.createRelativeTestablePublisher([
             (100, .input("a")),
@@ -251,15 +251,15 @@ class MergingPipelineTests: XCTestCase {
             (300, .input(3)),
             (450, .input(4)),
         ])
-
+        
         let mergedPipeline = Publishers.Zip(testablePublisher1, testablePublisher2)
         // validate
-
+        
         // run the virtual time scheduler
         let testableSubscriber = testScheduler.start { mergedPipeline }
-
+        
         print(testableSubscriber.recordedOutput)
-
+        
         let expected: TestSequence<(String, Int), Never> = [
             (200, .subscription),
             (300, .input(("a", 1))),
@@ -274,11 +274,11 @@ class MergingPipelineTests: XCTestCase {
         let mappedResults = testableSubscriber.recordedOutput.mapInput(Tuple2.init)
         XCTAssertEqual(mappedResults, mappedExpected)
     }
-
+    
     func testMerge() {
         // setup
         let testScheduler = TestScheduler(initialClock: 0)
-
+        
         // set up the inputs and timing
         let testablePublisher1: TestablePublisher<String, Never> = testScheduler.createRelativeTestablePublisher([
             (100, .input("a")),
@@ -291,14 +291,14 @@ class MergingPipelineTests: XCTestCase {
             (200, .input("y")),
             (300, .input("z")),
         ])
-
+        
         let mergedPipeline = Publishers.Merge(testablePublisher1, testablePublisher2)
         // validate
-
+        
         // run the virtual time scheduler
         let testableSubscriber = testScheduler.start { mergedPipeline }
         // print(testableSubscriber.recordedOutput)
-
+        
         let expected: TestSequence<String, Never> = [
             (200, .subscription),
             (300, .input("a")),
