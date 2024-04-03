@@ -202,6 +202,7 @@ extension Publishers {
     /// Because this publisher’s handler can throw an error, `Publishers.TryCatch` defines
     /// its `Failure` type as `Error`. This is different from `Publishers.Catch`, which
     /// gets its failure type from the replacement publisher.
+    // TryCatch 的这种方式, 两种 Publisher 应该是 Upstream.Output == NewPublisher.Output
     public struct TryCatch<Upstream: Publisher, NewPublisher: Publisher>: Publisher
         where Upstream.Output == NewPublisher.Output
     {

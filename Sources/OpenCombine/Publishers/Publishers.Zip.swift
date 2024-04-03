@@ -8,31 +8,34 @@
 import COpenCombineHelpers
 #endif
 
+// 从这里来看, Zip 的使用, 还是需要做一些前置条件的. 所有的被 Zip 的Publisher, 都必须要有同样的 Error 才可以.
 extension Publishers {
-
+    
     /// A publisher created by applying the zip function to two upstream publishers.
     // 错误必须相同.
     public struct Zip<UpstreamA: Publisher, UpstreamB: Publisher>: Publisher
-        where UpstreamA.Failure == UpstreamB.Failure
+    where UpstreamA.Failure == UpstreamB.Failure
     {
-
+        
         /// The kind of values published by this publisher.
+        /// 输出是两个 Output 的组合.
         public typealias Output = (UpstreamA.Output, UpstreamB.Output)
-
+        
         /// The kind of errors this publisher might publish.
         ///
         /// Use `Never` if this `Publisher` does not publish errors.
+        // 从这里来看, 对于 Zip 来说, 只要上游出现了错误, 就认为全部都出错了.
         public typealias Failure = UpstreamA.Failure
-
+        
         public let a: UpstreamA
-
+        
         public let b: UpstreamB
-
+        
         public init(_ a: UpstreamA, _ b: UpstreamB) {
             self.a = a
             self.b = b
         }
-
+        
         /// This function is called to attach the specified `Subscriber` to this
         ///  `Publisher` by `subscribe(_:)`
         ///
@@ -41,41 +44,41 @@ extension Publishers {
         ///     - subscriber: The subscriber to attach to this `Publisher`.
         ///                   once attached it can begin to receive values.
         public func receive<Downstream: Subscriber>(subscriber: Downstream) where
-            UpstreamB.Failure == Downstream.Failure,
-            Downstream.Input == (UpstreamA.Output, UpstreamB.Output)
+        UpstreamB.Failure == Downstream.Failure,
+        Downstream.Input == (UpstreamA.Output, UpstreamB.Output)
         {
             _ = Inner<Downstream>(downstream: subscriber, a, b)
         }
     }
-
+    
     /// A publisher created by applying the zip function to three upstream publishers.
     public struct Zip3<UpstreamA: Publisher,
                        UpstreamB: Publisher,
                        UpstreamC: Publisher>
-        : Publisher
-        where UpstreamA.Failure == UpstreamB.Failure,
-              UpstreamB.Failure == UpstreamC.Failure
+    : Publisher
+    where UpstreamA.Failure == UpstreamB.Failure,
+          UpstreamB.Failure == UpstreamC.Failure
     {
         /// The kind of values published by this publisher.
         public typealias Output = (UpstreamA.Output, UpstreamB.Output, UpstreamC.Output)
-
+        
         /// The kind of errors this publisher might publish.
         ///
         /// Use `Never` if this `Publisher` does not publish errors.
         public typealias Failure = UpstreamA.Failure
-
+        
         public let a: UpstreamA
-
+        
         public let b: UpstreamB
-
+        
         public let c: UpstreamC
-
+        
         public init(_ a: UpstreamA, _ b: UpstreamB, _ c: UpstreamC) {
             self.a = a
             self.b = b
             self.c = c
         }
-
+        
         /// This function is called to attach the specified `Subscriber` to this
         /// `Publisher` by `subscribe(_:)`
         ///
@@ -84,15 +87,15 @@ extension Publishers {
         ///     - subscriber: The subscriber to attach to this `Publisher`.
         ///                   once attached it can begin to receive values.
         public func receive<Downstream>(subscriber: Downstream)
-            where Downstream: Subscriber,
-            UpstreamC.Failure == Downstream.Failure,
-            // swiftlint:disable:next large_tuple
-            Downstream.Input == (UpstreamA.Output, UpstreamB.Output, UpstreamC.Output)
+        where Downstream: Subscriber,
+              UpstreamC.Failure == Downstream.Failure,
+        // swiftlint:disable:next large_tuple
+        Downstream.Input == (UpstreamA.Output, UpstreamB.Output, UpstreamC.Output)
         {
             _ = Inner<Downstream>(downstream: subscriber, a, b, c)
         }
     }
-
+    
     /// A publisher created by applying the zip function to four upstream publishers.
     public struct Zip4<
         UpstreamA: Publisher,
@@ -100,38 +103,38 @@ extension Publishers {
         UpstreamC: Publisher,
         UpstreamD: Publisher
     >: Publisher where
-        UpstreamA.Failure == UpstreamB.Failure,
-        UpstreamB.Failure == UpstreamC.Failure,
-        UpstreamC.Failure == UpstreamD.Failure
+    UpstreamA.Failure == UpstreamB.Failure,
+    UpstreamB.Failure == UpstreamC.Failure,
+    UpstreamC.Failure == UpstreamD.Failure
     {
-
+        
         /// The kind of values published by this publisher.
         public typealias Output = (
             UpstreamA.Output,
             UpstreamB.Output,
             UpstreamC.Output,
             UpstreamD.Output)
-
+        
         /// The kind of errors this publisher might publish.
         ///
         /// Use `Never` if this `Publisher` does not publish errors.
         public typealias Failure = UpstreamA.Failure
-
+        
         public let a: UpstreamA
-
+        
         public let b: UpstreamB
-
+        
         public let c: UpstreamC
-
+        
         public let d: UpstreamD
-
+        
         public init(_ a: UpstreamA, _ b: UpstreamB, _ c: UpstreamC, _ d: UpstreamD) {
             self.a = a
             self.b = b
             self.c = c
             self.d = d
         }
-
+        
         /// This function is called to attach the specified `Subscriber` to this
         /// `Publisher` by `subscribe(_:)`
         ///
@@ -140,9 +143,9 @@ extension Publishers {
         ///     - subscriber: The subscriber to attach to this `Publisher`.
         ///                   once attached it can begin to receive values.
         public func receive<Downstream: Subscriber>(subscriber: Downstream)
-            where UpstreamD.Failure == Downstream.Failure,
-            // swiftlint:disable:next large_tuple
-            Downstream.Input == (
+        where UpstreamD.Failure == Downstream.Failure,
+        // swiftlint:disable:next large_tuple
+        Downstream.Input == (
             UpstreamA.Output,
             UpstreamB.Output,
             UpstreamC.Output,
@@ -154,7 +157,7 @@ extension Publishers {
 }
 
 extension Publisher {
-
+    
     /// Combine elements from another publisher and deliver pairs of elements as tuples.
     ///
     /// The returned publisher waits until both publishers have emitted an event, then
@@ -169,12 +172,24 @@ extension Publisher {
     /// - Parameter other: Another publisher.
     /// - Returns: A publisher that emits pairs of elements from the upstream publishers
     ///             as tuples.
+    /*
+     从另一个发布者中组合元素，并将元素对作为元组传递。
+     
+     返回的发布者会等待，直到两个发布者都发出事件，然后将每个发布者的最旧未消耗的事件一起作为元组传递给订阅者。
+     
+     例如，如果发布者 `P1` 发出元素 `a` 和 `b`，而发布者 `P2` 发出事件 `c`，则组合发布者会发出元组 `(a, c)`。它不会发出包含事件 `b` 的元组，直到 `P2` 再次发出事件。
+     
+     如果任一上游发布者成功完成或以错误结束，组合的发布者也会执行相同的操作。
+     
+     - Parameter other: 另一个发布者。
+     - Returns: 一个发布者，作为元组从上游发布者中发出元素对。
+     */
     public func zip<Other>(_ other: Other) -> Publishers.Zip<Self, Other>
-        where Other: Publisher, Self.Failure == Other.Failure
+    where Other: Publisher, Self.Failure == Other.Failure
     {
         return Publishers.Zip(self, other)
     }
-
+    
     /// Combine elements from another publisher and deliver a transformed output.
     ///
     /// The returned publisher waits until both publishers have emitted an event, then
@@ -194,12 +209,12 @@ extension Publisher {
     public func zip<Other, Result>(
         _ other: Other,
         _ transform: @escaping (Self.Output, Other.Output) -> Result)
-        -> Publishers.Map<Publishers.Zip<Self, Other>, Result>
-        where Other: Publisher, Self.Failure == Other.Failure
+    -> Publishers.Map<Publishers.Zip<Self, Other>, Result>
+    where Other: Publisher, Self.Failure == Other.Failure
     {
         return Publishers.Map(upstream: Publishers.Zip(self, other), transform: transform)
     }
-
+    
     /// Combine elements from two other publishers and deliver groups of elements as
     /// tuples.
     ///
@@ -219,15 +234,15 @@ extension Publisher {
     /// - Returns: A publisher that emits groups of elements from the upstream publishers
     ///             as tuples.
     public func zip<Other1, Other2>(_ publisher1: Other1, _ publisher2: Other2)
-        -> Publishers.Zip3<Self, Other1, Other2>
-        where Other1: Publisher,
-        Other2: Publisher,
-        Self.Failure == Other1.Failure,
-        Other1.Failure == Other2.Failure
+    -> Publishers.Zip3<Self, Other1, Other2>
+    where Other1: Publisher,
+          Other2: Publisher,
+          Self.Failure == Other1.Failure,
+          Other1.Failure == Other2.Failure
     {
         return Publishers.Zip3(self, publisher1, publisher2)
     }
-
+    
     /// Combine elements from two other publishers and deliver a transformed output.
     ///
     /// The returned publisher waits until all three publishers have emitted an event,
@@ -251,16 +266,16 @@ extension Publisher {
         _ publisher1: Other1,
         _ publisher2: Other2,
         _ transform: @escaping (Self.Output, Other1.Output, Other2.Output) -> Result)
-        -> Publishers.Map<Publishers.Zip3<Self, Other1, Other2>, Result>
-        where Other1: Publisher,
-        Other2: Publisher,
-        Self.Failure == Other1.Failure,
-        Other1.Failure == Other2.Failure
+    -> Publishers.Map<Publishers.Zip3<Self, Other1, Other2>, Result>
+    where Other1: Publisher,
+          Other2: Publisher,
+          Self.Failure == Other1.Failure,
+          Other1.Failure == Other2.Failure
     {
         return Publishers.Map(upstream: Publishers.Zip3(self, publisher1, publisher2),
                               transform: transform)
     }
-
+    
     /// Combine elements from three other publishers and deliver groups of elements as
     /// tuples.
     ///
@@ -284,17 +299,17 @@ extension Publisher {
     public func zip<Other1, Other2, Other3>(_ publisher1: Other1,
                                             _ publisher2: Other2,
                                             _ publisher3: Other3)
-        -> Publishers.Zip4<Self, Other1, Other2, Other3>
-        where Other1: Publisher,
-        Other2: Publisher,
-        Other3: Publisher,
-        Self.Failure == Other1.Failure,
-        Other1.Failure == Other2.Failure,
-        Other2.Failure == Other3.Failure
+    -> Publishers.Zip4<Self, Other1, Other2, Other3>
+    where Other1: Publisher,
+          Other2: Publisher,
+          Other3: Publisher,
+          Self.Failure == Other1.Failure,
+          Other1.Failure == Other2.Failure,
+          Other2.Failure == Other3.Failure
     {
         return Publishers.Zip4(self, publisher1, publisher2, publisher3)
     }
-
+    
     /// Combine elements from three other publishers and deliver a transformed output.
     ///
     /// The returned publisher waits until all four publishers have emitted an event, then
@@ -322,13 +337,13 @@ extension Publisher {
         _ publisher3: Other3,
         _ transform: @escaping (Self.Output, Other1.Output, Other2.Output, Other3.Output)
         -> Result)
-        -> Publishers.Map<Publishers.Zip4<Self, Other1, Other2, Other3>, Result>
-        where Other1: Publisher,
-        Other2: Publisher,
-        Other3: Publisher,
-        Self.Failure == Other1.Failure,
-        Other1.Failure == Other2.Failure,
-        Other2.Failure == Other3.Failure
+    -> Publishers.Map<Publishers.Zip4<Self, Other1, Other2, Other3>, Result>
+    where Other1: Publisher,
+          Other2: Publisher,
+          Other3: Publisher,
+          Self.Failure == Other1.Failure,
+          Other1.Failure == Other2.Failure,
+          Other2.Failure == Other3.Failure
     {
         return Publishers.Map(upstream: Publishers.Zip4(self,
                                                         publisher1,
@@ -340,23 +355,24 @@ extension Publisher {
 
 extension Publishers.Zip {
     private class Inner<Downstream: Subscriber>: InnerBase<Downstream>
-        where Downstream.Failure == Failure,
-        Downstream.Input == (UpstreamA.Output, UpstreamB.Output)
+    where Downstream.Failure == Failure,
+          Downstream.Input == (UpstreamA.Output, UpstreamB.Output)
     {
         private lazy var aSubscriber = ChildSubscriber<UpstreamA, Downstream>(self, 0)
         private lazy var bSubscriber = ChildSubscriber<UpstreamB, Downstream>(self, 1)
-
+        
         init(downstream: Downstream, _ a: UpstreamA, _ b: UpstreamB) {
             super.init(downstream: downstream)
-
+            
+            // 上游和aSubscriber连接, 上游和bSubscriber连接.
             a.subscribe(aSubscriber)
             b.subscribe(bSubscriber)
         }
-
+        
         override fileprivate var upstreamSubscriptions: [ChildSubscription] {
             return [aSubscriber, bSubscriber]
         }
-
+        
         override fileprivate func dequeueValue() -> Downstream.Input {
             return (aSubscriber.dequeueValue(), bSubscriber.dequeueValue())
         }
@@ -365,25 +381,25 @@ extension Publishers.Zip {
 
 extension Publishers.Zip3 {
     private class Inner<Downstream: Subscriber>: InnerBase<Downstream>
-        where Downstream.Failure == Failure,
-        Downstream.Input == (UpstreamA.Output, UpstreamB.Output, UpstreamC.Output)
+    where Downstream.Failure == Failure,
+          Downstream.Input == (UpstreamA.Output, UpstreamB.Output, UpstreamC.Output)
     {
         private lazy var aSubscriber = ChildSubscriber<UpstreamA, Downstream>(self, 0)
         private lazy var bSubscriber = ChildSubscriber<UpstreamB, Downstream>(self, 1)
         private lazy var cSubscriber = ChildSubscriber<UpstreamC, Downstream>(self, 2)
-
+        
         init(downstream: Downstream, _ a: UpstreamA, _ b: UpstreamB, _ c: UpstreamC) {
             super.init(downstream: downstream)
-
+            
             a.subscribe(aSubscriber)
             b.subscribe(bSubscriber)
             c.subscribe(cSubscriber)
         }
-
+        
         override fileprivate var upstreamSubscriptions: [ChildSubscription] {
             return [aSubscriber, bSubscriber, cSubscriber]
         }
-
+        
         override fileprivate func dequeueValue() -> Downstream.Input {
             return (aSubscriber.dequeueValue(),
                     bSubscriber.dequeueValue(),
@@ -394,18 +410,18 @@ extension Publishers.Zip3 {
 
 extension Publishers.Zip4 {
     private class Inner<Downstream: Subscriber>: InnerBase<Downstream>
-        where Downstream.Failure == Failure,
-        Downstream.Input == (
-        UpstreamA.Output,
-        UpstreamB.Output,
-        UpstreamC.Output,
-        UpstreamD.Output)
+    where Downstream.Failure == Failure,
+          Downstream.Input == (
+            UpstreamA.Output,
+            UpstreamB.Output,
+            UpstreamC.Output,
+            UpstreamD.Output)
     {
         private lazy var aSubscriber = ChildSubscriber<UpstreamA, Downstream>(self, 0)
         private lazy var bSubscriber = ChildSubscriber<UpstreamB, Downstream>(self, 1)
         private lazy var cSubscriber = ChildSubscriber<UpstreamC, Downstream>(self, 2)
         private lazy var dSubscriber = ChildSubscriber<UpstreamD, Downstream>(self, 3)
-
+        
         init(downstream: Downstream,
              _ a: UpstreamA,
              _ b: UpstreamB,
@@ -413,17 +429,17 @@ extension Publishers.Zip4 {
              _ d: UpstreamD)
         {
             super.init(downstream: downstream)
-
+            
             a.subscribe(aSubscriber)
             b.subscribe(bSubscriber)
             c.subscribe(cSubscriber)
             d.subscribe(dSubscriber)
         }
-
+        
         override fileprivate var upstreamSubscriptions: [ChildSubscription] {
             return [aSubscriber, bSubscriber, cSubscriber, dSubscriber]
         }
-
+        
         override fileprivate func dequeueValue() -> Downstream.Input {
             return (aSubscriber.dequeueValue(),
                     bSubscriber.dequeueValue(),
@@ -433,17 +449,18 @@ extension Publishers.Zip4 {
     }
 }
 
+// 真正实现的 Zip 的逻辑所在.
 private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
     let description = "Zip"
-
+    
     private let lock = UnfairRecursiveLock.allocate()
-
+    
     private let downstream: Downstream
     private var downstreamDemand = Subscribers.Demand.none
     private var valueIsBeingProcessed = false
     private var value: Downstream.Input?
     private var isFinished = false
-
+    
     // The following two pieces of state are a hacky implementation of subtle Apple
     // concurrency behaviors. Specifically, when Zip is processing an upstream child value
     // and sending a resulting value downstream, multiple behaviors are changed.
@@ -458,23 +475,23 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
     // of `.receive(_ input:)` INSTEAD of a later `.request(_ demand:)` call.
     private final var processingValueForChild: ChildSubscription?
     private final var demandReceivedWhileProcessing: Subscribers.Demand?
-
+    
     init(downstream: Downstream) {
         self.downstream = downstream
     }
-
+    
     deinit {
         lock.deallocate()
     }
-
+    
     fileprivate var upstreamSubscriptions: [ChildSubscription] {
         abstractMethod()
     }
-
+    
     fileprivate func dequeueValue() -> Downstream.Input {
         abstractMethod()
     }
-
+    
     fileprivate final func receivedSubscription(for child: ChildSubscription) {
         lock.lock()
         child.state = .active
@@ -482,12 +499,12 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
             .filter { $0.state == .waitingForSubscription }
             .isEmpty
         lock.unlock()
-
+        
         if sendSubscriptionDownstream {
             self.sendSubscriptionDownstream()
         }
     }
-
+    
     fileprivate final func receivedChildValue(
         child: ChildSubscription,
         _ lockedStoreValue: () -> Void
@@ -508,12 +525,13 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
             return .none
         }
     }
-
+    
     fileprivate final func receivedCompletion(
         _ completion: Subscribers.Completion<Downstream.Failure>,
         forChild child: ChildSubscription)
     {
         switch completion {
+            // 只要一个出错了, 那么就认为所有的都出错了.
         case .failure:
             downstream.receive(completion: completion)
             lock.lock()
@@ -537,36 +555,36 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
             lock.unlock()
         }
     }
-
+    
     private func checkShouldFinish() {
         if processingValueForChild == nil && upstreamSubscriptions.shouldFinish() {
             sendFinishDownstream()
             isFinished = true
         }
     }
-
+    
     private func maybeDequeueValue() -> Downstream.Input? {
         return hasCompleteValueAvailable ? dequeueValue() : nil
     }
-
+    
     private func sendSubscriptionDownstream() {
         downstream.receive(subscription: self)
     }
-
+    
     private var hasCompleteValueAvailable: Bool {
         return upstreamSubscriptions.allSatisfy { $0.hasValue }
     }
-
+    
     private var areMoreValuesPossible: Bool {
         // More values are possible if all children are (active || have surplus)
         return upstreamSubscriptions
             .allSatisfy { $0.state == .active || $0.hasValue }
     }
-
+    
     @discardableResult
     private func processValue() -> Subscribers.Demand? {
         assert(valueIsBeingProcessed)
-
+        
         lock.lock()
         defer {
             valueIsBeingProcessed = false
@@ -574,7 +592,7 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
             demandReceivedWhileProcessing = nil
             lock.unlock()
         }
-
+        
         if let value = self.value {
             if downstreamDemand != .none {
                 downstreamDemand -= 1
@@ -587,10 +605,10 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
             }
             self.value = nil
         }
-
+        
         return demandReceivedWhileProcessing
     }
-
+    
     private func sendRequestUpstream(demand: Subscribers.Demand) {
         lock.lock()
         let subscriptionsToRequest = upstreamSubscriptions
@@ -598,7 +616,7 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
         lock.unlock()
         subscriptionsToRequest.forEach { $0.request(demand) }
     }
-
+    
     private func sendFinishDownstream() {
         downstream.receive(completion: .finished)
         lock.lock()
@@ -609,12 +627,14 @@ private class InnerBase<Downstream: Subscriber>: CustomStringConvertible {
 }
 
 extension InnerBase: Subscription {
+    // 下游需要数据.
     fileprivate final func request(_ demand: Subscribers.Demand) {
         guard demand != .none else {
             fatalError()
         }
         lock.lock()
         downstreamDemand += demand
+        // 会将 Demand, 转移到各自的上游.
         sendRequestUpstream(demand: demand)
         if valueIsBeingProcessed {
             demandReceivedWhileProcessing = demand
@@ -624,7 +644,7 @@ extension InnerBase: Subscription {
         }
         lock.unlock()
     }
-
+    
     fileprivate final func cancel() {
         lock.lock()
         let subscriptionsToCancel = upstreamSubscriptions
@@ -662,22 +682,23 @@ private protocol ChildSubscription: AnyObject, Subscription {
 }
 
 fileprivate final class ChildSubscriber<Upstream: Publisher, Downstream: Subscriber>
-    where Upstream.Failure == Downstream.Failure
+where Upstream.Failure == Downstream.Failure
 {
     typealias Input = Upstream.Output
     typealias Failure = Upstream.Failure
-
+    
     fileprivate final var state: ChildState = .waitingForSubscription
     fileprivate final var upstreamSubscription: Subscription?
+    // 将上游的数据, 进行了缓存.
     private var values = [Upstream.Output]()
     private unowned let parent: InnerBase<Downstream>
     fileprivate let childIndex: Int
-
+    
     init(_ parent: InnerBase<Downstream>, _ childIndex: Int) {
         self.parent = parent
         self.childIndex = childIndex
     }
-
+    
     fileprivate final func dequeueValue() -> Upstream.Output {
         return values.remove(at: 0)
     }
@@ -711,11 +732,11 @@ extension ChildSubscriber: Subscriber {
             subscription.cancel()
         }
     }
-
+    
     fileprivate final func receive(_ input: Input) -> Subscribers.Demand {
         return parent.receivedChildValue(child: self) { values.append(input) }
     }
-
+    
     fileprivate final func receive(completion: Subscribers.Completion<Failure>) {
         parent.receivedCompletion(completion, forChild: self)
     }
