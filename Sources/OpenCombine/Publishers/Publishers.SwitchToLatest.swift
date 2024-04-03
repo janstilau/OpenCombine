@@ -31,6 +31,7 @@ extension Publisher where Output: Publisher, Output.Failure == Failure {
     ///     let subject = PassthroughSubject<Int, Never>()
     ///     cancellable = subject
     ///         .setFailureType(to: URLError.self)
+    ///         // 从这里可以看到, 使用 map 来生成 publihser, 然后 switchToLatest 是一个套路.
     ///         .map() { index -> URLSession.DataTaskPublisher in
     ///             let url = URL(string: "https://example.org/get?index=\(index)")!
     ///             return URLSession.shared.dataTaskPublisher(for: url)
@@ -206,6 +207,7 @@ extension Publishers {
         {
             let outer = Outer(downstream: subscriber)
             subscriber.receive(subscription: outer)
+            // 这里有一个中转器, 它负责上游信息来临后的切换.
             upstream.subscribe(outer)
         }
     }
@@ -403,6 +405,7 @@ extension Publishers.SwitchToLatest {
                 lock.unlock()
                 return
             }
+            
             precondition(!awaitingInnerSubscription, "Unexpected completion")
             currentInnerSubscription = nil
             switch completion {

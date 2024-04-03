@@ -10,6 +10,7 @@ import Combine
 import UIKit
 
 class GithubViewController: UIViewController {
+    
     @IBOutlet var github_id_entry: UITextField!
     @IBOutlet var activityIndicator: UIActivityIndicatorView!
     @IBOutlet var repositoryCountLabel: UILabel!
@@ -25,6 +26,7 @@ class GithubViewController: UIViewController {
     
     // github user retrieved from the API publisher. As it's updated, it
     // is "wired" to update UI elements
+    // 这个属性, 是 @Published 的, 它的改变, 会引起其他的 pipeline 触发信号发布.
     @Published private var githubUserData: [GithubAPIUser] = []
     
     var myBackgroundQueue: DispatchQueue = .init(label: "myBackgroundQueue")
@@ -32,10 +34,10 @@ class GithubViewController: UIViewController {
     
     // MARK: - Actions
     
+    // UI Action, 触发了数据源发射信号.
     @IBAction func githubIdChanged(_ sender: UITextField) {
         // 通过 TargetAction 将 信号发送联系到了一起.
         username = sender.text ?? ""
-        print("Set username to ", username)
     }
     
     @IBAction func poke(_: Any) {}
@@ -46,7 +48,7 @@ class GithubViewController: UIViewController {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         
-        // Loading 的触发, 和 API 的开始结束绑定在一起了.
+        // 这里的实现, 其实和 Swift UI 就很像了. 直接将 UI 表现和 ViewModel 里面
         apiNetworkActivitySubscriber = GithubAPI.networkActivityPublisher
             .receive(on: RunLoop.main)
             .sink { doingSomethingNow in
@@ -57,7 +59,11 @@ class GithubViewController: UIViewController {
                 }
             }
         
-        // 这里算是使用到了一些高级的技巧了.,
+        /*
+         ViewAction, 触发了 $username 的改变
+         $username 的改变, 会引起新的 Pipeline 发送数据.
+         对于响应式来说, 所有的都要实现建立信号的处理流程.
+         */
         usernameSubscriber = $username
             .throttle(for: 0.5, scheduler: myBackgroundQueue, latest: true)
         // ^^ scheduler myBackGroundQueue publishes resulting elements
@@ -66,6 +72,7 @@ class GithubViewController: UIViewController {
             .removeDuplicates()
             .print("username pipeline: ") // debugging output for pipeline
             .map { username -> AnyPublisher<[GithubAPIUser], Never> in
+                // 这里使用 Map 是一个非常奇怪的做法. 为什么使用 map. 应该是使用 Flatmap.
                 GithubAPI.retrieveGithubUser(username: username)
             }
         // ^^ type returned in the pipeline is a Publisher, so we use
@@ -76,7 +83,7 @@ class GithubViewController: UIViewController {
         // using a sink to get the results from the API search lets us
         // get not only the user, but also any errors attempting to get it.
             .receive(on: RunLoop.main)
-        // githubUserData 这里引起了数据的改变.
+        // githubUserData 的改变, 会触发下面的事件流处理.
             .assign(to: \.githubUserData, on: self)
         
         // using .assign() on the other hand (which returns an
@@ -106,6 +113,8 @@ class GithubViewController: UIViewController {
         //     possibleUser != nil
         // })
         // .print("avatar image for user") // debugging output
+        
+        // map + switchToLatest 看来是一个固定的搭配 
             .map { userData -> AnyPublisher<UIImage, Never> in
                 guard let firstUser = userData.first else {
                     // my placeholder data being returned below is an empty
@@ -115,6 +124,7 @@ class GithubViewController: UIViewController {
                     return Just(UIImage()).eraseToAnyPublisher()
                 }
                 // 每次当前用户的改变, 都会触发对应的 UI 改变. 
+                // 上游的信号, 触发了新的异步任务. 然后
                 return URLSession.shared.dataTaskPublisher(for: URL(string: firstUser.avatar_url)!)
                 // ^^ this hands back (Data, response) objects
                 // 通过了 handleEvents 的副作用, 来触发了 UI 的改变.
@@ -149,6 +159,13 @@ class GithubViewController: UIViewController {
                 // in the .map() wrapping this because otherwise the return
                 // type would be terribly complex nested set of generics.
             }
+        /*
+         /// Republishes elements sent by the most recently received publisher.
+         ///
+         /// This operator works with an upstream publisher of publishers, flattening the stream of elements to appear as if they were coming from a single stream of elements. It switches the inner publisher as new ones arrive but keeps the outer publisher constant for downstream subscribers.
+         ///
+         /// When this operator receives a new publisher from the upstream publisher, it cancels its previous subscription. Use this feature to prevent earlier publishers from performing unnecessary work, such as creating network request publishers from frequently updating user interface publishers.
+         */
             .switchToLatest()
         // ^^ Take the returned publisher that's been passed down the chain
         // and "subscribe it out" to the value within in, and then pass

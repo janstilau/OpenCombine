@@ -14,24 +14,24 @@ struct ReactiveForm: View {
     // and $model.objectWillChange is a Binding<ObservableObjectPublisher>
     @State private var buttonIsDisabled = true
     // $buttonIsDisabled is a Binding<Bool>
-
+    
     var body: some View {
         VStack {
             Text("Reactive Form")
                 .font(.headline)
-
+            
             Form {
                 TextField("first entry", text: $model.firstEntry)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .lineLimit(1)
                     .multilineTextAlignment(.center)
                     .padding()
-
+                
                 TextField("second entry", text: $model.secondEntry)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .multilineTextAlignment(.center)
                     .padding()
-
+                
                 VStack {
                     ForEach(model.validationMessages, id: \.self) { msg in
                         Text(msg)
@@ -40,7 +40,7 @@ struct ReactiveForm: View {
                     }
                 }
             }
-
+            
             Button(action: {}) {
                 Text("Submit")
             }.disabled(buttonIsDisabled)
@@ -50,7 +50,7 @@ struct ReactiveForm: View {
                 .padding()
                 .background(RoundedRectangle(cornerRadius: 10).stroke(Color.blue, lineWidth: 1)
                 )
-
+            
             Spacer()
         }
     }
@@ -59,11 +59,4 @@ struct ReactiveForm: View {
 // MARK: - SwiftUI VIEW DEBUG
 
 #if DEBUG
-    var localModel = ReactiveFormModel()
-
-    struct ReactiveForm_Previews: PreviewProvider {
-        static var previews: some View {
-            ReactiveForm(model: localModel)
-        }
-    }
 #endif

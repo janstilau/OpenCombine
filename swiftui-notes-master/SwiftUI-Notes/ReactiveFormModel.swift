@@ -10,14 +10,15 @@ import Combine
 import Foundation
 
 class ReactiveFormModel: ObservableObject {
+    
     @Published var firstEntry: String = ""
     @Published var secondEntry: String = ""
     @Published var validationMessages = [String]()
-
+    
     private var cancellableSet: Set<AnyCancellable> = []
-
+    
     var submitAllowed: AnyPublisher<Bool, Never>!
-
+    
     init() {
         let validationPipeline = Publishers.CombineLatest($firstEntry, $secondEntry)
             .map { arg -> [String] in
@@ -32,13 +33,13 @@ class ReactiveFormModel: ObservableObject {
                 return diagMsgs
             }
             .share()
-
+        
         submitAllowed = validationPipeline
             .map { stringArray in
                 stringArray.count < 1
             }
             .eraseToAnyPublisher()
-
+        
         _ = validationPipeline
             .assign(to: \.validationMessages, on: self)
             .store(in: &cancellableSet)

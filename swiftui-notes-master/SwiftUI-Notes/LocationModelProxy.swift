@@ -16,14 +16,14 @@ final class LocationProxy: NSObject, CLLocationManagerDelegate, ObservableObject
     private let locationSubject: PassthroughSubject<CLLocation, Never>
     var headingPublisher: AnyPublisher<CLHeading, Never>
     var locationPublisher: AnyPublisher<CLLocation, Never>
-
+    
     @Published var authorizationStatus: CLAuthorizationStatus?
     @Published var active = false
-
+    
     func requestAuthorization() {
         mgr.requestWhenInUseAuthorization()
     }
-
+    
     func authorizationStatusString() -> String {
         switch authorizationStatus {
         case .authorizedWhenInUse:
@@ -42,14 +42,16 @@ final class LocationProxy: NSObject, CLLocationManagerDelegate, ObservableObject
             return "unknown"
         }
     }
-
+    
     override init() {
         mgr = CLLocationManager()
         headingSubject = PassthroughSubject<CLHeading, Never>()
         locationSubject = PassthroughSubject<CLLocation, Never>()
+        
+        // 暴露给外界的, 是使用 AnyPublisher 包装过的.
         headingPublisher = headingSubject.eraseToAnyPublisher()
         locationPublisher = locationSubject.eraseToAnyPublisher()
-
+        
         super.init()
         mgr.delegate = self
         if #available(iOS 14, *) {
@@ -65,7 +67,7 @@ final class LocationProxy: NSObject, CLLocationManagerDelegate, ObservableObject
             }
         }
     }
-
+    
     func enableEventForwarding() {
         if CLLocationManager.headingAvailable() {
             mgr.startUpdatingHeading()
@@ -73,15 +75,15 @@ final class LocationProxy: NSObject, CLLocationManagerDelegate, ObservableObject
         mgr.startUpdatingLocation()
         active = true
     }
-
+    
     func disableEventForwarding() {
         mgr.stopUpdatingHeading()
         mgr.stopUpdatingLocation()
         active = false
     }
-
+    
     // MARK: - delegate methods
-
+    
     // delegate method from CLLocationManagerDelegate - updates on authorization status changes
     func locationManager(_: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         authorizationStatus = status
@@ -91,19 +93,20 @@ final class LocationProxy: NSObject, CLLocationManagerDelegate, ObservableObject
             disableEventForwarding()
         }
     }
-
+    
     /*
      *  locationManager:didUpdateHeading:
      *
      *  Discussion:
      *    Invoked when a new heading is available.
      */
+    // 然后在不同的 Delegate 方法里面, 是需要将对应的 Publisher 进行触发. 
     func locationManager(_: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         // NOTE(heckj): simulator will *NOT* trigger this value, but it will send location updates
         // print(newHeading)
         headingSubject.send(newHeading)
     }
-
+    
     func locationManager(_: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         // print(locations)
         for loc in locations {

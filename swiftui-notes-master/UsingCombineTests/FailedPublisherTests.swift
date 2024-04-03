@@ -13,10 +13,10 @@ class FailedPublisherTests: XCTestCase {
     enum TestFailureCondition: Error {
         case exampleFailure
     }
-
+    
     func testFailPublisher() {
         let expectation = XCTestExpectation(description: debugDescription)
-
+        
         let cancellable = Fail<String, Error>(error: TestFailureCondition.exampleFailure)
             .sink(receiveCompletion: { completion in
                 print(".sink() received the completion", String(describing: completion))
@@ -31,14 +31,14 @@ class FailedPublisherTests: XCTestCase {
                 XCTFail("No vaue should be received from empty")
                 print(".sink() data received \(responseValue)")
             })
-
+        
         wait(for: [expectation], timeout: 1.0)
         XCTAssertNotNil(cancellable)
     }
-
+    
     func testFailPublisherAltInitializer() {
         let expectation = XCTestExpectation(description: debugDescription)
-
+        
         let cancellable = Fail(outputType: String.self, failure: TestFailureCondition.exampleFailure)
             .sink(receiveCompletion: { completion in
                 print(".sink() received the completion", String(describing: completion))
@@ -53,16 +53,16 @@ class FailedPublisherTests: XCTestCase {
                 XCTFail("No vaue should be received from empty")
                 print(".sink() data received \(responseValue)")
             })
-
+        
         wait(for: [expectation], timeout: 1.0)
         XCTAssertNotNil(cancellable)
     }
-
+    
     func testSetFailureTypePublisher() {
         let expectation = XCTestExpectation(description: debugDescription)
-
+        
         let initialSequence = ["one", "two", "red", "blue"]
-
+        
         let cancellable = initialSequence.publisher
             .setFailureType(to: TestFailureCondition.self)
             .sink(receiveCompletion: { completion in
@@ -77,7 +77,7 @@ class FailedPublisherTests: XCTestCase {
             }, receiveValue: { responseValue in
                 print(".sink() data received \(responseValue)")
             })
-
+        
         wait(for: [expectation], timeout: 1.0)
         XCTAssertNotNil(cancellable)
     }

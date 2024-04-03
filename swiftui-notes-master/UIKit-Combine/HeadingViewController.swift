@@ -25,6 +25,7 @@ class HeadingViewController: UIViewController {
     
     @IBAction func requestPermission(_: UIButton) {
         
+        // 这里使用 Combine 感觉是一个误用.
         _ = Future<Int, Never> { promise in
             self.coreLocationProxy.mgr.requestWhenInUseAuthorization()
             return promise(.success(1))
@@ -78,7 +79,11 @@ class HeadingViewController: UIViewController {
         // request authorization for the corelocation data
         updatePermissionStatus()
         
-        // 在这里, 对于 coreLocationProxy 中的信号, 进行了和当前页面的绑定. 
+        /*
+         Construct Bind
+         就是实现进行信号的绑定, 然后, 在其他的时机, 来触发可以使得这些信号改变的操作.
+         这其实和通过回调的方式来处理, 没有太多的区别.
+         */
         let corelocationsub = coreLocationProxy
             .publisher
             .print("headingSubscriber")

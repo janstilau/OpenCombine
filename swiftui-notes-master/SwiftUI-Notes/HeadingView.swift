@@ -13,7 +13,7 @@ struct HeadingView: View {
     @ObservedObject var locationModel: LocationProxy
     @State var lastHeading: CLHeading?
     @State var lastLocation: CLLocation?
-
+    
     var body: some View {
         VStack {
             HStack {
@@ -39,11 +39,11 @@ struct HeadingView: View {
                 ZStack {
                     Circle()
                         .stroke(Color.blue, lineWidth: 1)
-
+                    
                     GeometryReader { geometry in
                         Path { path in
                             let minWidthHeight = min(geometry.size.height, geometry.size.width)
-
+                            
                             path.move(to: CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2))
                             path.addLine(to: CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2 - minWidthHeight / 2 + 5))
                         }
@@ -54,6 +54,12 @@ struct HeadingView: View {
                 }
             }
         }
+        /*
+         onReceive(_:perform:)
+         Adds an action to perform when this view detects data emitted by the given publisher.
+         
+         在 SwiftUI 中，当你在 View 的 body 中使用 onReceive(_:perform:) 方法时，订阅会在 View 创建时建立，并在 View 销毁时自动取消。这是因为 SwiftUI 会管理 View 的生命周期，并在适当的时候自动创建和销毁 View。
+         */
         .onReceive(self.locationModel.headingPublisher) { heading in
             self.lastHeading = heading
         }
@@ -66,11 +72,4 @@ struct HeadingView: View {
 // MARK: - SwiftUI VIEW DEBUG
 
 #if DEBUG
-    var locproxy = LocationProxy()
-
-    struct HeadingView_Previews: PreviewProvider {
-        static var previews: some View {
-            HeadingView(locationModel: locproxy)
-        }
-    }
 #endif

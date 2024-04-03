@@ -11,7 +11,7 @@ import SwiftUI
 /// the sample ContentView
 struct ContentView: View {
     @ObservedObject var model: ReactiveFormModel
-
+    
     var body: some View {
         TabView {
             ReactiveForm(model: model)
@@ -19,7 +19,7 @@ struct ContentView: View {
                     Image(systemName: "1.circle")
                     Text("Reactive Form")
                 }
-
+            
             HeadingView(locationModel: LocationProxy())
                 .tabItem {
                     Image(systemName: "mappin.circle")
@@ -32,11 +32,4 @@ struct ContentView: View {
 // MARK: - SwiftUI VIEW DEBUG
 
 #if DEBUG
-    var blah = ReactiveFormModel()
-
-    struct ContentView_Previews: PreviewProvider {
-        static var previews: some View {
-            ContentView(model: blah)
-        }
-    }
 #endif

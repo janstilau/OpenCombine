@@ -17,7 +17,7 @@ class FormViewController: UIViewController {
     @IBOutlet var value1_message_label: UILabel!
     @IBOutlet var value2_message_label: UILabel!
     
-    //
+    // ViewAction, 会引起信号的变化.
     @IBAction func value1_updated(_ sender: UITextField) {
         value1 = sender.text ?? ""
     }
@@ -37,8 +37,10 @@ class FormViewController: UIViewController {
     @Published var value2: String = ""
     @Published var value2_repeat: String = ""
     
+    // 信号的再次加工. 但是这里大部分都是副作用.
     var validatedValue1: AnyPublisher<String?, Never> {
         return $value1.map { value1 in
+            // 这里使用 map, 是为了过滤那些非法的数据.
             guard value1.count > 2 else {
                 // 这里有副作用, 不是一个好的实现. 将 Map 进行了错误的使用. 
                 DispatchQueue.main.async {
