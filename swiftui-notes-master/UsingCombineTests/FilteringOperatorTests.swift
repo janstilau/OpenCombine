@@ -15,6 +15,7 @@ class FilteringOperatorTests: XCTestCase {
     }
 
     func testReplaceNil() {
+        // 如果这里吧 String? 变为 String, replaceNil 就不能用了
         let passSubj = PassthroughSubject<String?, Never>()
         // no initial value is propagated from a PassthroughSubject
 
@@ -54,7 +55,7 @@ class FilteringOperatorTests: XCTestCase {
             }
 
         passSubj.send("one")
-        passSubj.send(nil)
+        passSubj.send(nil) // Nil 也是一个合法的值.
         passSubj.send("")
         passSubj.send(completion: Subscribers.Completion.finished)
 
@@ -76,6 +77,7 @@ class FilteringOperatorTests: XCTestCase {
                 receivedList.append(someValue)
             }
 
+        // 直接发送了结束事件.
         passSubj.send(completion: Subscribers.Completion.finished)
 
         XCTAssertEqual(receivedList, ["-replacement-"])
@@ -88,6 +90,7 @@ class FilteringOperatorTests: XCTestCase {
 
         var receivedList: [String] = []
 
+        // 这里说明, replaceEmpty 只会在 finished 的时候起作用.
         let cancellable = passSubj
             .print(debugDescription)
             .replaceEmpty(with: "-replacement-")
@@ -119,8 +122,17 @@ class FilteringOperatorTests: XCTestCase {
 
         let cancellable = passSubj
             .print(debugDescription)
-            .compactMap {
-                $0
+        /*
+         Combine’s compactMap(_:) operator performs a function similar to that of compactMap(_:) in the Swift standard library: the compactMap(_:) operator in Combine removes nil elements in a publisher’s stream and republishes non-nil elements to the downstream subscriber.
+         The example below uses a range of numbers as the source for a collection based publisher. The compactMap(_:) operator consumes each element from the numbers publisher attempting to access the dictionary using the element as the key. If the example’s dictionary returns a nil, due to a non-existent key, compactMap(_:) filters out the nil (missing) elements.
+         
+         Combine 中的 compactMap(_:) 操作符执行的功能类似于 Swift 标准库中的 compactMap(_:)：Combine 中的 compactMap(_:) 操作符会从发布者的流中移除 nil 元素，并将非 nil 元素重新发布给下游订阅者。
+
+         下面的示例使用一个数字范围作为基于集合的发布者的源。compactMap(_:) 操作符会消耗来自数字发布者的每个元素，尝试使用该元素作为键访问字典。如果示例中的字典返回 nil，表示键不存在，compactMap(_:) 将过滤掉 nil（缺失）元素。
+         */
+        // 所以 compactMap 里面还是要返回值的, 只不过返回值中的 nil 被 operator 内部干掉了.
+            .compactMap { value in
+                value
             }
             .sink { someValue in
                 print("value updated to: ", someValue as Any)
@@ -163,7 +175,7 @@ class FilteringOperatorTests: XCTestCase {
             })
 
         passSubj.send("one")
-        passSubj.send(nil)
+        passSubj.send(nil) 
         passSubj.send("")
         passSubj.send("boom")
         passSubj.send(completion: Subscribers.Completion.finished)

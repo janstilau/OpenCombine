@@ -1,11 +1,3 @@
-//
-//  RetryPublisherTests.swift
-//  UsingCombineTests
-//
-//  Created by Joseph Heck on 7/11/19.
-//  Copyright © 2019 SwiftUI-Notes. All rights reserved.
-//
-
 import Combine
 import XCTest
 
@@ -40,6 +32,7 @@ class RetryPublisherTests: XCTestCase {
         // 发送了错误, 因为 retry 的缘故, 又一次订阅到了前面的的 Publisher .
         simpleControlledPublisher.send(completion: Subscribers.Completion.failure(TestFailureCondition.invalidServerResponse))
         
+        // 但是, 这个时候, Subject 已经是完成态了, 所以 retry 收到的是 Empty. 也就是在实现 Combine 的 Publisher 的时候, 一定要遵循, 先投递 Subscription 的原则, 然后才是事件.
         // with a completion, this prints two results and ends
         // simpleControlledPublisher.send(completion: .finished)
         
@@ -68,8 +61,9 @@ class RetryPublisherTests: XCTestCase {
         simpleControlledPublisher.send(oneFish)
         // with an error response, this prints two results and hangs...
         simpleControlledPublisher.send(completion: Subscribers.Completion.failure(TestFailureCondition.invalidServerResponse))
-        // 错误了之后, 还是向 simpleControlledPublisher 进行 request, 然后收到的当前值, 是 TestFailureCondition.invalidServerResponse
-        // 不断地导致 retry. 最终消耗完毕了次数. 
+        // 错误了之后, 还是向 simpleControlledPublisher 进行 request
+        // 但是当前的 Subject 已经完结了, 所以收到的当前值, 是 TestFailureCondition.invalidServerResponse
+        // 不断地导致 retry. 最终消耗完毕了次数.
         XCTAssertNotNil(cancellable)
         simpleControlledPublisher.send(oneFish)
         print("end")
@@ -94,6 +88,18 @@ class RetryPublisherTests: XCTestCase {
     
     func testRetryWithOneShotJustPublisher() {
         // setup
+        /*
+         (1)>: receive subscription: (Just)
+         (2)>: receive subscription: (Retry)
+         (2)>: request unlimited
+         (1)>: request unlimited
+         (1)>: receive value: (yo)
+         (2)>: receive value: (yo)
+          ** .sink() received yo
+         (1)>: receive finished
+         (2)>: receive finished
+          ** .sink() received the completion: finished
+         */
         let cancellable = Just<String>("yo")
             .print("(1)>")
             .retry(3)
@@ -133,15 +139,16 @@ class RetryPublisherTests: XCTestCase {
             })
         XCTAssertNotNil(cancellable)
         //        output:
-        //        (1)>: receive subscription: (Empty)
+        // Just, 或者 Fail, 还是会传递对应的 Subscription, 也就是 Empty.
+        //        (1)>: receive subscription: (Empty) //
         //        (1)>: receive error: (invalidServerResponse)
         //        (1)>: receive subscription: (Empty)
-        //        (1)>: receive error: (invalidServerResponse)
+        //        (1)>: receive error: (invalidServerResponse) 1
         //        (1)>: receive subscription: (Empty)
-        //        (1)>: receive error: (invalidServerResponse)
+        //        (1)>: receive error: (invalidServerResponse) 2
         //        (1)>: receive subscription: (Empty)
-        //        (1)>: receive error: (invalidServerResponse)
-        //        (2)>: receive error: (invalidServerResponse)
+        //        (1)>: receive error: (invalidServerResponse) 3
+        //        (2)>: receive error: (invalidServerResponse) 然后才向后进行的传递.
         //        ** .sink() received the completion: failure(SwiftUI_NotesTests.CombinePatternTests.TestFailureCondition.invalidServerResponse)
         //        (2)>: receive subscription: (Retry)
         //        (2)>: request unlimited
@@ -165,6 +172,7 @@ class RetryPublisherTests: XCTestCase {
                 sleep(UInt32(delay))
                 print(msTimeFormatter.string(from: Date()) + " * completing async call ")
                 if sabotage {
+                    // sabotage 用来控制是成功还是失败.
                     completionBlock(false, TestFailureCondition.invalidServerResponse)
                 }
                 completionBlock(true, nil)
@@ -196,6 +204,7 @@ class RetryPublisherTests: XCTestCase {
         // delays the call - which isn't an ideal solution.
         // This was his suggestion at an attempt to do better.
         
+        //
         let resultPublisher = upstreamPublisher.catch { _ -> AnyPublisher<String, Error> in
             print(msTimeFormatter.string(from: Date()) + "delaying on error for ~3 seconds ")
             return Publishers.Delay(upstream: upstreamPublisher,

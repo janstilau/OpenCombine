@@ -13,6 +13,7 @@ class HandleEventsPublisherTests: XCTestCase {
     func testHandleEvents() {
         let publisher = PassthroughSubject<String?, Never>()
 
+        // 一个透传的节点. 
         // this sets up the chain of whatever it's going to do
         let cancellable = publisher
             .handleEvents(receiveSubscription: { aValue in

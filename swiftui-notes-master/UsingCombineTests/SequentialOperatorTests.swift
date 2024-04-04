@@ -43,6 +43,7 @@ class SequentialOperatorTests: XCTestCase {
         XCTAssertEqual(responses.count, 1)
         XCTAssertEqual(responses, ["hello"])
         XCTAssertTrue(terminatedStream)
+        // 只要发送了一个数据, 那么这个 pipeline 就结束了. 在 Suject 的内部, 会有标志位控制的.
 
         passSubj.send(completion: Subscribers.Completion.finished)
         XCTAssertEqual(responses.count, 1)

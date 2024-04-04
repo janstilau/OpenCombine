@@ -59,6 +59,7 @@ class PublisherTests: XCTestCase {
         let foo = HoldingClass()
 
         let cancellable = foo.$username
+        // Published 的 Publisher 是无法发出错误的. 
             .sink { someString in
                 print("value of username updated to: >>\(someString)<<")
                 expectation.fulfill()

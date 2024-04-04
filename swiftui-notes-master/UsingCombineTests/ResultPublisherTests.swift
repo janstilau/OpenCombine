@@ -66,7 +66,10 @@ class ResultPublisherTests: XCTestCase {
                 return .success(number)
             }
         }
-
+        
+        /*
+         In contrast with the Just publisher, which always publishes a single value, this publisher might not send any values and instead terminate with an error, if the result is /Swift/Result/failure. In the next example, badResult is a failure result that wraps a custom error. A sink subscriber connected to this result’s publisher immediately receives a termination (Subscribers.Completion.failure(_:)).
+         */
         // any Result instance is also a publisher
         let foo = generateRandomNumber(maximum: 10)
             .publisher

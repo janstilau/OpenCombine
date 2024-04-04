@@ -1,10 +1,3 @@
-//
-//  Publishers.Print.swift
-//  
-//
-//  Created by Sergej Jaskiewicz on 16.06.2019.
-//
-
 extension Publisher {
 
     /// Prints log messages for all publishing events.

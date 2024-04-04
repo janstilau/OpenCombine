@@ -59,6 +59,7 @@ class ChangingErrorTests: XCTestCase {
                 if let error = error as? APIError {
                     return error
                 }
+                // map Error 的主要作用, 就是将 API 的 Error 变为自己控制的 Error.
                 // if it is a TestExampleError, convert it into our new error type
                 if error is TestExampleError {
                     return APIError.parserError(reason: "Our example error")
@@ -120,6 +121,8 @@ class ChangingErrorTests: XCTestCase {
         let publisher = Fail<String, ChangingErrorTests.TestExampleError>(error: TestExampleError.example)
 
         let cancellable = publisher
+        // If the upstream publisher fails with an error, this publisher emits the provided element, then finishes normally.
+        // 这个可以当做是 catch + just.
             .replaceError(with: "foo")
             .sink(receiveCompletion: { completion in
                 print(".sink() received the completion", String(describing: completion))

@@ -57,7 +57,6 @@ class MulticastSharePublisherTests: XCTestCase {
             expectation.fulfill()
         }, receiveValue: { value in
             print(".sink() received value: ", value)
-
         })
 
         wait(for: [expectation], timeout: 5.0)
@@ -84,7 +83,7 @@ class MulticastSharePublisherTests: XCTestCase {
                     }
                 }
             }
-        }.share()
+        }.share() // 这使用了 share.
         // share() provides a sort of encapsulation for demand - it creates a reference
         // such that any number of subscribers can ask for a resource, and it will translate
         // that into a single request - only one subscription being made 'upstream'
@@ -182,6 +181,7 @@ class MulticastSharePublisherTests: XCTestCase {
         })
         .store(in: &cancellables)
 
+        // multicast, 必须要 connect 一下才可以. 
         publisher
             .connect()
             .store(in: &cancellables)
